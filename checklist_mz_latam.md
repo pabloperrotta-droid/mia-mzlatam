@@ -1033,6 +1033,27 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA (commit "Sección 78 QA: ..."). Verificado en vivo en QA: con la simulación abierta, la columna 20/11 queda en la misma posición en CASH, en las líneas simuladas y en el resultado, al inicio, a mitad de recorrido, en el extremo derecho y moviendo cualquiera de las grillas; la Simulación muestra una sola barra. Sin errores de consola.
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("Está ok ambos cambios", junto con la Sección 77/78). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
+### 79. Cashflow — Grillas de Ingresos, Egresos y Salidas Semanales sin deformarse
+
+- Pedido del usuario: "que cheques el diseño, que cuando leo comentarios o algo, no se deforme el formato. Que quede semana corrido de los importes y todas esas cosas. Tanto en salidas, egresos como ingresos."
+- [x] Causas encontradas: (1) en Egresos y Salidas la columna de nombres quedaba angosta (172 px y 146 px a pantalla completa), los nombres se partían en 2 a 4 renglones y cada fila quedaba de distinto alto; (2) en Egresos los importes con decimales (ej. 42.432.490,42) no entraban en la celda; (3) el encabezado fijo de semanas (el que aparece al bajar con el scroll) aparecía corrido respecto de los importes si la grilla ya estaba desplazada hacia la derecha; (4) en pantallas chicas, RESTA y TOTAL de Ingresos cortaban importes grandes.
+- [x] Corregido: todas las grillas de Cashflow (Ingresos, Egresos, Salidas Semanales, CASH y Simulación) usan la misma columna de nombres (260 px) y el mismo ancho de semana (110 px); RESTA/TOTAL de Ingresos 120 px y TOTAL de Egresos/Salidas 130 px. Cada celda va en un solo renglón (si un nombre es muy largo se corta con "…" y el nombre completo aparece al pasar el mouse). El encabezado fijo toma la posición de la grilla apenas aparece. La sincronización CASH ↔ Simulación (Sección 78) se hizo más robusta.
+- [x] Publicado en QA (commits "Sección 79 QA: ..."). Verificado en vivo en QA a 1900 px de ancho y en pantalla chica: filas parejas (Egresos 54 px, Salidas 46 px, Ingresos 52–54 px), ningún importe cortado, encabezado fijo alineado al aparecer y al moverse en las tres pestañas, y CASH / Simulación alineadas en todas las posiciones. Sin errores de consola.
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
+### 80. Cashflow — Fila automática "REGALÍAS" en Egresos, con casilla "Pagada"
+
+- Pedido del usuario: "En egresos abajo de salidas semanales, agrega un campo que se llama regalías. Ese campo en la primera semana de cada mes debería hacer el cálculo de regalías que está en facturación. Es decir, calcular el mes anterior de facturación, sumar la facturación del mes anterior y multiplicarlo por 0,01 hasta junio 2027, [...] 0.015, [...] 0.02 y [...] 0.025. Al hacer mouse over indicarme qué está haciendo, por ejemplo, facturación septiembre 2026 * 0.01."
+- Pedido adicional: "la regalía calculada la tendría que poder tildar como que ya la pagué, porque si no siempre me va a aparecer."
+- [x] Nueva fila "REGALÍAS" en Egresos, debajo de "SALIDAS SEMANALES", calculada sola. En la primera semana de cada mes (semana cuyo viernes cae entre el 1 y el 7) muestra: facturación del mes anterior (misma base que "Descargar regalías" de Facturación: todas las facturas con fecha de emisión en ese mes) × tasa.
+- [x] Tasa según el mes facturado: 1% hasta junio 2027; 1,5% de julio 2027 a junio 2028; 2% de julio 2028 a junio 2029; 2,5% desde julio 2029. (Interpretación de los períodos del pedido, a confirmar por el usuario.)
+- [x] Al pasar el mouse sobre el importe: "Facturación Septiembre 2026: $290.244.900 × 0,01 = $2.902.449".
+- [x] Casilla "Pagada" en cada regalía: tildada, el importe queda tachado y deja de sumar en TOTAL EGRESOS, en el "Importe total" de Egresos, en CASH (y la Simulación) y en la proyección de Cash de la presentación. Se guarda en la base (dato nuevo `cfRegaliasPagadas`, por mes facturado).
+- [x] La fila se calcula sola, así que no se exporta en "Exportar Excel" de Egresos (si se importara volvería como categoría manual).
+- Nota: ya existía una categoría manual "REGALIAS" en Egresos con importes cargados a mano; no se tocó. Si queda, las regalías se cuentan dos veces.
+- [x] Publicado en QA (commit "Sección 80 QA: ..."). Verificado en vivo en QA con datos reales: la semana 02/10 muestra $2.902.449 (Facturación Septiembre 2026 $290.244.900 × 0,01); al tildar "Pagada", el TOTAL EGRESOS de esa semana bajó exactamente $2.902.449 y el importe quedó tachado; después de recargar la página siguió tildada; al destildarla volvió a sumar (se dejó destildada, como estaba).
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
