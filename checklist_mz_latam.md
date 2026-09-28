@@ -1004,7 +1004,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA (commits "Sección 75 QA: adicionales de sub obra WU con número de Orden de Compra" y "Sección 75 QA: sin aviso de fecha en las OC nuevas cargadas como adicional").
 - [x] Verificado en vivo en QA con datos reales. Se cargaron en WU RESISTENCIA dos adicionales de prueba: "2640000100" por $1.000.000 (OC existente) y "2640009999" por $2.000.000 (OC nueva). Resultado: la OC 2640000100 pasó de $47.387.422 a $48.387.422 con "incl. adicional $1.000.000" y saldo a facturar $1.000.000, con MB sin cambios (9,0%); apareció la línea 2640009999 con $2.000.000 de venta y de saldo, MB "—" y "Adicional de WU RESISTENCIA"; el ADEUDADO de la obra subió exactamente $3.000.000 (sin doble conteo) y el mes del gráfico cerró igual entre barra, torta y lista. Después se borraron los dos adicionales de prueba y la lista volvió a quedar como antes.
 - Nota: en QA hay un adicional "adicionalk" por $1.640.635.647 en WU RESISTENCIA que no es de esta prueba (infla la venta de Feb 2026 en QA). No se tocó.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("subilo produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd" (header negro, base real).
 
 ## 41. Pendientes / recomendaciones
 
