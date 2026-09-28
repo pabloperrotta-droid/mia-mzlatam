@@ -959,7 +959,9 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] Se agregó en Admin un botón "Comparador de Precios" que abre en una pestaña nueva una herramienta de Claude para buscar un producto y una zona (CABA, AMBA, GBA, etc.) y traer las opciones más baratas en tiendas de Argentina.
 - [x] Publicado en QA (commit "Sección 72 QA: botón "Comparador de Precios" en Admin", 27/09/2026 12:38).
-- [ ] **Se perdió en QA con la subida manual del 27/09/2026 (21:06 y 21:19, commits "Add files via upload")**: esa versión de `MIAQA.html` partía de una base anterior y no traía el botón. Se comparó texto por texto contra la versión de la Sección 72 y es lo único que faltaba; el resto de la app quedó igual. Nunca había llegado a Producción, así que hoy no está ni en QA ni en Producción. Pendiente de reponer si se sigue queriendo.
+- [x] **Se perdió en QA con la subida manual del 27/09/2026 (21:06 y 21:19, commits "Add files via upload")**: esa versión de `MIAQA.html` partía de una base anterior y no traía el botón. Se comparó texto por texto contra la versión de la Sección 72 y es lo único que faltaba; el resto de la app quedó igual. Nunca había llegado a Producción, así que hoy no está ni en QA ni en Producción.
+
+- [x] Decisión del usuario (27/09/2026): "Comparador de Precios no lo quiero". No se repone; la Sección 72 queda descartada.
 
 ### 73. Obras — Precio x M2 en clientes y centros de costo, y el detalle de un mes (torta) coincide con la barra
 
@@ -980,7 +982,6 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
 - [ ] Definir si el link de Artifact de Claude se deja fijo apuntando a `MIAQA.html`/`MIA.prd.html`, o se retira directamente, ya que no puede mostrar datos reales.
 - [ ] Si hay gente del equipo que antes entraba a Producción sin PIN (modo solo lectura), avisarles que ahora necesitan un PIN (el de Admin, Comercial, o un rol nuevo que se les cree).
-- [ ] Reponer el botón "Comparador de Precios" (Sección 72), que se perdió con la subida manual del 27/09.
 - [ ] Refrescar la copia de datos de QA (`qa_`) con los de Producción: no hay nada en el código ni en el repo que lo haga automáticamente, y en la publicación del 27/09 no se pudo hacer (sin acceso a Firebase desde el entorno de trabajo).
 - [ ] `index.jsx` del repo está desactualizado (no tiene Firebase ni las secciones recientes); la fuente real es el código dentro de `MIAQA.html`. Evitar subir `MIAQA.html` a mano desde versiones viejas para no pisar cambios (como pasó con la Sección 72).
 
