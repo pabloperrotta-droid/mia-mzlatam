@@ -1025,6 +1025,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA (commit "Sección 77 QA: ..."). Verificado en vivo en QA: la tarjeta y el botón ya no aparecen, las pestañas Ingresos, Egresos y Salidas Semanales abren bien y no hay errores de consola.
 - [ ] Pendiente: pase a Producción con OK del usuario.
 
+### 78. Cashflow — Simulación de Cash con una sola barra horizontal y las mismas semanas que CASH
+
+- Pedido del usuario (con captura donde "20/11" de las líneas simuladas no coincidía con "Sem. 20/11" del resultado): "en simulacion del cash.. deja una sola barra de desplazamiento horizontal, para ver iguales semanas en simulacion cash y en cash", "sino puede verlo desplazado".
+- [x] Causa: la Simulación tenía dos grillas con barra propia (líneas de ingreso simulado y resultado), y cada una, igual que CASH, tenía una primera columna de ancho distinto. Por eso las semanas quedaban corridas entre sí.
+- [x] Corregido: CASH, las líneas simuladas y el resultado de la simulación usan la misma primera columna (230px) y se desplazan juntas: al mover cualquiera, las otras van a la misma semana. Dentro de la Simulación queda una sola barra (la de abajo, en el resultado). La grilla de líneas simuladas ya no tiene barra propia ni alto máximo (crece con las líneas).
+- [x] Publicado en QA (commit "Sección 78 QA: ..."). Verificado en vivo en QA: con la simulación abierta, la columna 20/11 queda en la misma posición en CASH, en las líneas simuladas y en el resultado, al inicio, a mitad de recorrido, en el extremo derecho y moviendo cualquiera de las grillas; la Simulación muestra una sola barra. Sin errores de consola.
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
