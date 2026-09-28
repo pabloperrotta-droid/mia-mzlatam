@@ -979,6 +979,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Verificado en vivo en QA (con PIN puesto por el usuario en el navegador integrado, sin modificar datos): en los 20 meses con ventas de 2025 y 2026, el TOTAL de la lista coincide exacto con la torta. Precio x M2 muestra "—" porque en QA ningún centro de costo tiene M2 cargado. Los datos de QA están desactualizados respecto de Producción (MB 25,4% vs 25,9%); el usuario confirmó que los correctos son los de Producción y no pidió refrescar QA.
 - Nota: con este pase a Producción también subió todo lo que estaba en QA y no en Producción desde la subida manual del 27/09 (Precio x M2 y MB en clientes y "Todos los centros de costo", y la torta por fecha de Orden de Compra).
 
+### 74. Cashflow — Renombrar categorías de Egresos
+
+- Pedido del usuario: "necesito poder modificar los nombre de los egresos"
+- [x] En Cashflow → Egresos, al lado de cada categoría (junto al tacho de eliminar) hay un lápiz "Cambiar nombre". Al tocarlo, el nombre se vuelve editable en el lugar: Enter o ✓ guarda, Escape o ✕ cancela. El nombre se guarda en mayúsculas, igual que al crear una categoría.
+- [x] Al renombrar, los importes y los comentarios de cada semana de esa categoría pasan al nombre nuevo (se guardan por nombre de categoría, así que sin esto se perdían). La categoría mantiene su lugar en la lista.
+- [x] No deja usar un nombre que ya tiene otra categoría (avisa "Ya existe una categoría con ese nombre.") ni el carácter "|" (se usa internamente para guardar los importes).
+- [x] Solo aparece para roles con permiso de edición en Cashflow, igual que el botón de eliminar.
+- [x] Publicado en QA (commit "Sección 74 QA: renombrar categorías de Egresos en Cashflow").
+- [x] Verificado en vivo en QA con datos reales: aparece el lápiz en las 46 categorías; se renombró "ACC PER" a "ACC PER PRUEBA" y sus importes (184.434,43 / 199.189,19 / 199.189,19, total $582.813) pasaron intactos al nombre nuevo; el cambio quedó guardado después de recargar la página; el intento de renombrarla como "EDENOR" (ya existente) fue rechazado con el aviso. Se volvió a dejar "ACC PER" con sus mismos importes. Sin errores de consola.
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
