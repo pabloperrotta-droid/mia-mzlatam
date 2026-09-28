@@ -1023,7 +1023,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Se sacó de Cashflow la tarjeta completa "Términos de pago por cliente" (los días de cobro por cliente y el botón "Calcular semanas automáticamente", Sección 24). Se sigue cargando todo a mano en Ingresos, Egresos y Salidas Semanales, y "Exportar / Importar Excel" sigue igual.
 - [x] No se borró ningún dato: los importes ya cargados en Ingresos quedan como estaban. Los días por cliente que había cargados quedan guardados en la base, pero ya no se muestran ni se usan.
 - [x] Publicado en QA (commit "Sección 77 QA: ..."). Verificado en vivo en QA: la tarjeta y el botón ya no aparecen, las pestañas Ingresos, Egresos y Salidas Semanales abren bien y no hay errores de consola.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("Está ok ambos cambios", junto con la Sección 77/78). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ### 78. Cashflow — Simulación de Cash con una sola barra horizontal y las mismas semanas que CASH
 
@@ -1031,7 +1031,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Causa: la Simulación tenía dos grillas con barra propia (líneas de ingreso simulado y resultado), y cada una, igual que CASH, tenía una primera columna de ancho distinto. Por eso las semanas quedaban corridas entre sí.
 - [x] Corregido: CASH, las líneas simuladas y el resultado de la simulación usan la misma primera columna (230px) y se desplazan juntas: al mover cualquiera, las otras van a la misma semana. Dentro de la Simulación queda una sola barra (la de abajo, en el resultado). La grilla de líneas simuladas ya no tiene barra propia ni alto máximo (crece con las líneas).
 - [x] Publicado en QA (commit "Sección 78 QA: ..."). Verificado en vivo en QA: con la simulación abierta, la columna 20/11 queda en la misma posición en CASH, en las líneas simuladas y en el resultado, al inicio, a mitad de recorrido, en el extremo derecho y moviendo cualquiera de las grillas; la Simulación muestra una sola barra. Sin errores de consola.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("Está ok ambos cambios", junto con la Sección 77/78). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
