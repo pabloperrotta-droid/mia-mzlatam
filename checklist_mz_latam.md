@@ -1017,6 +1017,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("genial, subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 - [ ] Pendiente: tildar "Regalías y Presentación" en los roles Pablo y Romina (Roles → editar rol).
 
+### 77. Cashflow — Se eliminan "Términos de pago por cliente" y "Calcular semanas automáticamente"
+
+- Pedido del usuario: "Términos de pago por cliente y calcular semanas automaticamente eliminalo por favor"
+- [x] Se sacó de Cashflow la tarjeta completa "Términos de pago por cliente" (los días de cobro por cliente y el botón "Calcular semanas automáticamente", Sección 24). Se sigue cargando todo a mano en Ingresos, Egresos y Salidas Semanales, y "Exportar / Importar Excel" sigue igual.
+- [x] No se borró ningún dato: los importes ya cargados en Ingresos quedan como estaban. Los días por cliente que había cargados quedan guardados en la base, pero ya no se muestran ni se usan.
+- [x] Publicado en QA (commit "Sección 77 QA: ..."). Verificado en vivo en QA: la tarjeta y el botón ya no aparecen, las pestañas Ingresos, Egresos y Salidas Semanales abren bien y no hay errores de consola.
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
