@@ -988,7 +988,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Solo aparece para roles con permiso de edición en Cashflow, igual que el botón de eliminar.
 - [x] Publicado en QA (commit "Sección 74 QA: renombrar categorías de Egresos en Cashflow").
 - [x] Verificado en vivo en QA con datos reales: aparece el lápiz en las 46 categorías; se renombró "ACC PER" a "ACC PER PRUEBA" y sus importes (184.434,43 / 199.189,19 / 199.189,19, total $582.813) pasaron intactos al nombre nuevo; el cambio quedó guardado después de recargar la página; el intento de renombrarla como "EDENOR" (ya existente) fue rechazado con el aviso. Se volvió a dejar "ACC PER" con sus mismos importes. Sin errores de consola.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd" (header negro, base real).
 
 ## 41. Pendientes / recomendaciones
 
