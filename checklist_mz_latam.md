@@ -1006,6 +1006,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - Nota: en QA hay un adicional "adicionalk" por $1.640.635.647 en WU RESISTENCIA que no es de esta prueba (infla la venta de Feb 2026 en QA). No se tocó.
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("subilo produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd" (header negro, base real).
 
+### 76. "Descargar regalías" y "Hacer presentación": también para Admin y por permiso en roles personalizados
+
+- Reporte del usuario: "no tengo más el botón para descargar regalías. Tampoco para descargar presentación PDF." Aclaración: "Lo estoy viendo en el rol comercial, tanto hacer presentación como descargar regalías, pero en ningún lado más."
+- [x] Diagnóstico: no se había borrado nada. Los dos botones ("Descargar regalías" en Facturación y "Hacer presentación" en Obras) aparecían solo con el rol Comercial, y así estaba en todas las versiones de Producción revisadas desde el 14/09/2026. "Descargar presentación del Cash (PDF)" en Cashflow sí estaba visible para todos.
+- Decisión del usuario: Admin y Comercial, y además los roles personalizados "Pablo" y "Romina".
+- [x] Admin ahora ve los dos botones igual que Comercial.
+- [x] Nuevo permiso en cada rol personalizado (Roles → Permisos adicionales): "Regalías y Presentación", igual que el de Tipo de Cambio. Si está tildado, ese rol ve los dos botones. Se muestra en el resumen de cada rol ("Ve Descargar regalías y Hacer presentación") y en el Excel de roles (columna "Regalías y Presentación").
+- [x] Publicado en QA (commits "Sección 76 QA: ..."). Verificado en vivo como Admin: aparecen "Descargar regalías" y "Hacer presentación", y en Roles aparece la casilla nueva. En QA no existen los roles Pablo y Romina (datos de QA desactualizados), así que se tildan en Producción.
+- [ ] Pendiente: pase a Producción con OK del usuario, y tildar "Regalías y Presentación" en los roles Pablo y Romina.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
