@@ -1072,7 +1072,18 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Corregido: (1) cada cambio manda solo lo que cambió (por ejemplo, el presupuesto de un proveedor viaja como una actualización de menos de 1 KB en vez de 510 KB); (2) si llega un cambio de otra pantalla mientras hay algo pendiente, se combina (se mantienen los cambios de las dos) en vez de descartarse; (3) si un guardado no se confirma en 15 segundos aparece el aviso "⚠ Los últimos cambios todavía no llegaron a la base de datos...".
 - [x] Antes de tocar nada se guardaron copias completas de las dos bases en `respaldos/app_state_2026-09-28_2210` y `respaldos/qa_app_state_2026-09-28_2210` (verificadas).
 - [x] Publicado en QA (commit "Sección 82 QA: ..."). Verificado en vivo en QA: al abrir no guarda nada innecesario; editar el presupuesto de ARIEL CASAS mandó una sola actualización chica y quedó en la base; simulando que otra pantalla cambiaba el Saldo inicial de Cashflow y las regalías pagadas mientras se editaba el presupuesto, en la base quedaron los dos cambios (ninguno pisó al otro). Se restauraron los valores de prueba. Las 35 secciones de la base se mantienen.
-- [ ] Pendiente: pase a Producción con OK del usuario. Después, volver a cargar en Producción lo que no se guardó desde las 21:40 (presupuestos de ARIEL CASAS, unión de las sub obras de Morón, etc.).
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("si subilo"), junto con la Sección 83.
+- [ ] Pendiente (usuario): volver a cargar en Producción lo que no se guardó desde las 21:40 (presupuestos de ARIEL CASAS en EDISON y MORON, unión de las sub obras de Morón, etc.).
+
+### 83. Guardado — pop-up si un cambio no se guarda en la base
+
+- Pedido del usuario: "subí algo para que me avise si pasa de nuevo... al guardar algo que envíe y recepcione que está ok o no. Si está ok, nada nuevo al usuario. Si no lo guarda, que aparezca un pop-up que diga contacte administrador. Porque si no, no sé cuándo está ok y cuándo no y no puedo confiar."
+- [x] Cada guardado espera la confirmación de la base de datos. Si llega, no se muestra nada. Si la base lo rechaza (o los datos no se pueden enviar), aparece enseguida un pop-up "⚠ No se guardaron los cambios — Los últimos cambios que hiciste NO se guardaron en la base de datos. No cierres ni recargues la página y contactá al administrador", con el detalle técnico y los botones "Reintentar guardar" y "Cerrar". Si la base no confirma en 20 segundos, aparece el mismo pop-up; si después confirma, se cierra solo.
+- [x] También aparece si falla el guardado de una factura.
+- [x] Tiempos: el guardado sale medio segundo después del último cambio; la confirmación normal tarda alrededor de medio segundo (medido: 0,54 s). Rechazo → pop-up al instante; sin respuesta → pop-up a los 20 segundos.
+- [x] Verificado en vivo en QA: guardado normal sin pop-up (confirmó en 0,54 s); rechazo simulado → pop-up con detalle, y "Reintentar guardar" lo guardó en la base; guardado colgado simulado → pop-up a los ~20 s, que se cerró solo al confirmar. Se dejó el presupuesto de prueba como estaba ($5.100.000 en QA).
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("si subilo y además subí algo para que me avise si pasa de nuevo").
+
 
 ## 41. Pendientes / recomendaciones
 
