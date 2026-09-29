@@ -1061,7 +1061,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Buscador "Buscar proveedor o imputación..." arriba, junto al filtro de líneas. Filtra mientras escribís por la columna Proveedor o por la Imputación (sin distinguir mayúsculas ni acentos), y se combina con el filtro "Sin Fecha Pagado / Postergados / Por fecha pagada / Todas las líneas". Una ✕ borra la búsqueda.
 - [x] Las 21 columnas se ordenan con un clic en el título: 1er clic ▲ (A→Z / menor a mayor / fecha más vieja primero), 2º clic ▼, 3er clic vuelve al orden original. Las fechas se ordenan por fecha, los importes por monto, MO / MAT / Factura A (tildados primero en ▼), y los vacíos siempre van al final. Reemplaza los dos órdenes que había (Cliente y Proveedor).
 - [x] Publicado en QA (commit "Sección 81 QA: ..."). Verificado en vivo en QA con los 125 pagos reales: Fecha Pagado ▲ empieza en 17-09-2026 y ▼ en 26-09-2026 (vacías al final); Imputación ▲ AGROREDES… ▼ VOLQUETE; Importe Final ▲ 15.917,95… ▼ 16.813.665,59; el tercer clic quita el orden. Búsqueda: "volq" → 3 líneas (incluye imputación VOLQUETE con proveedor FRATINI), "all ink" → 7, "agrored" → 2, todas coincidentes; al borrar vuelven las 125. Sin errores de consola.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("SUBILO A PRODUCCION"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
