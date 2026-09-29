@@ -1085,6 +1085,22 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("si subilo y además subí algo para que me avise si pasa de nuevo").
 
 
+### 84. Guardado — cada falla queda registrada y se ve en Admin → Registros
+
+- Pedido del usuario: que cada falla de guardado quede registrada, "así ya sabés qué hacer".
+- [x] Cada vez que aparece el pop-up "No se guardaron los cambios" (Sección 83), se guarda un registro en la colección `erroresGuardado` de Firestore (`qa_erroresGuardado` en QA) con fecha, rol, detalle técnico, ambiente y navegador. Si en ese momento no hay conexión, Firestore lo manda apenas vuelve.
+- [x] En Admin → Registros aparece arriba un recuadro rojo "⚠ Fallas de guardado (N)" con fecha, rol y detalle de cada falla (las últimas 100).
+- [x] Publicado en QA (commit "Sección 84 QA: ..."). Verificado en vivo en QA: con un rechazo simulado apareció el pop-up, se creó el registro (rol Admin, "La base de datos rechazó el guardado (unavailable)") y se vio en Registros; "Reintentar guardar" lo guardó. Se borró el registro de prueba y se dejó el presupuesto de QA como estaba.
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
+#### Qué hacer si el usuario reporta el pop-up "No se guardaron los cambios"
+1. Pedirle que NO cierre ni recargue la página y que toque "Reintentar guardar"; si el pop-up desaparece, se guardó.
+2. Revisar Admin → Registros → "Fallas de guardado" (o la colección `erroresGuardado` en Firestore): el detalle dice si fue rechazo de la base (código: `permission-denied`, `invalid-argument`, `resource-exhausted`, etc.) o falta de confirmación en 20 s (red).
+3. Mirar la base `app/state` en vivo mientras el usuario repite el cambio, para confirmar si llega (como en la Sección 82).
+4. Si fue red: probar desde otro navegador / red; en Chrome, los errores `QUIC_TOO_MANY_RTOS` en consola indican cortes con Google (se puede desactivar QUIC en chrome://flags → "Experimental QUIC protocol" → Disabled).
+5. Si fue rechazo de datos: reproducir la edición en una pestaña de Producción con las escrituras interceptadas (sin escribir) para ver qué se manda, y corregir en QA.
+6. Copias de seguridad completas: colección `respaldos` (ej. `respaldos/app_state_2026-09-28_2210`), y el Historial diario de Admin.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
