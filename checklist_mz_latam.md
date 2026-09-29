@@ -1015,7 +1015,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Nuevo permiso en cada rol personalizado (Roles → Permisos adicionales): "Regalías y Presentación", igual que el de Tipo de Cambio. Si está tildado, ese rol ve los dos botones. Se muestra en el resumen de cada rol ("Ve Descargar regalías y Hacer presentación") y en el Excel de roles (columna "Regalías y Presentación").
 - [x] Publicado en QA (commits "Sección 76 QA: ..."). Verificado en vivo como Admin: aparecen "Descargar regalías" y "Hacer presentación", y en Roles aparece la casilla nueva. En QA no existen los roles Pablo y Romina (datos de QA desactualizados), así que se tildan en Producción.
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("genial, subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
-- [ ] Pendiente: tildar "Regalías y Presentación" en los roles Pablo y Romina (Roles → editar rol).
+- [x] El usuario tildó "Regalías y Presentación" en los roles Pablo y ROMINA (verificado en la base el 28/09/2026).
 
 ### 77. Cashflow — Se eliminan "Términos de pago por cliente" y "Calcular semanas automáticamente"
 
