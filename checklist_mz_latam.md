@@ -1051,7 +1051,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Casilla "Pagada" en cada regalía: tildada, el importe queda tachado y deja de sumar en TOTAL EGRESOS, en el "Importe total" de Egresos, en CASH (y la Simulación) y en la proyección de Cash de la presentación. Se guarda en la base (dato nuevo `cfRegaliasPagadas`, por mes facturado).
 - [x] La fila se calcula sola, así que no se exporta en "Exportar Excel" de Egresos (si se importara volvería como categoría manual).
 - Nota: ya existía una categoría manual "REGALIAS" en Egresos con importes cargados a mano; no se tocó. Si queda, las regalías se cuentan dos veces.
-- [ ] Pendiente (lo hace el usuario): eliminar la categoría manual "REGALIAS" de Egresos en Producción.
+- [x] El usuario eliminó la categoría manual "REGALIAS" de Egresos en Producción (verificado en la base el 28/09/2026).
 - [x] Publicado en QA (commit "Sección 80 QA: ..."). Verificado en vivo en QA con datos reales: la semana 02/10 muestra $2.902.449 (Facturación Septiembre 2026 $290.244.900 × 0,01); al tildar "Pagada", el TOTAL EGRESOS de esa semana bajó exactamente $2.902.449 y el importe quedó tachado; después de recargar la página siguió tildada; al destildarla volvió a sumar (se dejó destildada, como estaba).
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("esta ok todo subilo"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
