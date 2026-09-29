@@ -1073,7 +1073,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Antes de tocar nada se guardaron copias completas de las dos bases en `respaldos/app_state_2026-09-28_2210` y `respaldos/qa_app_state_2026-09-28_2210` (verificadas).
 - [x] Publicado en QA (commit "Sección 82 QA: ..."). Verificado en vivo en QA: al abrir no guarda nada innecesario; editar el presupuesto de ARIEL CASAS mandó una sola actualización chica y quedó en la base; simulando que otra pantalla cambiaba el Saldo inicial de Cashflow y las regalías pagadas mientras se editaba el presupuesto, en la base quedaron los dos cambios (ninguno pisó al otro). Se restauraron los valores de prueba. Las 35 secciones de la base se mantienen.
 - [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("si subilo"), junto con la Sección 83.
-- [ ] Pendiente (usuario): volver a cargar en Producción lo que no se guardó desde las 21:40 (presupuestos de ARIEL CASAS en EDISON y MORON, unión de las sub obras de Morón, etc.).
+- [x] Recargado por el usuario en Producción con la versión nueva y verificado en la base en vivo (28/09/2026 22:59): ARIEL CASAS en WU SANTA FE Y EDISON $5.100.000; ARIEL CASAS en WU MORON $5.500.000; "WU CHANGOMAS MORON" unida a "WU MORON" (OC 2640000546, con los proveedores y pagos de las dos: ARIEL CASAS, MATERIALES, FLETE, MANSILLA, DINAMICA). El registro de la unión quedó en Registros. Sin fallas de guardado registradas.
 
 ### 83. Guardado — pop-up si un cambio no se guarda en la base
 
