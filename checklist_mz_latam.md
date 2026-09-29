@@ -1091,7 +1091,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Cada vez que aparece el pop-up "No se guardaron los cambios" (Sección 83), se guarda un registro en la colección `erroresGuardado` de Firestore (`qa_erroresGuardado` en QA) con fecha, rol, detalle técnico, ambiente y navegador. Si en ese momento no hay conexión, Firestore lo manda apenas vuelve.
 - [x] En Admin → Registros aparece arriba un recuadro rojo "⚠ Fallas de guardado (N)" con fecha, rol y detalle de cada falla (las últimas 100).
 - [x] Publicado en QA (commit "Sección 84 QA: ..."). Verificado en vivo en QA: con un rechazo simulado apareció el pop-up, se creó el registro (rol Admin, "La base de datos rechazó el guardado (unavailable)") y se vio en Registros; "Reintentar guardar" lo guardó. Se borró el registro de prueba y se dejó el presupuesto de QA como estaba.
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] **Subido a Producción** (28/09/2026), con el OK explícito del usuario ("84 a produccion").
 
 #### Qué hacer si el usuario reporta el pop-up "No se guardaron los cambios"
 1. Pedirle que NO cierre ni recargue la página y que toque "Reintentar guardar"; si el pop-up desaparece, se guardó.
