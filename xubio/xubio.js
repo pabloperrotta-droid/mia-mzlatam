@@ -351,7 +351,8 @@ async function asignarCentroCosto(p) {
     await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
-    return bloqueada(false);
+    // Se guarda la respuesta completa de Xubio (JSON) para poder mandarla a soporte (info@xubio.com).
+    return { ...bloqueada(false), errorXubio: String(err.cuerpo || err.message || "").slice(0, 6000), transaccionid: id };
   }
   const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
   const ok = comoLista(despues.transaccionProductoItems).every((it) => idDe(it.centroDeCosto) === cc.id);

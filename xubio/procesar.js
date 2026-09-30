@@ -147,6 +147,8 @@ async function procesarLineas(amb) {
       centroMia: (r.centroDeCosto && r.centroDeCosto.nombre) || null,
       facturaXubio: (r.factura && r.factura.numeroDocumento) || null,
       proveedorXubio: (r.factura && r.factura.proveedor) || null,
+      errorXubio: r.errorXubio || null,
+      transaccionid: r.transaccionid || (r.factura && r.factura.id) || null,
       factura: texto(l.factura, 40),
       firma: f,
       intento: Date.now(),
