@@ -1101,6 +1101,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 5. Si fue rechazo de datos: reproducir la edición en una pestaña de Producción con las escrituras interceptadas (sin escribir) para ver qué se manda, y corregir en QA.
 6. Copias de seguridad completas: colección `respaldos` (ej. `respaldos/app_state_2026-09-28_2210`), y el Historial diario de Admin.
 
+### 85. Markup al lado de cada Margen Bruto ("MB / Markup")
+
+- Pedido del usuario: "En todos los lugares donde dice margen bruto, ya sea margen bruto inicial o margen bruto final, agregar barra markup (margen bruto inicial / markup, margen bruto final / markup) y hacer el cálculo del markup correspondiente. En el caso del inicial es (venta inicial − costo inicial) / costo inicial."
+- [x] Cálculo: markup = (venta − costo) / costo. Como MB = (venta − costo) / venta, el markup sale exacto del MB: markup = MB / (1 − MB). Así se usa la misma venta y el mismo costo que ya usa cada MB (inicial con venta y costo iniciales, final con los finales). Si el costo es 0 (MB 100%), el markup muestra "—".
+- [x] Se muestra "MB / Markup" (ej. "23.3% / 30.3%") en: encabezado general (MARGEN BRUTO / MARKUP) y tarjetas por año; lista de clientes y "Todos los centros de costo"; centros de costo de cada cliente (MB INICIAL / MARKUP y MB FINAL / MARKUP); ficha de la obra; detalle de un mes (torta); Órdenes de Compra de WU (MB PROMEDIO / MARKUP) y su popup de sub obras; encabezado de cada sub obra ("MB / Markup"); formularios de Nueva obra y Editar obra (MARGEN BRUTO INICIAL / MARKUP); y la presentación (lámina "MARGEN BRUTO / MARKUP").
+- [x] Excel: se agregaron las columnas "Markup Inicial %" y "Markup Final %" al resumen de todas las obras, "Markup" al Excel de sub obras y al de Órdenes de Compra.
+- [x] Fórmula verificada con casos reales: SHANGAI ITUZAINGO (venta $198.549.994, costo $152.360.474) → 23.3% / 30.3% (markup directo 30.3%); WU RESISTENCIA (venta $15.406.560, costo $15.858.709) → -2.9% / -2.9%; costo 0 → 100.0% / —.
+- [x] Publicado en QA (commit "Sección 85 QA: ..."). No se pudo revisar el diseño en vivo desde el entorno de trabajo (sin acceso de red a GitHub Pages/Firebase y sin el panel del navegador conectado): pendiente que el usuario lo mire en QA.
+- [ ] Pendiente: revisión visual del usuario en QA y pase a Producción con su OK.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
