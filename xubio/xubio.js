@@ -467,4 +467,37 @@ async function compararFacturas(p) {
   return { estado: "ok", facturas: out };
 }
 
-module.exports = { compararFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Prueba autorizada por el usuario SOLO sobre la factura 8239 (30/09/2026): distintas formas de mandar
+// el centro de costo, hasta la primera que Xubio acepte.
+async function probarCentro8239() {
+  const r = await buscarFactura({ cuit: "30708774118", factura: "8239", fecha: "" });
+  if (r.estado !== "encontrada") return { estado: r.estado, mensaje: r.mensaje };
+  const id = r.comprobante.transaccionid;
+  const crudos = comoLista(await xubio("GET", "/centroDeCostoBean"));
+  const cc = crudos.find((c) => normalizar(c.nombre) === "NATURA CABILDO");
+  const ccId = cc && (cc.centroDeCosto_id != null ? cc.centroDeCosto_id : idDe(cc));
+  const variantes = [
+    ["ID", { ID: ccId }],
+    ["id", { id: ccId }],
+    ["ID+id", { ID: ccId, id: ccId }],
+    ["completo", { ID: ccId, id: ccId, codigo: cc.codigo, nombre: cc.nombre }],
+    ["codigo", { codigo: cc.codigo }],
+  ];
+  const intentos = [];
+  for (const [nombre, obj] of variantes) {
+    const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
+    const cuerpo = { ...completo, transaccionProductoItems: comoLista(completo.transaccionProductoItems).map((it) => ({ ...it, centroDeCosto: obj })) };
+    try {
+      await xubio("PUT", "/comprobanteCompraBean/" + id, cuerpo);
+      const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+      intentos.push({ variante: nombre, resultado: "ok", centroDespues: comoLista(despues.transaccionProductoItems).map((it) => it.centroDeCosto), total: despues.importetotal });
+      break;
+    } catch (e) {
+      intentos.push({ variante: nombre, resultado: "error", mensaje: String(e.message).slice(0, 200), cuerpo: String(e.cuerpo || "").slice(0, 1500) });
+    }
+  }
+  return { estado: "ok", centroLista: cc, ccId, intentos };
+}
+
+module.exports = { probarCentro8239, compararFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
