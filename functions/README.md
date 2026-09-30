@@ -9,3 +9,4 @@ Cada llamada queda registrada en Firestore (`xubioLog` / `qa_xubioLog`).
 
 
 <!-- publicación tras activar plan Blaze -->
+<!-- reintento 15:02 -->
