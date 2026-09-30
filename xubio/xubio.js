@@ -135,8 +135,11 @@ async function diagnostico() {
     const c = await xubio("GET", "/comprobanteCompraBean/" + lista[0].transaccionid);
     completo = { campos: Object.keys(c), renglon: comoLista(c.transaccionProductoItems)[0] || null, proveedor: c.proveedor };
   }
+  const provs = comoLista(await xubio("GET", "/ProveedorBean").catch(() => []));
   return {
     estado: "ok",
+    proveedoresTotal: provs.length,
+    proveedorCrudo: provs[0] || null,
     centroCrudo: comoLista(crudosCentros)[0] || null,
     comprobanteCrudo: completo,
     centrosDeCosto: comoLista(crudosCentros).map((c) => ({ id: c.centroDeCosto_id != null ? c.centroDeCosto_id : idDe(c), codigo: c.codigo, nombre: c.nombre })),
@@ -145,16 +148,34 @@ async function diagnostico() {
   };
 }
 
+// El CUIT puede venir con o sin guiones y en distintos campos según la versión de Xubio:
+// se compara solo por dígitos contra cualquier campo que parezca un CUIT.
+const cuitsDe = (p) =>
+  Object.entries(p || {})
+    .filter(([k, v]) => /cuit|identificacion|documento/i.test(k) && (typeof v === "string" || typeof v === "number"))
+    .map(([, v]) => soloDigitos(v))
+    .filter(Boolean);
+let proveedoresCache = null;
+async function buscarProveedor(cuitDig) {
+  const guiones = cuitDig.length === 11 ? cuitDig.slice(0, 2) + "-" + cuitDig.slice(2, 10) + "-" + cuitDig.slice(10) : cuitDig;
+  for (const q of [cuitDig, guiones]) {
+    const provs = comoLista(await xubio("GET", "/ProveedorBean?numeroIdentificacion=" + encodeURIComponent(q)).catch(() => []));
+    const p = provs.find((x) => cuitsDe(x).includes(cuitDig));
+    if (p) return p;
+  }
+  if (!proveedoresCache) proveedoresCache = xubio("GET", "/ProveedorBean").then(comoLista);
+  return (await proveedoresCache).find((x) => cuitsDe(x).includes(cuitDig)) || null;
+}
+
 async function buscarFactura({ cuit, factura, fecha }) {
   const cuitDig = soloDigitos(cuit);
   if (!cuitDig) return { estado: "falta_cuit", mensaje: "La línea de Pagos no tiene CUIT del proveedor." };
   const buscada = partesNumero(factura);
   if (!buscada.numero) return { estado: "falta_factura", mensaje: "La línea de Pagos no tiene número de factura." };
 
-  const provs = comoLista(await xubio("GET", "/ProveedorBean?numeroIdentificacion=" + encodeURIComponent(cuitDig)));
-  const prov = provs.find((p) => soloDigitos(p.cuit) === cuitDig) || (provs.length === 1 ? provs[0] : null);
+  const prov = await buscarProveedor(cuitDig);
   if (!prov) return { estado: "proveedor_no_encontrado", mensaje: "No hay en Xubio un proveedor con CUIT " + cuitDig + "." };
-  const provId = prov.proveedorid;
+  const provId = prov.proveedorid != null ? prov.proveedorid : idDe(prov);
 
   const base = leerFecha(fecha) || new Date();
   const desde = new Date(base);
