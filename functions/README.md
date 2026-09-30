@@ -7,3 +7,5 @@ Función de Firebase `xubio` (región southamerica-east1). Se publica sola desde
 Acciones: `diagnostico` (solo lectura) y `asignarCentroCosto` (con `simular: true` no modifica nada).
 Cada llamada queda registrada en Firestore (`xubioLog` / `qa_xubioLog`).
 
+
+<!-- publicación tras activar plan Blaze -->
