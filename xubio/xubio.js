@@ -316,7 +316,7 @@ async function asignarCentroCosto(p) {
       mensaje:
         (pagos
           ? "Xubio no deja modificar esta factura porque ya tiene un pago (orden de pago) aplicado."
-          : "Xubio no deja modificar esta factura desde la integración (respondió " + err.status + ").") +
+          : "Xubio no deja modificar esta factura (normalmente porque ya está cancelada con una orden de pago).") +
         ' Hay que ponerle el centro de costo "' + cc.nombre + '" a mano en Xubio' + antesTenia + ".",
       factura: antes,
       centroDeCosto: cc,

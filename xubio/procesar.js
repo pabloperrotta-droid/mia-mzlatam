@@ -7,8 +7,8 @@
  *      proveedor + número) y le pone el centro de costo. Nunca crea facturas ni centros.
  *   3. El resultado de cada línea queda en `xubioEstado/{id de la línea}` (qa_xubioEstado en QA),
  *      que MIA muestra en Pagos como ✅ / ❌ al lado del número de factura.
- *   - Líneas nuevas o modificadas (factura, CUIT, cliente, centro, sub obra o centro elegido a mano):
- *     se mandan en la corrida siguiente.
+ *   - Líneas nuevas, o en rojo que se modificaron: se mandan en la corrida siguiente.
+ *   - Las que quedaron en verde no se vuelven a mandar nunca (salvo "Reintentar ahora").
  *   - Las que no quedaron bien (❌) se reintentan cada 3 horas (por si la factura se carga después).
  *   - "Reintentar ahora" desde MIA marca `forzar` y se reintenta en la corrida siguiente.
  *
@@ -108,7 +108,9 @@ async function procesarLineas(amb) {
     const f = firma(l);
     const e = previos[l.id];
     let prioridad = null;
+    // Una vez en verde no se vuelve a mandar nunca (pedido del usuario), salvo "Reintentar ahora".
     if (e && e.forzar) prioridad = -1;
+    else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
     else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;
