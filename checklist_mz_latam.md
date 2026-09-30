@@ -1122,19 +1122,20 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Verificado además que en compu no cambia nada: misma tabla con y sin el arreglo en Chrome a 1920 px y 1366 px → diseño idéntico (13,5 px); en Android celular (36,6 → 13,5 px) y tablet (23,3 → 13,5 px) se corrige.
 - [x] **Subido a Producción** (29/09/2026), con el OK explícito del usuario ("Si pásalo a producción").
 
-### 87. Xubio — poner el centro de costo en la factura de compra desde Pagos
+### 87. Xubio — el centro de costo se pone solo en la factura de compra de Xubio
 
-- Pedido del usuario: "¿podés integrarte con Xubio… ponerle el centro de costo?" a las facturas cargadas en Pagos. Reglas: "si no la encuentra que no la cargue", "igual con los nombres de los centros de costos" (no crear nada en Xubio). Elegida la opción sin plan pago de Firebase ("Opción B: no tocar nada de pagos"), con la respuesta visible en Pagos.
-- [x] Cómo funciona: en Pagos, columna nueva **Xubio** con botón "Enviar a Xubio". MIA deja un pedido en la base (`xubioPedidos`, `qa_xubioPedidos` en QA). GitHub Actions ("Xubio - procesar pedidos", `.github/workflows/xubio.yml` + `xubio/`) corre cada ~5 minutos, busca la factura en Xubio y le pone el centro de costo en todos sus renglones. La respuesta vuelve a la línea en 5–15 minutos.
-- [x] Búsqueda de la factura: proveedor por CUIT (con o sin guiones) + número de factura (ej. MIA "2788" = Xubio "A-00004-00002788"), en facturas de 180 días antes a 60 después de la Fecha Pagado. Si no está, o hay varias que coinciden, no se toca nada.
-- [x] Centro de costo de Xubio: si se eligió a mano en la lista, ese. En WU es la **Sub Obra** (confirmado por el usuario: "en el caso de WU, el centro de costo es el que dice subobra"; si la línea no tiene Sub Obra, pide cargarla o elegirlo). En el resto: Centro (NATURA CABILDO) > Cliente + Centro (PANDORA UNICENTER) > primera palabra del Cliente + Centro (SABORES VALENTIN ALSINA). Si no coincide ninguno, aparece una lista con los 174 centros de Xubio para elegirlo; al elegirlo se reenvía sola. Nunca se crean centros (la API de Xubio tampoco lo permite).
-- [x] Estados en la línea: ⏳ En cola / ✅ Centro de costo puesto / ✅ Ya tenía el centro de costo / ❌ Factura no está en Xubio / ❌ Proveedor (CUIT) no está en Xubio / ❌ Centro de costo no está en Xubio / ❌ Varias facturas coinciden / ⚠️ Revisar en Xubio. Con fecha, hora y rol de quien la envió.
-- [x] Después de cambiar la factura en Xubio se vuelve a leer para comprobar el centro puesto y que el total no cambió. Todo queda registrado en `xubioLog` (`qa_xubioLog`).
+- Pedido del usuario: integrar Pagos con Xubio para ponerle el centro de costo a las facturas. Reglas: "si no la encuentra que no la cargue", "igual con los nombres de los centros de costos" (no crear nada en Xubio). Sin plan pago de Firebase ("Opción B: no tocar nada de pagos"). Después: "que no sea botón… cuando yo cargo una línea, que se comunique directamente con Xubio y le ponga el centro de costo… un tilde verde o una cruz roja… y que cada tanto reintente". Ubicación: "al lado del número de factura". Si en Xubio tiene otro centro: "pisalo". En WU: "el centro de costo es el que dice subobra".
+- [x] Cómo funciona: GitHub Actions ("Xubio - procesar pedidos", `.github/workflows/xubio.yml` + carpeta `xubio/`) corre cada ~5 minutos, lee las líneas de Pagos de la base y manda a Xubio toda línea con CUIT y número de factura. El resultado de cada línea queda en `xubioEstado` (`qa_xubioEstado` en QA). Hasta 40 líneas por corrida.
+- [x] En Pagos, columna **Xubio** al lado de Factura: ✅ quedó bien · ❌ no se pudo · ⏳ se manda en unos minutos · – falta CUIT o factura. Con un clic: motivo, factura encontrada en Xubio, último intento y próximo reintento, lista de centros de Xubio para elegir a mano, y "Reintentar ahora".
+- [x] Las ❌ se reintentan solas cada 3 horas (si la factura se carga después en Xubio, pasa a ✅). Si se cambia CUIT, factura, cliente, centro, sub obra o el centro elegido a mano, la línea se vuelve a mandar.
+- [x] Búsqueda de la factura: proveedor por CUIT (con o sin guiones) + número (ej. MIA "2788" = Xubio "A-00004-00002788"), en facturas desde 13 meses antes hasta hoy + 30 días. Si no está o hay varias iguales, no se toca nada.
+- [x] Centro de costo: el elegido a mano en la lista manda. En WU es la **Sub Obra**. En el resto: Centro (NATURA CABILDO) > Cliente + Centro (PANDORA UNICENTER) > primera palabra del Cliente + Centro (SABORES VALENTIN ALSINA). Nunca se crean centros (la API de Xubio tampoco lo permite). Si en Xubio tenía otro centro, se pisa y queda anotado cuál tenía antes.
+- [x] Después de cambiar la factura en Xubio se vuelve a leer para comprobar el centro y que el total no cambió. Todo queda en `xubioLog` (`qa_xubioLog`).
 - [x] Credenciales de Xubio y de la base solo en los secretos de GitHub (nunca en la página ni en el chat).
-- [x] Prueba sin modificar nada (QA, 30/09): NATURA CABILDO 2788 (BS SYSTEMS) → ya tenía NATURA CABILDO; SOLO HIERROS 2701 (WU MORON) → ya tenía WU MORON; CENTROSEC 74582 (SABORES EXPRESS / VALENTIN ALSINA) → asignaría SABORES VALENTIN ALSINA.
-- [x] Publicado en QA (commit "QA: Sección 87 - columna Xubio en Pagos ...").
-- [ ] Prueba real del usuario en QA con una factura y control en Xubio.
-- [ ] Subida a Producción (solo con OK del usuario). Ojo: QA y Producción hablan con la **misma** cuenta de Xubio, así que lo enviado desde QA también cambia Xubio de verdad.
+- [x] Pruebas: sin modificar nada con 3 facturas reales (NATURA CABILDO 2788 → ya tenía NATURA CABILDO; SOLO HIERROS 2701 → ya tenía WU MORON; CENTROSEC 74582 → SABORES VALENTIN ALSINA) y prueba completa del proceso automático con un Xubio simulado (ya tenía / asignado / factura no encontrada / pisar otro centro / sin CUIT).
+- [x] Publicado en QA. Procesa automáticamente las líneas de **QA** (que ya cambian el Xubio real: es la misma cuenta). Producción queda apagada (`automatico: false` en `xubio/procesar.js`) hasta el OK.
+- [ ] Revisión del usuario en QA.
+- [ ] Subida a Producción (solo con OK del usuario): publicar `MIA.prd.html`, poner `automatico: true` en Producción y pasar QA a solo simulación para que no cambie Xubio dos veces.
 
 ## 41. Pendientes / recomendaciones
 

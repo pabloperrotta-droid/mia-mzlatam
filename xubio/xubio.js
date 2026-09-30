@@ -113,7 +113,12 @@ function resumenComprobante(c) {
   };
 }
 
-async function centrosDeCosto() {
+let centrosCache = null;
+function centrosDeCosto() {
+  if (!centrosCache) centrosCache = centrosDeCostoXubio();
+  return centrosCache;
+}
+async function centrosDeCostoXubio() {
   return comoLista(await xubio("GET", "/centroDeCostoBean")).map((c) => ({
     id: c.centroDeCosto_id != null ? c.centroDeCosto_id : idDe(c),
     codigo: c.codigo,
@@ -156,7 +161,12 @@ const cuitsDe = (p) =>
     .map(([, v]) => soloDigitos(v))
     .filter(Boolean);
 let proveedoresCache = null;
+const proveedorPorCuit = {};
 async function buscarProveedor(cuitDig) {
+  if (!(cuitDig in proveedorPorCuit)) proveedorPorCuit[cuitDig] = buscarProveedorXubio(cuitDig);
+  return proveedorPorCuit[cuitDig];
+}
+async function buscarProveedorXubio(cuitDig) {
   const guiones = cuitDig.length === 11 ? cuitDig.slice(0, 2) + "-" + cuitDig.slice(2, 10) + "-" + cuitDig.slice(10) : cuitDig;
   for (const q of [cuitDig, guiones]) {
     const provs = comoLista(await xubio("GET", "/ProveedorBean?numeroIdentificacion=" + encodeURIComponent(q)).catch(() => []));
@@ -177,11 +187,14 @@ async function buscarFactura({ cuit, factura, fecha }) {
   if (!prov) return { estado: "proveedor_no_encontrado", mensaje: "No hay en Xubio un proveedor con CUIT " + cuitDig + "." };
   const provId = prov.proveedorid != null ? prov.proveedorid : idDe(prov);
 
-  const base = leerFecha(fecha) || new Date();
-  const desde = new Date(base);
-  desde.setDate(desde.getDate() - 180);
-  const hasta = new Date(base);
-  hasta.setDate(hasta.getDate() + 60);
+  // Facturas de compra desde 13 meses antes de la fecha de la línea (o de hoy) hasta hoy + 30 días.
+  const hoy = new Date();
+  const base = leerFecha(fecha) || hoy;
+  const desde = new Date(Math.min(base.getTime(), hoy.getTime()));
+  desde.setDate(1);
+  desde.setMonth(desde.getMonth() - 13);
+  const hasta = new Date(hoy);
+  hasta.setDate(hasta.getDate() + 30);
   const ruta = "/comprobanteCompraBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta);
   if (!cacheListas[ruta]) cacheListas[ruta] = xubio("GET", ruta).then(comoLista);
   const comps = await cacheListas[ruta];
@@ -244,7 +257,7 @@ async function asignarCentroCosto(p) {
       mensaje:
         "No hay en Xubio un centro de costo que coincida con " +
         [...new Set(nombres.map((n) => '"' + String(n).trim() + '"'))].join(" / ") +
-        ". Elegilo a mano de la lista y volvé a enviar. No se creó ninguno.",
+        ". Elegilo de la lista en Pagos. No se creó ninguno.",
     };
 
   const id = r.comprobante.transaccionid;
@@ -253,7 +266,16 @@ async function asignarCentroCosto(p) {
   if (items.length === 0) return { estado: "sin_renglones", mensaje: "La factura en Xubio no tiene renglones." };
   const yaTenia = items.every((it) => idDe(it.centroDeCosto) === cc.id);
   const antes = resumenComprobante(completo);
-  if (yaTenia) return { estado: "ya_estaba", mensaje: "La factura ya tenía ese centro de costo.", factura: antes };
+  if (yaTenia) return { estado: "ya_estaba", mensaje: "La factura ya tenía ese centro de costo.", factura: antes, centroDeCosto: cc };
+  // Si en Xubio tenía otro centro de costo, se pisa con el de MIA (pedido del usuario: "pisalo").
+  const otros = [
+    ...new Set(
+      items
+        .filter((it) => it.centroDeCosto && idDe(it.centroDeCosto) != null && idDe(it.centroDeCosto) !== cc.id)
+        .map((it) => it.centroDeCosto.nombre || it.centroDeCosto.codigo || String(idDe(it.centroDeCosto))),
+    ),
+  ];
+  const antesTenia = otros.length ? ' (antes tenía "' + otros.join(", ") + '")' : "";
 
   const modificado = {
     ...completo,
@@ -265,7 +287,7 @@ async function asignarCentroCosto(p) {
   if (p.simular)
     return {
       estado: "simulacion",
-      mensaje: 'Se asignaría "' + cc.nombre + '" a ' + items.length + " renglón(es). No se modificó nada.",
+      mensaje: 'Se asignaría "' + cc.nombre + '" a ' + items.length + " renglón(es)" + antesTenia + ". No se modificó nada.",
       factura: antes,
       centroDeCosto: cc,
     };
@@ -277,7 +299,7 @@ async function asignarCentroCosto(p) {
   return {
     estado: ok && totalIgual ? "ok" : "no_verificado",
     mensaje: ok && totalIgual
-      ? 'Centro de costo "' + cc.nombre + '" asignado en Xubio.'
+      ? 'Centro de costo "' + cc.nombre + '" asignado en Xubio' + antesTenia + "."
       : "Xubio aceptó el cambio pero al volver a leer la factura no coincide. Revisarla en Xubio.",
     factura: resumenComprobante(despues),
     centroDeCosto: cc,

@@ -1,15 +1,18 @@
 /*
- * Procesa los pedidos a Xubio que deja MIA en Firestore.
+ * Integración automática MIA → Xubio (centro de costo de las facturas de compra).
  *
- * Cómo funciona (sin servidor propio y sin plan pago de Firebase):
- *   1. En Pagos, el usuario toca "Xubio" en una línea → MIA crea un documento en
- *      `xubioPedidos` (`qa_xubioPedidos` en QA) con estado "pendiente".
- *   2. GitHub Actions corre este script cada ~5 minutos (.github/workflows/xubio.yml).
- *   3. El script toma los pendientes, habla con Xubio y escribe el resultado en el mismo
- *      documento (estado ok / factura_no_encontrada / centro_no_encontrado / ...).
- *      MIA lo muestra en la línea de Pagos.
+ * GitHub Actions corre este script cada ~5 minutos (.github/workflows/xubio.yml). En cada corrida:
+ *   1. Lee las líneas de Pagos de MIA (campo `pagosSemanales` de app/state; qa_app/state en QA).
+ *   2. Toda línea con CUIT y número de factura se manda a Xubio: busca la factura (por CUIT del
+ *      proveedor + número) y le pone el centro de costo. Nunca crea facturas ni centros.
+ *   3. El resultado de cada línea queda en `xubioEstado/{id de la línea}` (qa_xubioEstado en QA),
+ *      que MIA muestra en Pagos como ✅ / ❌ al lado del número de factura.
+ *   - Líneas nuevas o modificadas (factura, CUIT, cliente, centro, sub obra o centro elegido a mano):
+ *     se mandan en la corrida siguiente.
+ *   - Las que no quedaron bien (❌) se reintentan cada 3 horas (por si la factura se carga después).
+ *   - "Reintentar ahora" desde MIA marca `forzar` y se reintenta en la corrida siguiente.
  *
- * Cada pedido procesado queda además en `xubioLog` (`qa_xubioLog`).
+ * También procesa pedidos sueltos de `xubioPedidos` (diagnóstico). Todo queda en `xubioLog`.
  */
 const admin = require("firebase-admin");
 const { diagnostico, asignarCentroCosto, centrosDeCosto } = require("./xubio");
@@ -17,99 +20,155 @@ const { diagnostico, asignarCentroCosto, centrosDeCosto } = require("./xubio");
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
 
+// `automatico`: si se procesan solas las líneas de Pagos de ese ambiente.
+// Producción queda apagada hasta que el usuario dé el OK para subir la integración.
 const AMBIENTES = [
-  { nombre: "qa", pedidos: "qa_xubioPedidos", log: "qa_xubioLog" },
-  { nombre: "prd", pedidos: "xubioPedidos", log: "xubioLog" },
+  { nombre: "qa", prefijo: "qa_", automatico: true },
+  { nombre: "prd", prefijo: "", automatico: false },
 ];
-const MAX_POR_CORRIDA = 40;
+const MAX_PEDIDOS = 40;
+const MAX_LINEAS = 40;
+const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
+const BIEN = new Set(["ok", "ya_estaba"]);
 
 const texto = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
 const limpio = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));
+const soloDigitos = (s) => String(s || "").replace(/\D/g, "");
+const t = (s) => String(s || "").trim();
 
-async function tomar(ref) {
-  return db.runTransaction(async (t) => {
-    const s = await t.get(ref);
-    if (!s.exists || s.get("estado") !== "pendiente") return null;
-    t.update(ref, { estado: "procesando", inicio: Date.now() });
-    return s.data();
-  });
+// Debe ser idéntica a xubioFirma() en MIA: si cambia algo de esto, la línea se vuelve a mandar.
+const firma = (l) =>
+  [
+    soloDigitos(l.cuit),
+    t(l.factura),
+    t(l.cliente).toUpperCase(),
+    t(l.centroCosto).toUpperCase(),
+    t(l.subObra).toUpperCase(),
+    t(l.centroCostoXubio),
+  ].join("|");
+
+const camposLinea = (l) => ({
+  cuit: texto(l.cuit, 20),
+  factura: texto(l.factura, 40),
+  fecha: texto(l.fechaPagado, 20),
+  cliente: texto(l.cliente),
+  centroCosto: texto(l.centroCosto),
+  subObra: texto(l.subObra),
+  centroCostoXubio: texto(l.centroCostoXubio),
+});
+
+async function registrar(amb, datos) {
+  await db
+    .collection(amb.prefijo + "xubioLog")
+    .add({ fecha: Date.now(), ...limpio(datos) })
+    .catch(() => {});
 }
 
-async function ejecutar(p) {
-  if (p.accion === "diagnostico") return diagnostico();
-  if (p.accion === "asignarCentroCosto")
-    return asignarCentroCosto({
-      cuit: texto(p.cuit, 20),
-      factura: texto(p.factura, 40),
-      fecha: texto(p.fecha, 20),
-      cliente: texto(p.cliente),
-      centroCosto: texto(p.centroCosto),
-      subObra: texto(p.subObra),
-      centroCostoXubio: texto(p.centroCostoXubio),
-      simular: !!p.simular,
-    });
-  return { estado: "error", mensaje: "Acción desconocida: " + texto(p.accion, 40) };
-}
+// ---------- Líneas de Pagos (automático) ----------
+async function procesarLineas(amb) {
+  const st = await db.doc(amb.prefijo + "app/state").get();
+  const lineas = (st.exists && st.get("pagosSemanales")) || [];
+  const col = db.collection(amb.prefijo + "xubioEstado");
+  const previos = {};
+  (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
 
-async function procesarAmbiente(amb) {
-  const col = db.collection(amb.pedidos);
-
-  // Pedidos que quedaron "procesando" por una corrida que se cortó.
-  const trabados = await col.where("estado", "==", "procesando").get();
-  for (const d of trabados.docs) {
-    if (Date.now() - (d.get("inicio") || 0) > TRABADO_MS)
-      await d.ref.update({ estado: "error", mensaje: "El proceso se interrumpió. Volvé a enviarla.", procesado: Date.now() });
+  const ahora = Date.now();
+  const cola = [];
+  for (const l of lineas) {
+    if (!l || !l.id || !soloDigitos(l.cuit) || !t(l.factura)) continue;
+    const f = firma(l);
+    const e = previos[l.id];
+    let prioridad = null;
+    if (!e || e.firma !== f || e.forzar) prioridad = 0;
+    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > REINTENTO_MS) prioridad = 1;
+    if (prioridad !== null) cola.push({ l, f, e, prioridad });
   }
+  cola.sort((a, b) => a.prioridad - b.prioridad || ((a.e && a.e.intento) || 0) - ((b.e && b.e.intento) || 0));
 
-  const snap = await col.where("estado", "==", "pendiente").limit(MAX_POR_CORRIDA).get();
   let n = 0;
+  for (const { l, f, e } of cola.slice(0, MAX_LINEAS)) {
+    let r;
+    try {
+      r = await asignarCentroCosto({ ...camposLinea(l), centroAnterior: (e && e.centro) || "" });
+    } catch (err) {
+      r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
+    }
+    const mismo = e && e.firma === f;
+    const doc = {
+      estado: r.estado || "error",
+      mensaje: r.mensaje || null,
+      // Centro que quedó puesto en Xubio (solo si quedó bien); sirve para poder cambiarlo si después cambia en MIA.
+      centro: BIEN.has(r.estado) && r.centroDeCosto ? r.centroDeCosto.nombre : (e && e.centro) || null,
+      centroMia: (r.centroDeCosto && r.centroDeCosto.nombre) || null,
+      facturaXubio: (r.factura && r.factura.numeroDocumento) || null,
+      proveedorXubio: (r.factura && r.factura.proveedor) || null,
+      factura: texto(l.factura, 40),
+      firma: f,
+      intento: Date.now(),
+      intentos: (mismo ? e.intentos || 0 : 0) + 1,
+      primerIntento: (mismo && e.primerIntento) || Date.now(),
+      forzar: false,
+    };
+    await col.doc(l.id).set(limpio(doc));
+    await registrar(amb, {
+      accion: "linea",
+      lineaPagosId: l.id,
+      ...camposLinea(l),
+      estado: doc.estado,
+      mensaje: doc.mensaje,
+    });
+    console.log(`[${amb.nombre}] línea ${l.id} factura ${l.factura} → ${doc.estado}: ${doc.mensaje || ""}`);
+    n++;
+  }
+  console.log(`[${amb.nombre}] líneas procesadas: ${n} (en espera: ${Math.max(0, cola.length - n)})`);
+}
+
+// ---------- Pedidos sueltos (diagnóstico) ----------
+async function procesarPedidos(amb) {
+  const col = db.collection(amb.prefijo + "xubioPedidos");
+  const trabados = await col.where("estado", "==", "procesando").get();
+  for (const d of trabados.docs)
+    if (Date.now() - (d.get("inicio") || 0) > TRABADO_MS)
+      await d.ref.update({ estado: "error", mensaje: "El proceso se interrumpió.", procesado: Date.now() });
+
+  const snap = await col.where("estado", "==", "pendiente").limit(MAX_PEDIDOS).get();
   for (const d of snap.docs) {
-    const p = await tomar(d.ref);
+    const p = await db.runTransaction(async (tx) => {
+      const s = await tx.get(d.ref);
+      if (!s.exists || s.get("estado") !== "pendiente") return null;
+      tx.update(d.ref, { estado: "procesando", inicio: Date.now() });
+      return s.data();
+    });
     if (!p) continue;
     let r;
     try {
-      r = await ejecutar(p);
+      if (p.accion === "diagnostico") r = await diagnostico();
+      else if (p.accion === "asignarCentroCosto")
+        r = await asignarCentroCosto({
+          ...camposLinea({ ...p, fechaPagado: p.fecha }),
+          simular: amb.automatico ? !!p.simular : true,
+        });
+      else r = { estado: "error", mensaje: "Acción desconocida: " + texto(p.accion, 40) };
     } catch (e) {
       r = { estado: "error", mensaje: texto((e && e.message) || e, 500) };
     }
     const { estado, mensaje, ...detalle } = r || {};
-    await d.ref.update({
-      estado: estado || "error",
-      mensaje: mensaje || null,
-      detalle: limpio(detalle),
-      procesado: Date.now(),
-    });
-    await db
-      .collection(amb.log)
-      .add({
-        fecha: Date.now(),
-        pedidoId: d.id,
-        accion: p.accion || null,
-        rol: p.rol || null,
-        uid: p.uid || null,
-        lineaPagosId: p.lineaPagosId || null,
-        cuit: p.cuit || null,
-        factura: p.factura || null,
-        cliente: p.cliente || null,
-        centroCosto: p.centroCosto || null,
-        simular: !!p.simular,
-        estado: estado || "error",
-        mensaje: mensaje || null,
-      })
-      .catch(() => {});
-    console.log(`[${amb.nombre}] ${d.id} ${p.accion} ${p.factura || ""} → ${estado}: ${mensaje || ""}`);
-    n++;
+    await d.ref.update({ estado: estado || "error", mensaje: mensaje || null, detalle: limpio(detalle), procesado: Date.now() });
+    await registrar(amb, { accion: p.accion || null, pedidoId: d.id, estado: estado || "error", mensaje: mensaje || null });
+    console.log(`[${amb.nombre}] pedido ${d.id} ${p.accion} → ${estado}`);
   }
-  console.log(`[${amb.nombre}] pedidos procesados: ${n}`);
 }
 
-// Lista de centros de costo de Xubio para que MIA la muestre (se refresca cada ~6 horas).
+// ---------- Lista de centros de costo de Xubio para MIA (cada ~6 horas) ----------
 async function actualizarCentros() {
-  const refs = AMBIENTES.map((a) => db.collection(a.nombre === "qa" ? "qa_xubioConfig" : "xubioConfig").doc("centros"));
+  const refs = AMBIENTES.map((a) => db.doc(a.prefijo + "xubioConfig/centros"));
   const actual = await refs[0].get();
   if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 6 * 3600 * 1000) return;
-  const nombres = (await centrosDeCosto()).map((c) => c.nombre).filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
+  const nombres = (await centrosDeCosto())
+    .map((c) => c.nombre)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "es"));
   for (const r of refs) await r.set({ nombres, actualizado: Date.now() });
   console.log("Centros de costo de Xubio actualizados: " + nombres.length);
 }
@@ -120,7 +179,10 @@ async function actualizarCentros() {
   } catch (e) {
     console.error("No se pudo actualizar la lista de centros:", (e && e.message) || e);
   }
-  for (const amb of AMBIENTES) await procesarAmbiente(amb);
+  for (const amb of AMBIENTES) {
+    await procesarPedidos(amb);
+    if (amb.automatico) await procesarLineas(amb);
+  }
 })().catch((e) => {
   console.error(e);
   process.exit(1);
