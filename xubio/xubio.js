@@ -458,42 +458,43 @@ async function modelosOP(p) {
 
 
 
-// Prueba autorizada por el usuario SOLO sobre la factura CENTROSEC A-14-74627 (30/09/2026):
-// 1) guardarla sin cambios, 2) ponerle WU MARTIN CORONADO.
-async function probarDosPasos74627() {
-  const r = await buscarFactura({ cuit: "30707598936", factura: "74627", fecha: "" });
-  if (r.estado !== "encontrada") return { estado: r.estado, mensaje: r.mensaje };
-  const id = r.comprobante.transaccionid;
-  const cc = (await centrosDeCosto()).find((c) => normalizar(c.nombre) === "WU MARTIN CORONADO");
-  if (!cc) return { estado: "error", mensaje: "No está el centro WU MARTIN CORONADO" };
-  const pasos = [];
-  const intentar = async (nombre, fn) => {
-    try {
-      await fn();
-      pasos.push({ paso: nombre, resultado: "ok" });
-      return true;
-    } catch (e) {
-      pasos.push({ paso: nombre, resultado: "error", mensaje: String(e.message).slice(0, 300) });
-      return false;
+
+
+// Solo lectura: rasgos de varias facturas (las que Xubio deja cambiar y las que no) para compararlas.
+async function resumenFacturas(p) {
+  const out = [];
+  for (const f of p.facturas || []) {
+    const r = await buscarFactura({ cuit: f.cuit, factura: f.factura, fecha: "" });
+    if (r.estado !== "encontrada") {
+      out.push({ ...f, estado: r.estado });
+      continue;
     }
-  };
-  // Paso 0: directo con el centro (como hace la integración), para confirmar que falla.
-  const b0 = await xubio("GET", "/comprobanteCompraBean/" + id);
-  const conCentro = (b) => ({ ...b, transaccionProductoItems: comoLista(b.transaccionProductoItems).map((it) => ({ ...it, centroDeCosto: { ID: cc.id } })) });
-  const directo = await intentar("centro directo", () => xubio("PUT", "/comprobanteCompraBean/" + id, conCentro(b0)));
-  if (!directo) {
-    const b1 = await xubio("GET", "/comprobanteCompraBean/" + id);
-    await intentar("guardar sin cambios", () => xubio("PUT", "/comprobanteCompraBean/" + id, b1));
-    const b2 = await xubio("GET", "/comprobanteCompraBean/" + id);
-    await intentar("centro después", () => xubio("PUT", "/comprobanteCompraBean/" + id, conCentro(b2)));
+    const b = await xubio("GET", "/comprobanteCompraBean/" + r.comprobante.transaccionid);
+    const items = comoLista(b.transaccionProductoItems);
+    out.push({
+      grupo: f.grupo,
+      numero: b.numeroDocumento,
+      id: b.transaccionid,
+      fecha: b.fecha,
+      fechaFiscal: b.fechaFiscal,
+      total: b.importetotal,
+      percepciones: comoLista(b.transaccionPercepcionItems).map((x) => (x.percepcionImpuesto && x.percepcionImpuesto.nombre) + " " + x.importe),
+      renglones: items.map((it) => ({
+        producto: it.producto && it.producto.nombre,
+        centro: it.centroDeCosto && it.centroDeCosto.nombre,
+        iva: it.iva,
+        importe: it.importe,
+        total: it.total,
+        pciva: it.precioconivaincluido,
+        exento: it.montoExento,
+      })),
+      provincia: b.provincia && b.provincia.nombre,
+      condicionDePago: b.condicionDePago,
+      tipo: b.tipo,
+      campos: Object.keys(b).sort().join(","),
+    });
   }
-  const fin = await xubio("GET", "/comprobanteCompraBean/" + id);
-  return {
-    estado: "ok",
-    pasos,
-    total: { antes: b0.importetotal, despues: fin.importetotal },
-    centroDespues: comoLista(fin.transaccionProductoItems).map((it) => it.centroDeCosto && it.centroDeCosto.nombre),
-  };
+  return { estado: "ok", facturas: out };
 }
 
-module.exports = { probarDosPasos74627, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+module.exports = { resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
