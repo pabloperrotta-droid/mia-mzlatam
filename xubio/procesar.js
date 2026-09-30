@@ -23,9 +23,12 @@ const db = admin.firestore();
 
 // `automatico`: si se procesan solas las líneas de Pagos de ese ambiente.
 // Producción queda apagada hasta que el usuario dé el OK para subir la integración.
+// Producción activada el 30/09/2026 con OK del usuario ("pasalo a producción").
+// QA usa el mismo Xubio: desde ese momento el centro de costo en QA es solo prueba (no cambia Xubio)
+// y las OP en QA son solo vista previa.
 const AMBIENTES = [
-  { nombre: "qa", prefijo: "qa_", automatico: true },
-  { nombre: "prd", prefijo: "", automatico: false },
+  { nombre: "qa", prefijo: "qa_", automatico: true, simular: true },
+  { nombre: "prd", prefijo: "", automatico: true },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
@@ -131,7 +134,7 @@ async function procesarLineas(amb) {
     try {
       r = repartida[l.id]
         ? { estado: "repartida", mensaje: repartida[l.id] }
-        : await asignarCentroCosto({ ...camposLinea(l, importePorFactura[claveFactura(l)]), centroAnterior: (e && e.centro) || "" });
+        : await asignarCentroCosto({ ...camposLinea(l, importePorFactura[claveFactura(l)]), centroAnterior: (e && e.centro) || "", simular: !!amb.simular });
     } catch (err) {
       r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
     }
@@ -172,11 +175,14 @@ async function procesarOPs(amb) {
   const cfgRef = db.doc(amb.prefijo + "xubioConfig/op");
   const cfgSnap = await cfgRef.get();
   let cfg = cfgSnap.exists ? cfgSnap.data() : {};
+  let primeraVez = false;
   if (!cfg.desde) {
-    // Solo se arman OP de líneas pagadas desde el día en que se activó esto (las anteriores ya se hicieron a mano).
+    // Solo se arman OP de líneas pagadas desde que se activó esto. Las que ya estaban pagadas en ese
+    // momento (aunque sean de hoy) quedan como "anterior": esas OP ya se hicieron a mano.
     const hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
     cfg = { ...cfg, desde: hoy };
-    await cfgRef.set({ desde: hoy }, { merge: true });
+    primeraVez = true;
+    await cfgRef.set({ desde: hoy, activado: Date.now() }, { merge: true });
   }
   // En Producción se crea al tildar pagada; QA usa el mismo Xubio, así que ahí nunca se crea.
   const crear = amb.nombre === "prd";
@@ -196,9 +202,20 @@ async function procesarOPs(amb) {
   (await db.collection(amb.prefijo + "xubioEstado").get()).docs.forEach((d) => (estadosCentro[d.id] = d.data()));
   const cheques = (await db.collection(amb.prefijo + "echeqs").get()).docs.map((d) => ({ id: d.id, ...d.data() }));
 
+  if (primeraVez) {
+    for (const [clave, ls] of Object.entries(grupos))
+      await colOP.doc(clave).set({
+        estado: "anterior",
+        mensaje: "Ya estaba pagada cuando se activó la integración: la OP se hace a mano.",
+        lineas: ls.map((l) => l.id),
+        actualizado: Date.now(),
+      });
+    console.log(`[${amb.nombre}] OP: activación, ${Object.keys(grupos).length} grupos ya pagados quedan como anteriores`);
+    return;
+  }
   for (const [clave, ls] of Object.entries(grupos)) {
     const prev = previas[clave];
-    if (prev && OP_HECHA.has(prev.estado)) continue;
+    if (prev && (OP_HECHA.has(prev.estado) || prev.estado === "anterior")) continue;
     const [cuit, fecha] = clave.split("_");
     const suyos = cheques.filter((c) => c.cuit === cuit && c.fechaEmision === fecha && (!c.asignadoA || c.asignadoA === clave));
     let r;

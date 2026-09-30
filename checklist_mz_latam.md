@@ -1147,8 +1147,9 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - La OP va sin observación. Xubio pone solo el número de OP y el del certificado de retención. Se aplica a las facturas a mano en Xubio (ahí queda el número de factura).
   - **QA sí cambia Xubio de verdad en el centro de costo**: Xubio no tiene ambiente de prueba y QA y Producción usan la misma cuenta.
   - La prueba con una factura 88 y OP reales a nombre de PABLO FABIAN PERROTTA no se hizo: el sistema de permisos de la sesión bloqueó crear una transacción real en Xubio.
-- [ ] Revisión del usuario en QA.
-- [ ] Subida a Producción (solo con OK del usuario): publicar `MIA.prd.html`, poner `automatico: true` en Producción y pasar QA a solo simulación para que no cambie Xubio dos veces.
+- [x] **Subido a Producción** (30/09/2026), con el OK explícito del usuario ("pasalo a producción y lo veo en vivo, cualquier cosa revertimos"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". En `xubio/procesar.js`: Producción `automatico: true` (centro de costo y OP reales); QA `simular: true` (el centro de costo queda 🧪 "prueba", no cambia Xubio; OP solo vista previa).
+- [x] Al activarse en Producción, las líneas que ya estaban pagadas en ese momento (proveedor + fecha) quedan como "anterior" y no generan OP (se hicieron a mano). Solo generan OP las que se tilden como pagadas de ahí en adelante.
+- Cómo revertir: en `xubio/procesar.js` poner `automatico: false` en "prd" (frena centro de costo y OP) y volver a publicar `MIA.prd.html` del commit anterior. Las OP ya creadas en Xubio se borran a mano en Xubio.
 
 ## 41. Pendientes / recomendaciones
 
