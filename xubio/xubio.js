@@ -395,4 +395,32 @@ async function diagnosticoPruebaOP(p) {
   return { estado: "ok", ...res };
 }
 
-module.exports = { diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Solo lectura: qué tipos de valores (cheque, transferencia, efectivo...) y qué conceptos de
+// retención se usan en las órdenes de pago existentes, con un ejemplo de cada uno.
+async function modelosOP(p) {
+  const hasta = new Date();
+  const desde = new Date();
+  desde.setDate(desde.getDate() - (p.dias || 90));
+  const l = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta)));
+  const instrumentos = {};
+  const retenciones = {};
+  for (const op of l) {
+    for (const it of comoLista(op.transaccionInstrumentoDePago)) {
+      const k = it.tipoCuenta + "|" + (it.cuenta && it.cuenta.nombre);
+      if (!instrumentos[k]) instrumentos[k] = { veces: 0, ejemplo: { ...it, op: op.numeroRecibo, proveedor: op.proveedor && op.proveedor.nombre } };
+      instrumentos[k].veces++;
+    }
+    for (const r of comoLista(op.transaccionRetencionItems)) {
+      const k = r.tipoRetencion + "|" + (r.conceptoRetencion && r.conceptoRetencion.nombre);
+      if (!retenciones[k]) retenciones[k] = { veces: 0, ejemplo: { ...r, op: op.numeroRecibo, proveedor: op.proveedor && op.proveedor.nombre } };
+      retenciones[k].veces++;
+    }
+  }
+  const conceptos = comoLista(await xubio("GET", "/retencionBean").catch(() => []))
+    .filter((r) => r.codigoImpuesto === "217")
+    .map((r) => ({ id: r.retencionId, nombre: r.nombre, regimen: r.codigoRegimen, desde: r.importedesde, porcentaje: r.porcentaje }));
+  return { estado: "ok", ops: l.length, instrumentos, retenciones, conceptosGanancias: conceptos };
+}
+
+module.exports = { modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
