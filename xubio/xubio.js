@@ -372,4 +372,27 @@ async function diagnosticoPagos(p) {
   return { estado: "ok", ...res };
 }
 
-module.exports = { diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Solo lectura: datos para armar la prueba de orden de pago.
+async function diagnosticoPruebaOP(p) {
+  const res = {};
+  const intentar = async (k, fn) => {
+    try {
+      res[k] = await fn();
+    } catch (e) {
+      res[k] = { error: String((e && e.message) || e).slice(0, 300) };
+    }
+  };
+  await intentar("proveedorPrueba", () => buscarProveedorXubio(soloDigitos(p.cuitPrueba)));
+  await intentar("proveedorModelo", async () => {
+    const x = await buscarProveedorXubio(soloDigitos(p.cuitModelo));
+    return x ? await xubio("GET", "/ProveedorBean/" + (x.proveedorid != null ? x.proveedorid : idDe(x))) : null;
+  });
+  await intentar("facturaModelo", async () => {
+    const r = await buscarFactura({ cuit: p.cuitModelo, factura: p.facturaModelo, fecha: p.fechaModelo });
+    return r.estado === "encontrada" ? await xubio("GET", "/comprobanteCompraBean/" + r.comprobante.transaccionid) : r;
+  });
+  return { estado: "ok", ...res };
+}
+
+module.exports = { diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
