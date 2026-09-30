@@ -336,4 +336,40 @@ async function asignarCentroCosto(p) {
   };
 }
 
-module.exports = { diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+
+// Solo lectura: cómo vienen las órdenes de pago, cuentas, bancos y retenciones en Xubio,
+// y una factura completa (para entender por qué Xubio rechaza modificarla).
+async function diagnosticoPagos(p) {
+  const desde = p.fechaDesde || "2026-09-25";
+  const hasta = p.fechaHasta || "2026-09-25";
+  const res = {};
+  const intentar = async (k, fn) => {
+    try {
+      res[k] = await fn();
+    } catch (e) {
+      res[k] = { error: String((e && e.message) || e).slice(0, 300) };
+    }
+  };
+  await intentar("pagos", async () => {
+    const l = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta));
+    return { cantidad: l.length, lista: l.slice(0, 40).map((x) => ({ id: x.transaccionid, recibo: x.numeroRecibo, prov: x.proveedor && x.proveedor.nombre })) };
+  });
+  if (p.buscarRecibo)
+    await intentar("pagoEjemplo", async () => {
+      const l = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta));
+      const x = l.find((y) => String(y.numeroRecibo || "").includes(p.buscarRecibo));
+      if (!x) return null;
+      const completo = await xubio("GET", "/pagoBean/" + x.transaccionid).catch(() => null);
+      return { deLista: x, completo };
+    });
+  await intentar("cuentas", async () =>
+    comoLista(await xubio("GET", "/cuenta")).map((c) => ({ id: idDe(c) != null ? idDe(c) : c.cuentaid, codigo: c.codigo, nombre: c.nombre })),
+  );
+  await intentar("bancos", async () => comoLista(await xubio("GET", "/banco")).slice(0, 80));
+  await intentar("retenciones", async () => comoLista(await xubio("GET", "/retencionBean")).slice(0, 80));
+  if (p.comprobanteId) await intentar("comprobante", () => xubio("GET", "/comprobanteCompraBean/" + p.comprobanteId));
+  return { estado: "ok", ...res };
+}
+
+module.exports = { diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };

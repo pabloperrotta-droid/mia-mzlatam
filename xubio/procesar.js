@@ -15,7 +15,7 @@
  * También procesa pedidos sueltos de `xubioPedidos` (diagnóstico). Todo queda en `xubioLog`.
  */
 const admin = require("firebase-admin");
-const { diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { diagnostico, diagnosticoPagos, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -176,6 +176,7 @@ async function procesarPedidos(amb) {
     let r;
     try {
       if (p.accion === "diagnostico") r = await diagnostico();
+      else if (p.accion === "diagnosticoPagos") r = await diagnosticoPagos(p);
       else if (p.accion === "asignarCentroCosto")
         r = await asignarCentroCosto({
           ...camposLinea({ ...p, fechaPagado: p.fecha }),
