@@ -1119,7 +1119,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Verificado reproduciendo el problema en un navegador que simula un celular Android (Pixel 5) con una tabla igual: sin el arreglo, las filas salían en 36,6 px y los importes encimados (igual que en la captura); con el arreglo, 13,5 px y todo en su columna.
 - Nota: si el celular usa Samsung Internet con su propio "modo oscuro" activado en la configuración del navegador, puede seguir oscureciendo la página; se desactiva desde el menú de Samsung Internet.
 - [x] Publicado en QA (commit "Sección 86 QA: ...").
-- [ ] Pendiente: pase a Producción con OK del usuario.
+- [x] Verificado además que en compu no cambia nada: misma tabla con y sin el arreglo en Chrome a 1920 px y 1366 px → diseño idéntico (13,5 px); en Android celular (36,6 → 13,5 px) y tablet (23,3 → 13,5 px) se corrige.
+- [x] **Subido a Producción** (29/09/2026), con el OK explícito del usuario ("Si pásalo a producción").
 
 ## 41. Pendientes / recomendaciones
 
