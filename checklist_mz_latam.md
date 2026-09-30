@@ -1142,8 +1142,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - Antes de la OP tiene que estar ✅ el centro de costo de todas sus facturas (Xubio no deja cambiarlo después).
   - En Pagos, debajo del ✅/❌ aparece "OP" con su estado; con un clic se ve el detalle (cheques, retención, transferencia, facturas).
   - Solo se arman OP de líneas pagadas desde el día en que se activó (30/09/2026); las anteriores se hicieron a mano.
-  - **QA nunca crea OP en Xubio** (mismo Xubio que Producción): solo vista previa. En Producción se crean solo con la casilla "Crear OP en Xubio" (Admin) activada; antes de crear se fija que no exista una OP igual (mismo proveedor, fecha e importe).
-  - La API de Xubio no permite aplicar la OP a las facturas: queda anotado en la observación de la OP y se aplica a mano en Xubio.
+  - En Producción la OP se crea al tildar la línea como pagada (o al poner la Fecha Pagado), sin botón aparte (pedido del usuario: "es el mismo checkbox o el mismo campo de fecha de pagado"). Antes de crear se fija que no exista una OP igual (mismo proveedor, fecha e importe).
+  - **QA nunca crea OP en Xubio**: solo vista previa.
+  - La OP va sin observación. Xubio pone solo el número de OP y el del certificado de retención. Se aplica a las facturas a mano en Xubio (ahí queda el número de factura).
+  - **QA sí cambia Xubio de verdad en el centro de costo**: Xubio no tiene ambiente de prueba y QA y Producción usan la misma cuenta.
   - La prueba con una factura 88 y OP reales a nombre de PABLO FABIAN PERROTTA no se hizo: el sistema de permisos de la sesión bloqueó crear una transacción real en Xubio.
 - [ ] Revisión del usuario en QA.
 - [ ] Subida a Producción (solo con OK del usuario): publicar `MIA.prd.html`, poner `automatico: true` en Producción y pasar QA a solo simulación para que no cambie Xubio dos veces.

@@ -13,9 +13,10 @@
  *          E-Cheq − retención;
  *        - transferencia → Banco Santander Rio; efectivo → Caja.
  *   El resultado queda en `xubioOP/{cuit}_{fecha}` y MIA lo muestra en Pagos.
- *   La OP solo se crea en Xubio en Producción y con "Crear OP en Xubio" activado en MIA; en QA
- *   se muestra solo la vista previa. La API de Xubio no permite aplicarla a las facturas: eso se hace
- *   a mano en Xubio (las facturas quedan anotadas en la observación de la OP).
+ *   En Producción la OP se crea en Xubio al tildar la línea como pagada (pedido del usuario: "es el
+ *   mismo checkbox o el mismo campo de fecha de pagado"). En QA solo se muestra la vista previa.
+ *   Xubio asigna solo el número de OP y el del certificado de retención. La OP no lleva observación:
+ *   se aplica a las facturas a mano en Xubio y ahí queda el número de factura.
  */
 const { xubio, buscarFactura, buscarProveedor, comoLista, idDe } = require("./xubio");
 
@@ -157,7 +158,7 @@ async function armarOP(lineas, cheques, estadosCentro) {
     cotizacion: 1,
     utilizaMonedaExtranjera: 0,
     moneda: PESOS,
-    observacion: "Generada por MIA. Aplicar a: " + facturas.map((f) => f.numero).join(", "),
+    observacion: "",
     transaccionInstrumentoDePago: instrumentos,
     transaccionRetencionItems: retItems,
   };

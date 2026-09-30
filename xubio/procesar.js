@@ -176,9 +176,10 @@ async function procesarOPs(amb) {
     // Solo se arman OP de líneas pagadas desde el día en que se activó esto (las anteriores ya se hicieron a mano).
     const hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
     cfg = { ...cfg, desde: hoy };
-    await cfgRef.set({ desde: hoy, crear: false }, { merge: true });
+    await cfgRef.set({ desde: hoy }, { merge: true });
   }
-  const crear = amb.nombre === "prd" && cfg.crear === true;
+  // En Producción se crea al tildar pagada; QA usa el mismo Xubio, así que ahí nunca se crea.
+  const crear = amb.nombre === "prd";
 
   const st = await db.doc(amb.prefijo + "app/state").get();
   const lineas = ((st.exists && st.get("pagosSemanales")) || []).filter(
