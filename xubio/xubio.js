@@ -1,27 +1,12 @@
 /*
- * Servidor intermedio entre MIA (Seguimiento de Obras MZ LATAM) y la API de Xubio.
- *
- * Por qué existe: las credenciales de la API de Xubio (Client ID / Secret ID) no pueden
- * ir dentro de la página (es pública). Viven solo acá, como variables del servidor.
- *
- * Acciones (POST JSON a la función `xubio`):
- *   - diagnostico: solo lectura. Devuelve los centros de costo de Xubio y algunas facturas
- *     de compra recientes, para ver cómo vienen los datos.
- *   - asignarCentroCosto: busca la factura de compra por CUIT del proveedor + número y le
- *     pone el centro de costo en todos sus renglones. Con `simular: true` no modifica nada,
- *     solo muestra qué haría. Reglas pedidas por el usuario:
- *       · si la factura no está en Xubio, no la carga (devuelve "factura_no_encontrada");
- *       · si el centro de costo no existe en Xubio, no lo crea (devuelve "centro_no_encontrado").
- *
- * Cada llamada queda registrada en Firestore, colección `xubioLog` (`qa_xubioLog` en QA).
+ * Lógica de la integración MIA ↔ Xubio (solo lo que habla con la API de Xubio).
+ * Reglas pedidas por el usuario:
+ *   · si la factura no está en Xubio, no la carga (devuelve "factura_no_encontrada");
+ *   · si el centro de costo no existe en Xubio, no lo crea (la API tampoco lo permite).
+ * Las credenciales llegan por variables de entorno (XUBIO_CLIENT_ID / XUBIO_SECRET_ID),
+ * que GitHub toma de los secretos del repo.
  */
-const { onRequest } = require("firebase-functions/v2/https");
-const admin = require("firebase-admin");
-
-admin.initializeApp();
-
 const BASE = "https://xubio.com/API/1.1";
-const ORIGENES = ["https://pabloperrotta-droid.github.io"];
 
 let tokenCache = { token: null, vence: 0 };
 
@@ -235,45 +220,4 @@ async function asignarCentroCosto(p) {
   };
 }
 
-exports.xubio = onRequest({ region: "southamerica-east1", cors: ORIGENES, timeoutSeconds: 60 }, async (req, res) => {
-  if (req.method !== "POST") return res.status(405).json({ estado: "error", mensaje: "Método no permitido" });
-  let usuario = null;
-  try {
-    const h = req.get("Authorization") || "";
-    usuario = await admin.auth().verifyIdToken(h.replace(/^Bearer\s+/i, ""));
-  } catch {
-    return res.status(401).json({ estado: "error", mensaje: "No autorizado" });
-  }
-  const b = req.body || {};
-  const ambiente = b.ambiente === "qa" ? "qa" : "prd";
-  let resultado;
-  try {
-    if (b.accion === "diagnostico") resultado = await diagnostico();
-    else if (b.accion === "asignarCentroCosto") resultado = await asignarCentroCosto(b);
-    else resultado = { estado: "error", mensaje: "Acción desconocida" };
-  } catch (e) {
-    resultado = { estado: "error", mensaje: String((e && e.message) || e) };
-  }
-  try {
-    await admin
-      .firestore()
-      .collection(ambiente === "qa" ? "qa_xubioLog" : "xubioLog")
-      .add({
-        fecha: Date.now(),
-        uid: usuario.uid,
-        rol: b.rol || null,
-        accion: b.accion || null,
-        pedido: {
-          cuit: b.cuit || null,
-          factura: b.factura || null,
-          cliente: b.cliente || null,
-          centroCosto: b.centroCosto || null,
-          simular: !!b.simular,
-          lineaPagosId: b.lineaPagosId || null,
-        },
-        estado: resultado.estado,
-        mensaje: resultado.mensaje || null,
-      });
-  } catch {}
-  res.status(resultado.estado === "error" ? 500 : 200).json(resultado);
-});
+module.exports = { diagnostico, asignarCentroCosto };

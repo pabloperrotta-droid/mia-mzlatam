@@ -1,0 +1,40 @@
+# Integración MIA ↔ Xubio: procesa los pedidos que deja la app en Firestore (ver xubio/procesar.js).
+# Corre sola cada ~5 minutos, al cambiar algo en xubio/, o a mano desde la pestaña "Actions".
+# Usa secretos del repo (Settings → Secrets and variables → Actions), que nunca quedan a la vista:
+#   FIREBASE_SERVICE_ACCOUNT          → JSON de la cuenta de servicio (lee/escribe Firestore)
+#   XUBIO_CLIENT_ID / XUBIO_SECRET_ID → credenciales de la API de Xubio
+name: Xubio - procesar pedidos
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  push:
+    branches: [main]
+    paths: ["xubio/**", ".github/workflows/xubio.yml"]
+  workflow_dispatch:
+concurrency:
+  group: xubio
+  cancel-in-progress: false
+jobs:
+  procesar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm install --prefix xubio --omit=dev --no-audit --no-fund
+      - name: Procesar pedidos
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          XUBIO_CLIENT_ID: ${{ secrets.XUBIO_CLIENT_ID }}
+          XUBIO_SECRET_ID: ${{ secrets.XUBIO_SECRET_ID }}
+        run: |
+          if [ -z "$SA" ] || [ -z "$XUBIO_CLIENT_ID" ] || [ -z "$XUBIO_SECRET_ID" ]; then echo "Faltan secretos del repo"; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          node xubio/procesar.js
+      - name: Borrar credenciales temporales
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
