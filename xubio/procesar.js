@@ -15,6 +15,7 @@
  * También procesa pedidos sueltos de `xubioPedidos` (diagnóstico). Todo queda en `xubioLog`.
  */
 const admin = require("firebase-admin");
+const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
 const { diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
@@ -32,7 +33,7 @@ const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
-const LENTOS = new Set(["bloqueada", "repartida", "centro_no_encontrado", "varias_facturas"]);
+const LENTOS = new Set(["bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 
 const texto = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
 const limpio = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));
@@ -48,9 +49,11 @@ const firma = (l) =>
     t(l.centroCosto).toUpperCase(),
     t(l.subObra).toUpperCase(),
     t(l.centroCostoXubio),
+    String(Number(l.importe) || 0),
   ].join("|");
 
-const camposLinea = (l) => ({
+const camposLinea = (l, importeMia) => ({
+  importeMia: importeMia != null ? importeMia : l.importe != null && l.importe !== "" ? Number(l.importe) || 0 : null,
   cuit: texto(l.cuit, 20),
   factura: texto(l.factura, 40),
   fecha: texto(l.fechaPagado, 20),
@@ -88,6 +91,10 @@ async function procesarLineas(amb) {
     const k = soloDigitos(l.cuit) + "|" + partesNumero(l.factura).numero;
     (grupos[k] = grupos[k] || []).push(l);
   }
+  // Importe Final de Pagos por factura (si está en varias líneas, la suma) para compararlo con Xubio.
+  const claveFactura = (l) => soloDigitos(l.cuit) + "|" + partesNumero(l.factura).numero;
+  const importePorFactura = {};
+  for (const l of validas) importePorFactura[claveFactura(l)] = (importePorFactura[claveFactura(l)] || 0) + (Number(l.importe) || 0);
   const repartida = {};
   for (const g of Object.values(grupos)) {
     const destinos = [...new Set(g.map(objetivo))];
@@ -124,7 +131,7 @@ async function procesarLineas(amb) {
     try {
       r = repartida[l.id]
         ? { estado: "repartida", mensaje: repartida[l.id] }
-        : await asignarCentroCosto({ ...camposLinea(l), centroAnterior: (e && e.centro) || "" });
+        : await asignarCentroCosto({ ...camposLinea(l, importePorFactura[claveFactura(l)]), centroAnterior: (e && e.centro) || "" });
     } catch (err) {
       r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
     }
@@ -156,6 +163,72 @@ async function procesarLineas(amb) {
     n++;
   }
   console.log(`[${amb.nombre}] líneas procesadas: ${n} (en espera: ${Math.max(0, cola.length - n)})`);
+}
+
+
+// ---------- Órdenes de pago (ver ordenesPago.js) ----------
+const OP_HECHA = new Set(["creada", "ya_existia"]);
+async function procesarOPs(amb) {
+  const cfgRef = db.doc(amb.prefijo + "xubioConfig/op");
+  const cfgSnap = await cfgRef.get();
+  let cfg = cfgSnap.exists ? cfgSnap.data() : {};
+  if (!cfg.desde) {
+    // Solo se arman OP de líneas pagadas desde el día en que se activó esto (las anteriores ya se hicieron a mano).
+    const hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    cfg = { ...cfg, desde: hoy };
+    await cfgRef.set({ desde: hoy, crear: false }, { merge: true });
+  }
+  const crear = amb.nombre === "prd" && cfg.crear === true;
+
+  const st = await db.doc(amb.prefijo + "app/state").get();
+  const lineas = ((st.exists && st.get("pagosSemanales")) || []).filter(
+    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && fechaISO(l.fechaPagado) && fechaISO(l.fechaPagado) >= cfg.desde,
+  );
+  if (!lineas.length) return;
+  const grupos = {};
+  for (const l of lineas) (grupos[claveGrupo(l)] = grupos[claveGrupo(l)] || []).push(l);
+
+  const colOP = db.collection(amb.prefijo + "xubioOP");
+  const previas = {};
+  (await colOP.get()).docs.forEach((d) => (previas[d.id] = d.data()));
+  const estadosCentro = {};
+  (await db.collection(amb.prefijo + "xubioEstado").get()).docs.forEach((d) => (estadosCentro[d.id] = d.data()));
+  const cheques = (await db.collection(amb.prefijo + "echeqs").get()).docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  for (const [clave, ls] of Object.entries(grupos)) {
+    const prev = previas[clave];
+    if (prev && OP_HECHA.has(prev.estado)) continue;
+    const [cuit, fecha] = clave.split("_");
+    const suyos = cheques.filter((c) => c.cuit === cuit && c.fechaEmision === fecha && (!c.asignadoA || c.asignadoA === clave));
+    let r;
+    try {
+      r = await armarOP(ls, suyos, estadosCentro);
+    } catch (e) {
+      r = { estado: "error", mensaje: texto((e && e.message) || e, 500) };
+    }
+    const doc = { ...r, actualizado: Date.now(), modo: crear ? "crear" : "vista_previa" };
+    delete doc.cuerpo;
+    if (r.estado === "lista" && crear) {
+      await colOP.doc(clave).set(limpio({ ...doc, estado: "creando" }));
+      try {
+        const c = await crearOP(r.cuerpo);
+        doc.estado = c.estado;
+        doc.opNumero = c.numero || null;
+        doc.opId = c.id || null;
+        doc.mensaje =
+          (c.estado === "creada" ? "OP " + c.numero + " creada en Xubio." : "Ya había en Xubio una OP igual: " + c.numero + ".") +
+          " Falta aplicarla a las facturas en Xubio.";
+        doc.creada = Date.now();
+        for (const ch of suyos) await db.collection(amb.prefijo + "echeqs").doc(ch.id).set({ asignadoA: clave }, { merge: true });
+      } catch (e) {
+        doc.estado = "error";
+        doc.mensaje = "No se pudo crear la OP: " + texto((e && e.message) || e, 400);
+      }
+      await registrar(amb, { accion: "ordenPago", grupo: clave, estado: doc.estado, mensaje: doc.mensaje });
+    }
+    await colOP.doc(clave).set(limpio(doc));
+    console.log(`[${amb.nombre}] OP ${clave} → ${doc.estado}: ${doc.mensaje || ""}`);
+  }
 }
 
 // ---------- Pedidos sueltos (diagnóstico) ----------
@@ -219,6 +292,8 @@ async function actualizarCentros() {
   for (const amb of AMBIENTES) {
     await procesarPedidos(amb);
     if (amb.automatico) await procesarLineas(amb);
+    if (amb.automatico)
+      await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
   }
 })().catch((e) => {
   console.error(e);

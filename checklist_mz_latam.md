@@ -1135,6 +1135,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Credenciales de Xubio y de la base solo en los secretos de GitHub (nunca en la página ni en el chat).
 - [x] Pruebas: sin modificar nada con 3 facturas reales (NATURA CABILDO 2788 → ya tenía NATURA CABILDO; SOLO HIERROS 2701 → ya tenía WU MORON; CENTROSEC 74582 → SABORES VALENTIN ALSINA) y prueba completa del proceso automático con un Xubio simulado (ya tenía / asignado / factura no encontrada / pisar otro centro / sin CUIT).
 - [x] Publicado en QA. Procesa automáticamente las líneas de **QA** (que ya cambian el Xubio real: es la misma cuenta). Producción queda apagada (`automatico: false` en `xubio/procesar.js`) hasta el OK.
+- [x] Chequeos previos antes de poner el centro (pedido del usuario): (1) el importe final de la factura en Xubio tiene que coincidir con el Importe Final de Pagos (si la factura está en varias líneas, con la suma; tolerancia $1); (2) la factura no tiene que tener orden de pago aplicada (si Xubio no lo informa, lo confirma rechazando el cambio). Si pasa todo → ✅. Si no → ⚠️ con el problema al pasar el mouse: "Importe no coincide" (con los dos importes) u "Orden de pago aplicada". El importe forma parte de lo que dispara el reenvío: si se corrige en Pagos, se vuelve a probar.
+- [x] **Órdenes de pago** (pedido del usuario: "cuando pongo pagada, ahí recién leés la línea de pago, los cheques del banco y generás la OP"):
+  - Botón **"Subir e-cheqs del banco"** en Pagos (Excel "Consulta E-cheques emitidos" del Santander; fechas MM/DD/AAAA del banco). Se guardan en `echeqs` (`qa_echeqs`); los anulados/rechazados no se cargan.
+  - Al tildar pagada, se arma una OP por proveedor (CUIT) y Fecha Pagado con todas sus líneas: cheques del Excel con ese CUIT y fecha de emisión (tienen que sumar E-Cheq − retención), transferencia → Banco Santander Rio, efectivo → Caja, retención de Ganancias igual que el botón Retenciones (MAT 2% sobre lo que pase de $224.000 "Enajenación Bs. Cambio y Bs. Muebles"; MO 2% sobre lo que pase de $67.170 "Locación de Obras y/o Servicios"). Verificado con la OP real X-0001-00002753 de EUROLAMP: da los mismos 5 cheques, $248.199,20 de retención sobre $12.633.960.
+  - Antes de la OP tiene que estar ✅ el centro de costo de todas sus facturas (Xubio no deja cambiarlo después).
+  - En Pagos, debajo del ✅/❌ aparece "OP" con su estado; con un clic se ve el detalle (cheques, retención, transferencia, facturas).
+  - Solo se arman OP de líneas pagadas desde el día en que se activó (30/09/2026); las anteriores se hicieron a mano.
+  - **QA nunca crea OP en Xubio** (mismo Xubio que Producción): solo vista previa. En Producción se crean solo con la casilla "Crear OP en Xubio" (Admin) activada; antes de crear se fija que no exista una OP igual (mismo proveedor, fecha e importe).
+  - La API de Xubio no permite aplicar la OP a las facturas: queda anotado en la observación de la OP y se aplica a mano en Xubio.
+  - La prueba con una factura 88 y OP reales a nombre de PABLO FABIAN PERROTTA no se hizo: el sistema de permisos de la sesión bloqueó crear una transacción real en Xubio.
 - [ ] Revisión del usuario en QA.
 - [ ] Subida a Producción (solo con OK del usuario): publicar `MIA.prd.html`, poner `automatico: true` en Producción y pasar QA a solo simulación para que no cambie Xubio dos veces.
 

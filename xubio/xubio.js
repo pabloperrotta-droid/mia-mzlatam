@@ -242,9 +242,25 @@ function buscarCentro(centros, nombres) {
   return null;
 }
 
+const plata = (v) => "$" + (Number(v) || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 async function asignarCentroCosto(p) {
   const r = await buscarFactura(p);
   if (r.estado !== "encontrada") return r;
+  // Chequeo previo 1 (pedido del usuario): el importe final de la factura en Xubio tiene que coincidir
+  // con el Importe Final de Pagos (si la factura está en varias líneas, con la suma).
+  if (p.importeMia != null && p.importeMia !== "") {
+    const enXubio = Number(r.comprobante.importetotal) || 0;
+    const enMia = Number(p.importeMia) || 0;
+    if (Math.abs(enXubio - enMia) > 1)
+      return {
+        estado: "importe_no_coincide",
+        mensaje:
+          "Importe no coincide: la factura " + r.comprobante.numeroDocumento + " en Xubio es de " + plata(enXubio) +
+          " y en Pagos de " + plata(enMia) + ". No se le puso el centro de costo.",
+        factura: resumenComprobante(r.comprobante),
+      };
+  }
   const centros = await centrosDeCosto();
   // Cómo se llama el centro de costo en Xubio según los datos de la línea de Pagos
   // (lo elegido a mano en la lista siempre manda):
@@ -306,22 +322,22 @@ async function asignarCentroCosto(p) {
       centroDeCosto: cc,
     };
 
+  // Chequeo previo 2 (pedido del usuario): si la factura ya tiene una orden de pago aplicada no se toca.
+  // Xubio no siempre lo informa en la factura; si no lo informa, lo confirma rechazando el cambio.
+  const bloqueada = (motivo) => ({
+    estado: "bloqueada",
+    mensaje:
+      "Orden de pago aplicada: la factura " + completo.numeroDocumento + " ya tiene una orden de pago aplicada en Xubio" +
+      motivo + ". Hay que ponerle el centro de costo \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
+    factura: antes,
+    centroDeCosto: cc,
+  });
+  if (comoLista(completo.transaccionOrdenPagoItems).length) return bloqueada("");
   try {
     await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
-    const pagos = comoLista(completo.transaccionOrdenPagoItems).length;
-    return {
-      estado: "bloqueada",
-      mensaje:
-        (pagos
-          ? "Xubio no deja modificar esta factura porque ya tiene un pago (orden de pago) aplicado."
-          : "Xubio no deja modificar esta factura (normalmente porque ya está cancelada con una orden de pago).") +
-        ' Hay que ponerle el centro de costo "' + cc.nombre + '" a mano en Xubio' + antesTenia + ".",
-      factura: antes,
-      centroDeCosto: cc,
-      ordenesDePago: pagos,
-    };
+    return bloqueada(" (Xubio no deja modificarla)");
   }
   const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
   const ok = comoLista(despues.transaccionProductoItems).every((it) => idDe(it.centroDeCosto) === cc.id);
@@ -423,4 +439,4 @@ async function modelosOP(p) {
   return { estado: "ok", ops: l.length, instrumentos, retenciones, conceptosGanancias: conceptos };
 }
 
-module.exports = { modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+module.exports = { xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
