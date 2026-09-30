@@ -60,7 +60,21 @@ async function xubio(metodo, ruta, cuerpo) {
   });
   const txt = await r.text();
   if (!r.ok) {
-    const e = new Error("Xubio respondió " + r.status + " en " + metodo + " " + ruta + ": " + txt.slice(0, 400));
+    // Xubio devuelve el error con todo el stack de Java: se extrae solo el mensaje.
+    let detalle = txt;
+    try {
+      const j = JSON.parse(txt);
+      const msgs = [];
+      const juntar = (o, prof) => {
+        if (!o || typeof o !== "object" || prof > 4) return;
+        for (const k of ["message", "localizedMessage", "error", "error_description", "descripcion", "mensaje"])
+          if (typeof o[k] === "string" && o[k] && !msgs.includes(o[k])) msgs.push(o[k]);
+        if (o.cause) juntar(o.cause, prof + 1);
+      };
+      juntar(j, 0);
+      detalle = msgs.length ? msgs.join(" | ") : Object.keys(j).join(",");
+    } catch {}
+    const e = new Error("Xubio respondió " + r.status + " en " + metodo + " " + ruta.split("?")[0] + ": " + String(detalle).slice(0, 400));
     e.status = r.status;
     throw e;
   }
