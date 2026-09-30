@@ -1,7 +1,12 @@
 <title>Seguimiento de Obras MZ LATAM</title>
+<meta name="color-scheme" content="only light">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
-  :root { color-scheme: light; }
+  :root { color-scheme: only light; }
+  /* En celulares (Chrome / Samsung Internet en Android, Safari en iPhone): que el
+     navegador no agrande el texto por su cuenta ("text autosizing"), porque agranda
+     solo algunos bloques y rompe las columnas de las tablas. */
+  html { -webkit-text-size-adjust: 100%; -moz-text-size-adjust: 100%; text-size-adjust: 100%; }
   body { margin: 0; background: #F5F4F2; }
   #root { min-height: 100vh; }
   /* Manito de "arrastrar para scrollear" en las grillas de Cashflow (Ingresos,
