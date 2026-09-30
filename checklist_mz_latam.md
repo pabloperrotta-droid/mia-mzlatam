@@ -1111,6 +1111,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA (commit "Sección 85 QA: ..."). No se pudo revisar el diseño en vivo desde el entorno de trabajo (sin acceso de red a GitHub Pages/Firebase y sin el panel del navegador conectado): pendiente que el usuario lo mire en QA.
 - [x] **Subido a Producción** (29/09/2026), con el OK explícito del usuario ("Subilo a producción"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
+### 86. Celulares — la tabla se veía con letras gigantes y encimadas (y en modo oscuro)
+
+- Reporte del usuario, con captura del celular de una colega (Android): en Obras, la lista de clientes se veía con números enormes superpuestos y el fondo oscuro; en la compu del usuario se ve bien.
+- [x] Causa: la página no le indica al celular cómo mostrarse, así que el navegador (Chrome / Samsung Internet) aplica el "agrandado automático de texto": agranda solo algunos bloques (las filas de la tabla, no el encabezado) y las columnas se pisan. Además, el modo oscuro forzado del navegador invertía los colores.
+- [x] Corregido en el encabezado del HTML: se desactiva el agrandado automático (`text-size-adjust: 100%`) y se declara la página solo en modo claro (`color-scheme: only light`). En el celular la app se ve igual que en la compu, en proporción (se puede hacer zoom con dos dedos). No cambia nada en la compu ni en los datos.
+- [x] Verificado reproduciendo el problema en un navegador que simula un celular Android (Pixel 5) con una tabla igual: sin el arreglo, las filas salían en 36,6 px y los importes encimados (igual que en la captura); con el arreglo, 13,5 px y todo en su columna.
+- Nota: si el celular usa Samsung Internet con su propio "modo oscuro" activado en la configuración del navegador, puede seguir oscureciendo la página; se desactiva desde el menú de Samsung Internet.
+- [x] Publicado en QA (commit "Sección 86 QA: ...").
+- [ ] Pendiente: pase a Producción con OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
