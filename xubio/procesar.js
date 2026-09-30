@@ -28,7 +28,10 @@ const db = admin.firestore();
 // y las OP en QA son solo vista previa.
 const AMBIENTES = [
   { nombre: "qa", prefijo: "qa_", automatico: true, simular: true },
-  { nombre: "prd", prefijo: "", automatico: true },
+  // PAUSADO en Producción el 30/09/2026 a pedido del usuario ("por el momento en producción sacame la
+  // conexión con Xubio… que no haga nada") hasta que Xubio responda por los rechazos de la API.
+  // Para reactivar: automatico: true.
+  { nombre: "prd", prefijo: "", automatico: false },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
