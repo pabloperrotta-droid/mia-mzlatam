@@ -9,6 +9,7 @@
 const BASE = "https://xubio.com/API/1.1";
 
 let tokenCache = { token: null, vence: 0 };
+const cacheListas = {};
 
 async function pedirToken(id, sec) {
   const r = await fetch(BASE + "/TokenEndpoint", {
@@ -114,7 +115,7 @@ function resumenComprobante(c) {
 
 async function centrosDeCosto() {
   return comoLista(await xubio("GET", "/centroDeCostoBean")).map((c) => ({
-    id: idDe(c),
+    id: c.centroDeCosto_id != null ? c.centroDeCosto_id : idDe(c),
     codigo: c.codigo,
     nombre: c.nombre,
   }));
@@ -138,7 +139,7 @@ async function diagnostico() {
     estado: "ok",
     centroCrudo: comoLista(crudosCentros)[0] || null,
     comprobanteCrudo: completo,
-    centrosDeCosto: comoLista(crudosCentros).map((c) => ({ id: idDe(c), codigo: c.codigo, nombre: c.nombre })),
+    centrosDeCosto: comoLista(crudosCentros).map((c) => ({ id: c.centroDeCosto_id != null ? c.centroDeCosto_id : idDe(c), codigo: c.codigo, nombre: c.nombre })),
     facturasUltimos30Dias: lista.length,
     ejemplos: lista.slice(0, 5).map(resumenComprobante),
   };
@@ -160,9 +161,9 @@ async function buscarFactura({ cuit, factura, fecha }) {
   desde.setDate(desde.getDate() - 180);
   const hasta = new Date(base);
   hasta.setDate(hasta.getDate() + 60);
-  const comps = comoLista(
-    await xubio("GET", "/comprobanteCompraBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta)),
-  );
+  const ruta = "/comprobanteCompraBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta);
+  if (!cacheListas[ruta]) cacheListas[ruta] = xubio("GET", ruta).then(comoLista);
+  const comps = await cacheListas[ruta];
   const candidatas = comps.filter((c) => {
     if (idDe(c.proveedor) !== provId) return false;
     const x = partesNumero((c.puntoVenta ? c.puntoVenta + "-" : "") + (c.numeroDocumento || ""));
@@ -197,13 +198,26 @@ async function asignarCentroCosto(p) {
   const r = await buscarFactura(p);
   if (r.estado !== "encontrada") return r;
   const centros = await centrosDeCosto();
-  const nombres = [p.centroCostoXubio, (p.cliente || "") + " " + (p.centroCosto || ""), p.centroCosto].filter(Boolean);
+  // Cómo se llama el centro de costo en Xubio según los datos de la línea de Pagos:
+  // elegido a mano > Sub Obra (WU PALERMO 2) > Cliente + Centro (PANDORA UNICENTER) >
+  // primera palabra del Cliente + Centro (SABORES VALENTIN ALSINA) > Centro solo (NATURA CABILDO).
+  const cc0 = String(p.centroCosto || "").trim();
+  const cli = String(p.cliente || "").trim();
+  const nombres = [
+    p.centroCostoXubio,
+    p.subObra,
+    cli && cc0 ? cli + " " + cc0 : "",
+    cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : "",
+    cc0,
+  ].filter((x) => x && String(x).trim());
   const cc = buscarCentro(centros, nombres);
   if (!cc)
     return {
       estado: "centro_no_encontrado",
-      mensaje: 'No existe en Xubio un centro de costo llamado "' + nombres[0] + '". No se creó ninguno.',
-      centrosDisponibles: centros.map((c) => c.nombre),
+      mensaje:
+        "No hay en Xubio un centro de costo que coincida con " +
+        [...new Set(nombres.map((n) => '"' + String(n).trim() + '"'))].join(" / ") +
+        ". Elegilo a mano de la lista y volvé a enviar. No se creó ninguno.",
     };
 
   const id = r.comprobante.transaccionid;
@@ -243,4 +257,4 @@ async function asignarCentroCosto(p) {
   };
 }
 
-module.exports = { diagnostico, asignarCentroCosto };
+module.exports = { diagnostico, asignarCentroCosto, centrosDeCosto };

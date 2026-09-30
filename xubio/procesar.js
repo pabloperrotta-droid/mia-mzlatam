@@ -12,7 +12,7 @@
  * Cada pedido procesado queda además en `xubioLog` (`qa_xubioLog`).
  */
 const admin = require("firebase-admin");
-const { diagnostico, asignarCentroCosto } = require("./xubio");
+const { diagnostico, asignarCentroCosto, centrosDeCosto } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -45,6 +45,7 @@ async function ejecutar(p) {
       fecha: texto(p.fecha, 20),
       cliente: texto(p.cliente),
       centroCosto: texto(p.centroCosto),
+      subObra: texto(p.subObra),
       centroCostoXubio: texto(p.centroCostoXubio),
       simular: !!p.simular,
     });
@@ -103,7 +104,22 @@ async function procesarAmbiente(amb) {
   console.log(`[${amb.nombre}] pedidos procesados: ${n}`);
 }
 
+// Lista de centros de costo de Xubio para que MIA la muestre (se refresca cada ~6 horas).
+async function actualizarCentros() {
+  const refs = AMBIENTES.map((a) => db.collection(a.nombre === "qa" ? "qa_xubioConfig" : "xubioConfig").doc("centros"));
+  const actual = await refs[0].get();
+  if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 6 * 3600 * 1000) return;
+  const nombres = (await centrosDeCosto()).map((c) => c.nombre).filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
+  for (const r of refs) await r.set({ nombres, actualizado: Date.now() });
+  console.log("Centros de costo de Xubio actualizados: " + nombres.length);
+}
+
 (async () => {
+  try {
+    await actualizarCentros();
+  } catch (e) {
+    console.error("No se pudo actualizar la lista de centros:", (e && e.message) || e);
+  }
   for (const amb of AMBIENTES) await procesarAmbiente(amb);
 })().catch((e) => {
   console.error(e);
