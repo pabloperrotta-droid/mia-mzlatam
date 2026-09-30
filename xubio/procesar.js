@@ -34,7 +34,7 @@ const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
-const BIEN = new Set(["ok", "ya_estaba"]);
+const BIEN = new Set(["ok", "ya_estaba", "simulacion"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
 const LENTOS = new Set(["bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 

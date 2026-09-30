@@ -64,7 +64,7 @@ async function armarOP(lineas, cheques, estadosCentro) {
   const sinCentro = [];
   for (const l of lineas) {
     const e = estadosCentro[l.id];
-    if (!e || (e.estado !== "ok" && e.estado !== "ya_estaba")) sinCentro.push(l.factura);
+    if (!e || !["ok", "ya_estaba", "simulacion"].includes(e.estado)) sinCentro.push(l.factura);
     const f = await buscarFactura({ cuit, factura: l.factura, fecha: l.fechaPagado });
     if (f.estado !== "encontrada")
       return { ...res, estado: "falta_factura", mensaje: "Factura " + l.factura + ": " + (f.mensaje || f.estado) };
