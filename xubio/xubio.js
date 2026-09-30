@@ -75,6 +75,7 @@ async function xubio(metodo, ruta, cuerpo) {
       detalle = msgs.length ? msgs.join(" | ") : Object.keys(j).join(",");
     } catch {}
     const e = new Error("Xubio respondió " + r.status + " en " + metodo + " " + ruta.split("?")[0] + ": " + String(detalle).slice(0, 400));
+    e.cuerpo = txt.slice(0, 6000);
     e.status = r.status;
     throw e;
   }
@@ -440,4 +441,30 @@ async function modelosOP(p) {
   return { estado: "ok", ops: l.length, instrumentos, retenciones, conceptosGanancias: conceptos };
 }
 
-module.exports = { xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Diagnóstico: trae facturas completas y, en la marcada con `probar`, intenta guardarla SIN CAMBIOS
+// (mismos datos que devuelve Xubio) para ver si el rechazo es por la forma de mandar los datos.
+async function compararFacturas(p) {
+  const out = [];
+  for (const f of p.facturas || []) {
+    const r = await buscarFactura({ cuit: f.cuit, factura: f.factura, fecha: "" });
+    if (r.estado !== "encontrada") {
+      out.push({ ...f, estado: r.estado });
+      continue;
+    }
+    const completo = await xubio("GET", "/comprobanteCompraBean/" + r.comprobante.transaccionid);
+    const item = { ...f, id: r.comprobante.transaccionid, bean: completo };
+    if (f.probar) {
+      try {
+        await xubio("PUT", "/comprobanteCompraBean/" + item.id, completo);
+        item.putSinCambios = "ok";
+      } catch (e) {
+        item.putSinCambios = { status: e.status, mensaje: String(e.message).slice(0, 300), cuerpo: e.cuerpo };
+      }
+    }
+    out.push(item);
+  }
+  return { estado: "ok", facturas: out };
+}
+
+module.exports = { compararFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
