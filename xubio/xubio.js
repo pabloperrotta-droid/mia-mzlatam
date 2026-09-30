@@ -10,11 +10,7 @@ const BASE = "https://xubio.com/API/1.1";
 
 let tokenCache = { token: null, vence: 0 };
 
-async function obtenerToken() {
-  if (tokenCache.token && Date.now() < tokenCache.vence) return tokenCache.token;
-  const id = process.env.XUBIO_CLIENT_ID;
-  const sec = process.env.XUBIO_SECRET_ID;
-  if (!id || !sec) throw new Error("Faltan las credenciales de Xubio en el servidor.");
+async function pedirToken(id, sec) {
   const r = await fetch(BASE + "/TokenEndpoint", {
     method: "POST",
     headers: {
@@ -24,9 +20,29 @@ async function obtenerToken() {
     },
     body: "grant_type=client_credentials",
   });
-  const txt = await r.text();
-  if (!r.ok) throw new Error("Xubio rechazó las credenciales (" + r.status + "): " + txt.slice(0, 200));
-  const j = JSON.parse(txt);
+  return { ok: r.ok, status: r.status, txt: await r.text() };
+}
+
+async function obtenerToken() {
+  if (tokenCache.token && Date.now() < tokenCache.vence) return tokenCache.token;
+  const id = String(process.env.XUBIO_CLIENT_ID || "").trim();
+  const sec = String(process.env.XUBIO_SECRET_ID || "").trim();
+  if (!id || !sec) throw new Error("Faltan las credenciales de Xubio en el servidor.");
+  let r = await pedirToken(id, sec);
+  if (!r.ok) {
+    // Por si el Client ID y el Secret ID quedaron cargados al revés en GitHub.
+    const inv = await pedirToken(sec, id);
+    if (inv.ok) {
+      console.log("Aviso: XUBIO_CLIENT_ID y XUBIO_SECRET_ID están invertidos en los secretos de GitHub.");
+      r = inv;
+    }
+  }
+  if (!r.ok)
+    throw new Error(
+      "Xubio rechazó las credenciales (" + r.status + "): " + r.txt.slice(0, 200) +
+        " [largo Client ID: " + id.length + ", largo Secret ID: " + sec.length + "]",
+    );
+  const j = JSON.parse(r.txt);
   tokenCache = { token: j.access_token, vence: Date.now() + ((Number(j.expires_in) || 3600) - 60) * 1000 };
   return j.access_token;
 }
