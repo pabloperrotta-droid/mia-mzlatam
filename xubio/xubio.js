@@ -48,7 +48,19 @@ async function obtenerToken() {
   return j.access_token;
 }
 
+// Xubio (soporte, 30/09/2026): "actualizar la validación del token antes de realizar la operación, ya que
+// se vencen". Por eso: token nuevo antes de cada cambio (PUT/POST) y, si responde 401, token nuevo y un reintento.
 async function xubio(metodo, ruta, cuerpo) {
+  if (metodo !== "GET") tokenCache = { token: null, vence: 0 };
+  try {
+    return await xubioUnaVez(metodo, ruta, cuerpo);
+  } catch (e) {
+    if (e.status !== 401) throw e;
+    tokenCache = { token: null, vence: 0 };
+    return xubioUnaVez(metodo, ruta, cuerpo);
+  }
+}
+async function xubioUnaVez(metodo, ruta, cuerpo) {
   const r = await fetch(BASE + ruta, {
     method: metodo,
     headers: {
@@ -312,7 +324,7 @@ async function asignarCentroCosto(p) {
     ...completo,
     transaccionProductoItems: items.map((it) => ({
       ...it,
-      centroDeCosto: { ID: cc.id, id: cc.id, codigo: cc.codigo, nombre: cc.nombre },
+      centroDeCosto: { ID: cc.id },
     })),
   };
   if (p.simular)
@@ -442,62 +454,7 @@ async function modelosOP(p) {
 }
 
 
-// Diagnóstico: trae facturas completas y, en la marcada con `probar`, intenta guardarla SIN CAMBIOS
-// (mismos datos que devuelve Xubio) para ver si el rechazo es por la forma de mandar los datos.
-async function compararFacturas(p) {
-  const out = [];
-  for (const f of p.facturas || []) {
-    const r = await buscarFactura({ cuit: f.cuit, factura: f.factura, fecha: "" });
-    if (r.estado !== "encontrada") {
-      out.push({ ...f, estado: r.estado });
-      continue;
-    }
-    const completo = await xubio("GET", "/comprobanteCompraBean/" + r.comprobante.transaccionid);
-    const item = { ...f, id: r.comprobante.transaccionid, bean: completo };
-    if (f.probar) {
-      try {
-        await xubio("PUT", "/comprobanteCompraBean/" + item.id, completo);
-        item.putSinCambios = "ok";
-      } catch (e) {
-        item.putSinCambios = { status: e.status, mensaje: String(e.message).slice(0, 300), cuerpo: e.cuerpo };
-      }
-    }
-    out.push(item);
-  }
-  return { estado: "ok", facturas: out };
-}
 
 
-// Prueba autorizada por el usuario SOLO sobre la factura 8239 (30/09/2026): distintas formas de mandar
-// el centro de costo, hasta la primera que Xubio acepte.
-async function probarCentro8239() {
-  const r = await buscarFactura({ cuit: "30708774118", factura: "8239", fecha: "" });
-  if (r.estado !== "encontrada") return { estado: r.estado, mensaje: r.mensaje };
-  const id = r.comprobante.transaccionid;
-  const crudos = comoLista(await xubio("GET", "/centroDeCostoBean"));
-  const cc = crudos.find((c) => normalizar(c.nombre) === "NATURA CABILDO");
-  const ccId = cc && (cc.centroDeCosto_id != null ? cc.centroDeCosto_id : idDe(cc));
-  const variantes = [
-    ["ID", { ID: ccId }],
-    ["id", { id: ccId }],
-    ["ID+id", { ID: ccId, id: ccId }],
-    ["completo", { ID: ccId, id: ccId, codigo: cc.codigo, nombre: cc.nombre }],
-    ["codigo", { codigo: cc.codigo }],
-  ];
-  const intentos = [];
-  for (const [nombre, obj] of variantes) {
-    const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
-    const cuerpo = { ...completo, transaccionProductoItems: comoLista(completo.transaccionProductoItems).map((it) => ({ ...it, centroDeCosto: obj })) };
-    try {
-      await xubio("PUT", "/comprobanteCompraBean/" + id, cuerpo);
-      const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
-      intentos.push({ variante: nombre, resultado: "ok", centroDespues: comoLista(despues.transaccionProductoItems).map((it) => it.centroDeCosto), total: despues.importetotal });
-      break;
-    } catch (e) {
-      intentos.push({ variante: nombre, resultado: "error", mensaje: String(e.message).slice(0, 200), cuerpo: String(e.cuerpo || "").slice(0, 1500) });
-    }
-  }
-  return { estado: "ok", centroLista: cc, ccId, intentos };
-}
 
-module.exports = { probarCentro8239, compararFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+module.exports = { xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };

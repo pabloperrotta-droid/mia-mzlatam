@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, compararFacturas, probarCentro8239, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -272,8 +272,6 @@ async function procesarPedidos(amb) {
       else if (p.accion === "diagnosticoPagos") r = await diagnosticoPagos(p);
       else if (p.accion === "diagnosticoPruebaOP") r = await diagnosticoPruebaOP(p);
       else if (p.accion === "modelosOP") r = await modelosOP(p);
-      else if (p.accion === "compararFacturas") r = await compararFacturas(p);
-      else if (p.accion === "probarCentro8239") r = await probarCentro8239();
       else if (p.accion === "asignarCentroCosto")
         r = await asignarCentroCosto({
           ...camposLinea({ ...p, fechaPagado: p.fecha }),
