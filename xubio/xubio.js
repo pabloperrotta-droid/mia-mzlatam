@@ -457,4 +457,43 @@ async function modelosOP(p) {
 
 
 
-module.exports = { xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Prueba autorizada por el usuario SOLO sobre la factura CENTROSEC A-14-74627 (30/09/2026):
+// 1) guardarla sin cambios, 2) ponerle WU MARTIN CORONADO.
+async function probarDosPasos74627() {
+  const r = await buscarFactura({ cuit: "30707598936", factura: "74627", fecha: "" });
+  if (r.estado !== "encontrada") return { estado: r.estado, mensaje: r.mensaje };
+  const id = r.comprobante.transaccionid;
+  const cc = (await centrosDeCosto()).find((c) => normalizar(c.nombre) === "WU MARTIN CORONADO");
+  if (!cc) return { estado: "error", mensaje: "No está el centro WU MARTIN CORONADO" };
+  const pasos = [];
+  const intentar = async (nombre, fn) => {
+    try {
+      await fn();
+      pasos.push({ paso: nombre, resultado: "ok" });
+      return true;
+    } catch (e) {
+      pasos.push({ paso: nombre, resultado: "error", mensaje: String(e.message).slice(0, 300) });
+      return false;
+    }
+  };
+  // Paso 0: directo con el centro (como hace la integración), para confirmar que falla.
+  const b0 = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const conCentro = (b) => ({ ...b, transaccionProductoItems: comoLista(b.transaccionProductoItems).map((it) => ({ ...it, centroDeCosto: { ID: cc.id } })) });
+  const directo = await intentar("centro directo", () => xubio("PUT", "/comprobanteCompraBean/" + id, conCentro(b0)));
+  if (!directo) {
+    const b1 = await xubio("GET", "/comprobanteCompraBean/" + id);
+    await intentar("guardar sin cambios", () => xubio("PUT", "/comprobanteCompraBean/" + id, b1));
+    const b2 = await xubio("GET", "/comprobanteCompraBean/" + id);
+    await intentar("centro después", () => xubio("PUT", "/comprobanteCompraBean/" + id, conCentro(b2)));
+  }
+  const fin = await xubio("GET", "/comprobanteCompraBean/" + id);
+  return {
+    estado: "ok",
+    pasos,
+    total: { antes: b0.importetotal, despues: fin.importetotal },
+    centroDespues: comoLista(fin.transaccionProductoItems).map((it) => it.centroDeCosto && it.centroDeCosto.nombre),
+  };
+}
+
+module.exports = { probarDosPasos74627, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
