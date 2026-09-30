@@ -1109,7 +1109,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Excel: se agregaron las columnas "Markup Inicial %" y "Markup Final %" al resumen de todas las obras, "Markup" al Excel de sub obras y al de Órdenes de Compra.
 - [x] Fórmula verificada con casos reales: SHANGAI ITUZAINGO (venta $198.549.994, costo $152.360.474) → 23.3% / 30.3% (markup directo 30.3%); WU RESISTENCIA (venta $15.406.560, costo $15.858.709) → -2.9% / -2.9%; costo 0 → 100.0% / —.
 - [x] Publicado en QA (commit "Sección 85 QA: ..."). No se pudo revisar el diseño en vivo desde el entorno de trabajo (sin acceso de red a GitHub Pages/Firebase y sin el panel del navegador conectado): pendiente que el usuario lo mire en QA.
-- [ ] Pendiente: revisión visual del usuario en QA y pase a Producción con su OK.
+- [x] **Subido a Producción** (29/09/2026), con el OK explícito del usuario ("Subilo a producción"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
