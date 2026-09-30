@@ -15,7 +15,7 @@
  * También procesa pedidos sueltos de `xubioPedidos` (diagnóstico). Todo queda en `xubioLog`.
  */
 const admin = require("firebase-admin");
-const { diagnostico, asignarCentroCosto, centrosDeCosto } = require("./xubio");
+const { diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -31,6 +31,8 @@ const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba"]);
+// Estados que no se arreglan solos: se reintentan una vez por día.
+const LENTOS = new Set(["bloqueada", "repartida", "centro_no_encontrado", "varias_facturas"]);
 
 const texto = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
 const limpio = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));
@@ -73,15 +75,43 @@ async function procesarLineas(amb) {
   const previos = {};
   (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
 
+  // Una misma factura cargada en varias líneas de Pagos con distintos centros de costo no se toca:
+  // Xubio tiene un centro por renglón y no se sabe cómo repartirla.
+  const validas = lineas.filter((l) => l && l.id && soloDigitos(l.cuit) && t(l.factura));
+  const objetivo = (l) =>
+    normalizar(
+      t(l.centroCostoXubio) ||
+        (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.cliente) + " " + t(l.centroCosto)),
+    );
+  const grupos = {};
+  for (const l of validas) {
+    const k = soloDigitos(l.cuit) + "|" + partesNumero(l.factura).numero;
+    (grupos[k] = grupos[k] || []).push(l);
+  }
+  const repartida = {};
+  for (const g of Object.values(grupos)) {
+    const destinos = [...new Set(g.map(objetivo))];
+    if (g.length > 1 && destinos.length > 1) {
+      const nombres = [
+        ...new Set(g.map((l) => t(l.centroCostoXubio) || (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto)))),
+      ];
+      for (const l of g)
+        repartida[l.id] =
+          "Esta factura está en " + g.length + " líneas de Pagos con distintos centros de costo (" + nombres.join(", ") +
+          "). Como en Xubio se reparte por renglón, no se tocó: hay que ponerle los centros a mano en Xubio.";
+    }
+  }
+
   const ahora = Date.now();
   const cola = [];
-  for (const l of lineas) {
-    if (!l || !l.id || !soloDigitos(l.cuit) || !t(l.factura)) continue;
+  for (const l of validas) {
     const f = firma(l);
     const e = previos[l.id];
     let prioridad = null;
-    if (!e || e.firma !== f || e.forzar) prioridad = 0;
-    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > REINTENTO_MS) prioridad = 1;
+    if (e && e.forzar) prioridad = -1;
+    else if (!e || e.firma !== f) prioridad = 0;
+    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
+      prioridad = 1;
     if (prioridad !== null) cola.push({ l, f, e, prioridad });
   }
   cola.sort((a, b) => a.prioridad - b.prioridad || ((a.e && a.e.intento) || 0) - ((b.e && b.e.intento) || 0));
@@ -90,7 +120,9 @@ async function procesarLineas(amb) {
   for (const { l, f, e } of cola.slice(0, MAX_LINEAS)) {
     let r;
     try {
-      r = await asignarCentroCosto({ ...camposLinea(l), centroAnterior: (e && e.centro) || "" });
+      r = repartida[l.id]
+        ? { estado: "repartida", mensaje: repartida[l.id] }
+        : await asignarCentroCosto({ ...camposLinea(l), centroAnterior: (e && e.centro) || "" });
     } catch (err) {
       r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
     }

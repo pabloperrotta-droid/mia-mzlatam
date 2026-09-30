@@ -306,7 +306,23 @@ async function asignarCentroCosto(p) {
       centroDeCosto: cc,
     };
 
-  await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
+  try {
+    await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
+  } catch (err) {
+    if (err.status !== 401 && err.status !== 403) throw err;
+    const pagos = comoLista(completo.transaccionOrdenPagoItems).length;
+    return {
+      estado: "bloqueada",
+      mensaje:
+        (pagos
+          ? "Xubio no deja modificar esta factura porque ya tiene un pago (orden de pago) aplicado."
+          : "Xubio no deja modificar esta factura desde la integración (respondió " + err.status + ").") +
+        ' Hay que ponerle el centro de costo "' + cc.nombre + '" a mano en Xubio' + antesTenia + ".",
+      factura: antes,
+      centroDeCosto: cc,
+      ordenesDePago: pagos,
+    };
+  }
   const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
   const ok = comoLista(despues.transaccionProductoItems).every((it) => idDe(it.centroDeCosto) === cc.id);
   const totalIgual = Number(despues.importetotal) === Number(completo.importetotal);
@@ -320,4 +336,4 @@ async function asignarCentroCosto(p) {
   };
 }
 
-module.exports = { diagnostico, asignarCentroCosto, centrosDeCosto };
+module.exports = { diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
