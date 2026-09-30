@@ -36,7 +36,7 @@ const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
-const LENTOS = new Set(["bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
+const LENTOS = new Set(["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 
 const texto = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
 const limpio = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));

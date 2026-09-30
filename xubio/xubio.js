@@ -324,20 +324,21 @@ async function asignarCentroCosto(p) {
 
   // Chequeo previo 2 (pedido del usuario): si la factura ya tiene una orden de pago aplicada no se toca.
   // Xubio no siempre lo informa en la factura; si no lo informa, lo confirma rechazando el cambio.
-  const bloqueada = (motivo) => ({
-    estado: "bloqueada",
-    mensaje:
-      "Orden de pago aplicada: la factura " + completo.numeroDocumento + " ya tiene una orden de pago aplicada en Xubio" +
-      motivo + ". Hay que ponerle el centro de costo \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
+  const bloqueada = (tieneOP) => ({
+    estado: tieneOP ? "bloqueada" : "rechazada",
+    mensaje: tieneOP
+      ? "Orden de pago aplicada: la factura " + completo.numeroDocumento + " ya tiene una orden de pago aplicada en Xubio. Hay que ponerle el centro de costo \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + "."
+      : "Xubio rechazó el cambio de centro de costo de la factura " + completo.numeroDocumento +
+        " (respondió \"No se pudo completar la operación\"). Hay que ponerle \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
     factura: antes,
     centroDeCosto: cc,
   });
-  if (comoLista(completo.transaccionOrdenPagoItems).length) return bloqueada("");
+  if (comoLista(completo.transaccionOrdenPagoItems).length) return bloqueada(true);
   try {
     await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
-    return bloqueada(" (Xubio no deja modificarla)");
+    return bloqueada(false);
   }
   const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
   const ok = comoLista(despues.transaccionProductoItems).every((it) => idDe(it.centroDeCosto) === cc.id);
