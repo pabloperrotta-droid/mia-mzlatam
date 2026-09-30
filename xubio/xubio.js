@@ -124,14 +124,21 @@ async function diagnostico() {
   const hasta = new Date();
   const desde = new Date();
   desde.setDate(desde.getDate() - 30);
-  const [centros, comps] = await Promise.all([
-    centrosDeCosto(),
+  const [crudosCentros, comps] = await Promise.all([
+    xubio("GET", "/centroDeCostoBean"),
     xubio("GET", "/comprobanteCompraBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta)),
   ]);
   const lista = comoLista(comps);
+  let completo = null;
+  if (lista[0]) {
+    const c = await xubio("GET", "/comprobanteCompraBean/" + lista[0].transaccionid);
+    completo = { campos: Object.keys(c), renglon: comoLista(c.transaccionProductoItems)[0] || null, proveedor: c.proveedor };
+  }
   return {
     estado: "ok",
-    centrosDeCosto: centros,
+    centroCrudo: comoLista(crudosCentros)[0] || null,
+    comprobanteCrudo: completo,
+    centrosDeCosto: comoLista(crudosCentros).map((c) => ({ id: idDe(c), codigo: c.codigo, nombre: c.nombre })),
     facturasUltimos30Dias: lista.length,
     ejemplos: lista.slice(0, 5).map(resumenComprobante),
   };
