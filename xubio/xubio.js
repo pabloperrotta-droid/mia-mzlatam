@@ -219,18 +219,24 @@ async function asignarCentroCosto(p) {
   const r = await buscarFactura(p);
   if (r.estado !== "encontrada") return r;
   const centros = await centrosDeCosto();
-  // Cómo se llama el centro de costo en Xubio según los datos de la línea de Pagos:
-  // elegido a mano > Sub Obra (WU PALERMO 2) > Cliente + Centro (PANDORA UNICENTER) >
-  // primera palabra del Cliente + Centro (SABORES VALENTIN ALSINA) > Centro solo (NATURA CABILDO).
+  // Cómo se llama el centro de costo en Xubio según los datos de la línea de Pagos
+  // (lo elegido a mano en la lista siempre manda):
+  //   · WU: el centro de costo de Xubio es la Sub Obra (WU PALERMO 2, WU MORON...).
+  //   · Resto: Centro (NATURA CABILDO) > Cliente + Centro (PANDORA UNICENTER) >
+  //     primera palabra del Cliente + Centro (SABORES VALENTIN ALSINA).
   const cc0 = String(p.centroCosto || "").trim();
   const cli = String(p.cliente || "").trim();
-  const nombres = [
-    p.centroCostoXubio,
-    p.subObra,
-    cli && cc0 ? cli + " " + cc0 : "",
-    cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : "",
-    cc0,
-  ].filter((x) => x && String(x).trim());
+  const esWU = normalizar(cli) === "WU";
+  const nombres = (
+    esWU
+      ? [p.centroCostoXubio, p.subObra]
+      : [p.centroCostoXubio, cc0, cli && cc0 ? cli + " " + cc0 : "", cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : ""]
+  ).filter((x) => x && String(x).trim());
+  if (esWU && nombres.length === 0)
+    return {
+      estado: "centro_no_encontrado",
+      mensaje: "Es de WU y la línea no tiene Sub Obra: cargá la Sub Obra o elegí el centro de costo de la lista.",
+    };
   const cc = buscarCentro(centros, nombres);
   if (!cc)
     return {
