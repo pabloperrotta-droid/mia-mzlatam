@@ -1160,7 +1160,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Arreglo: con importes positivos sigue igual (el mayor). Si hay un negativo, manda la suma de proveedores si hay alguno cargado en esa semana; si no, la fila de la obra. El total semanal, el total de Salidas Semanales en Egresos y lo "asignado" de cada obra restan bien.
 - [x] El campo ya aceptaba el signo menos (probado en QA: "-1000" → "-1.000"); el menos tiene que ir adelante.
 - [x] Publicado en QA.
-- [ ] Subida a Producción (solo con OK del usuario).
+- [x] **Subido a Producción** (01/10/2026), con el OK explícito del usuario ("PASALO A PRODUCCION"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". Incluye también el texto "Xubio rechazó el cambio" de la Sección 87 (la integración con Xubio sigue pausada en Producción).
 
 ## 41. Pendientes / recomendaciones
 
