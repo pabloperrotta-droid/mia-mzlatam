@@ -1153,6 +1153,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Al activarse en Producción, las líneas que ya estaban pagadas en ese momento (proveedor + fecha) quedan como "anterior" y no generan OP (se hicieron a mano). Solo generan OP las que se tilden como pagadas de ahí en adelante.
 - Cómo revertir: en `xubio/procesar.js` poner `automatico: false` en "prd" (frena centro de costo y OP) y volver a publicar `MIA.prd.html` del commit anterior. Las OP ya creadas en Xubio se borran a mano en Xubio.
 
+### 88. Cashflow → Salidas Semanales: los importes negativos a veces no restaban
+
+- Pedido del usuario: "en pagos, salidas semanales, dejame poner negativo y que me reste" / "a veces veo que no resta".
+- [x] Causa: cada semana de una obra toma el mayor entre lo cargado en la fila de la obra y la suma de sus proveedores (son dos formas de cargar lo mismo). Con un negativo, ese "mayor" lo descartaba (ej. obra -1.000 y proveedores vacíos → tomaba 0).
+- [x] Arreglo: con importes positivos sigue igual (el mayor). Si hay un negativo, manda la suma de proveedores si hay alguno cargado en esa semana; si no, la fila de la obra. El total semanal, el total de Salidas Semanales en Egresos y lo "asignado" de cada obra restan bien.
+- [x] El campo ya aceptaba el signo menos (probado en QA: "-1000" → "-1.000"); el menos tiene que ir adelante.
+- [x] Publicado en QA.
+- [ ] Subida a Producción (solo con OK del usuario).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
