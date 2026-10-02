@@ -1171,7 +1171,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Los PDF se guardan en la base aparte del estado principal (colección `pdfsOC`, `qa_pdfsOC` en QA, en partes de 700 KB; máximo 8 MB por PDF), así no se agranda el guardado general.
 - [x] Probado en QA: subida de un PDF de prueba a la OC 2640000099 de WU CIVIL WORK, aparece "👁 Ver", el contenido guardado es idéntico al archivo; después se borró la prueba.
 - [x] Publicado en QA.
-- [ ] Subida a Producción (solo con OK del usuario).
+- [x] **Subido a Producción** (02/10/2026), con el OK explícito del usuario ("SUBILO A PRODUCCION"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
