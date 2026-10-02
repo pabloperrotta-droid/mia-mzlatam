@@ -1162,6 +1162,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (01/10/2026), con el OK explícito del usuario ("PASALO A PRODUCCION"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". Incluye también el texto "Xubio rechazó el cambio" de la Sección 87 (la integración con Xubio sigue pausada en Producción).
 
+### 89. WU — Órdenes de compra "MZ" que suman sus sub obras, y PDF de la orden de compra guardado
+
+- Pedido del usuario: "en las subórdenes que empiezan con MZ, por ejemplo MZ01… la venta… sea la suma de las subobras que contienen esa orden de compra… Si yo agrego, se suma. Si yo quito, se resta" y "cuando adjunto el PDF de la orden de compra… una columna de previsualización o descarga del PDF… almacenar ese PDF".
+- [x] Órdenes de compra cuyo número empieza con **MZ** (MZ01, MZ02…): la Venta ya no se carga a mano, es la suma de lo que aportan a esa OC las sub obras de Costos que la tienen cargada (si la sub obra tiene varias OC, solo su parte de esa OC). Se recalcula sola al agregar/quitar una sub obra o cambiar su importe, y se guarda (así la Venta Total de la obra y los gráficos la toman). Al editar la OC, la venta aparece como "(suma)" sin poder escribirla.
+- [x] Ejemplo real (Producción, WU CIVIL WORK): MZ01 tiene hoy $500.000 cargados a mano y la sub obra VINILOS BERUTI (OC MZ01) $580.000 → al subir a Producción, MZ01 pasa a $580.000.
+- [x] Nueva columna **PDF** en las órdenes de compra de la obra: "👁 Ver" (abre el PDF en otra pestaña) y "⬇" (descarga). Al cargar una OC con "Cargar orden de compra con PDF", el PDF queda guardado solo. Para las OC ya cargadas (o las MZ) se puede adjuntar con "+ PDF" y reemplazar con "↻".
+- [x] Los PDF se guardan en la base aparte del estado principal (colección `pdfsOC`, `qa_pdfsOC` en QA, en partes de 700 KB; máximo 8 MB por PDF), así no se agranda el guardado general.
+- [x] Probado en QA: subida de un PDF de prueba a la OC 2640000099 de WU CIVIL WORK, aparece "👁 Ver", el contenido guardado es idéntico al archivo; después se borró la prueba.
+- [x] Publicado en QA.
+- [ ] Subida a Producción (solo con OK del usuario).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
