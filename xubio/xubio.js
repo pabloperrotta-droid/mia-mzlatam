@@ -498,4 +498,46 @@ async function resumenFacturas(p) {
   return { estado: "ok", facturas: out };
 }
 
-module.exports = { resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+
+// Prueba autorizada por el usuario (02/10/2026) SOLO sobre la factura CENTROSEC A-14-74627:
+// mandar precioconivaincluido = 0 y el centro completo (como el ejemplo de soporte de Xubio).
+async function probarPciva74627() {
+  const r = await buscarFactura({ cuit: "30707598936", factura: "74627", fecha: "" });
+  if (r.estado !== "encontrada") return { estado: r.estado, mensaje: r.mensaje };
+  const id = r.comprobante.transaccionid;
+  const cc = (await centrosDeCosto()).find((c) => normalizar(c.nombre) === "WU MARTIN CORONADO");
+  const antes = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const cuerpo = {
+    ...antes,
+    transaccionProductoItems: comoLista(antes.transaccionProductoItems).map((it) => ({
+      ...it,
+      precioconivaincluido: 0,
+      centroDeCosto: { ID: cc.id, id: cc.id, nombre: cc.nombre, codigo: cc.codigo },
+    })),
+  };
+  let put;
+  try {
+    await xubio("PUT", "/comprobanteCompraBean/" + id, cuerpo);
+    put = "ok";
+  } catch (e) {
+    put = { status: e.status, mensaje: String(e.message).slice(0, 300) };
+  }
+  const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  return {
+    estado: "ok",
+    put,
+    total: { antes: antes.importetotal, despues: despues.importetotal },
+    gravado: { antes: antes.importeGravado, despues: despues.importeGravado },
+    impuestos: { antes: antes.importeImpuestos, despues: despues.importeImpuestos },
+    renglonDespues: comoLista(despues.transaccionProductoItems).map((it) => ({
+      centro: it.centroDeCosto && it.centroDeCosto.nombre,
+      importe: it.importe,
+      iva: it.iva,
+      total: it.total,
+      pciva: it.precioconivaincluido,
+    })),
+    percepcionesDespues: comoLista(despues.transaccionPercepcionItems).map((x) => x.importe),
+  };
+}
+
+module.exports = { probarPciva74627, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
