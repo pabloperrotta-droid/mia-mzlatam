@@ -909,21 +909,6 @@ function repartirFacturaConIva(fc, n) {
   rs.length <= 40 && buscar(0, [], 0);
   return hallado ? salida(hallado) : null;
 }
-// Importe Final de cada parte con la alícuota de su renglón: bruto + IVA de su alícuota + su parte de
-// las percepciones (en proporción al bruto). Si falta alguna alícuota, o las cuentas no cierran, se
-// reparte todo en proporción al bruto. Devuelve { finales, porAlicuota }.
-function finalesConIva(total, brutos, ivas) {
-  const t = Number(total) || 0,
-    suma = brutos.reduce((a, b) => a + b, 0),
-    conTodas = ivas && ivas.length === brutos.length && ivas.every((x) => x > 0);
-  if (!conTodas || !suma) return { finales: finalesProporcionales(t, brutos), porAlicuota: false };
-  const ivaTot = brutos.reduce((a, b, i) => a + b * ivas[i], 0),
-    perc = t - suma - ivaTot;
-  if (perc < -1) return { finales: finalesProporcionales(t, brutos), porAlicuota: false };
-  const r = brutos.map((b, i) => Math.round((b * (1 + ivas[i]) + (perc * b) / suma) * 100) / 100);
-  r[r.length - 1] = Math.round((t - r.slice(0, -1).reduce((a, b) => a + b, 0)) * 100) / 100;
-  return { finales: r, porAlicuota: true };
-}
 // Importe Final de cada parte: el total repartido en proporción al bruto (su IVA + su parte de las
 // percepciones). Los centavos de redondeo van a la última, así suman exacto el total.
 function finalesProporcionales(total, brutos) {

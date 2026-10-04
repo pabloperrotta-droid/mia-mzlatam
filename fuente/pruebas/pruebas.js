@@ -224,14 +224,6 @@ prueba("Factura con varios centros de costo: partes numeradas en el nombre, brut
   assert.deepStrictEqual(finales, [12350, 3705, 6175]);
   assert.strictEqual(finales.reduce((a, b) => a + b, 0), 22230);
   assert.strictEqual(f.repartirFactura({ neto: 100, renglones: [30, 30] }, 3), null);
-  // Alícuotas distintas por renglón: 21 % y 10,5 %, con $100 de percepciones repartidas por bruto.
-  const mix = JSON.parse(JSON.stringify(f.repartirFacturaConIva({ neto: 3000, renglones: [1000, 2000, 3000], renglonesIva: [0.21, 0.105, 0] }, 2)));
-  assert.deepStrictEqual(mix, { brutos: [1000, 2000], ivas: [0.21, 0.105] });
-  const total = 1000 * 1.21 + 2000 * 1.105 + 100;
-  const r = JSON.parse(JSON.stringify(f.finalesConIva(total, mix.brutos, mix.ivas)));
-  assert.ok(r.porAlicuota);
-  assert.deepStrictEqual(r.finales, [1243.33, 2276.67]);
-  assert.ok(!f.finalesConIva(1000, [400, 600], [0.21, 0]).porAlicuota, "si falta una alícuota, proporcional");
 });
 prueba("Forma de pago aprendida: por proveedor + imputación, y si no por proveedor", () => {
   const L = [
