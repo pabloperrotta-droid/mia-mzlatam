@@ -4,7 +4,7 @@
  *
  * Copia todas las colecciones de Producción (sin las de QA "qa_*", ni las de registro técnico)
  * en un solo JSON comprimido (gzip), y lo guarda en la misma base, en `respaldosDiarios/{AAAA-MM-DD}`,
- * partido en pedazos de 700 KB (`partes/{n}`). Se conservan los últimos 30 días.
+ * partido en pedazos de 700 KB (`partes/{n}`). Se conservan los últimos 15 días (cada respaldo pesa ~7,5 MB comprimido por los PDF guardados; 15 días ≈ 110 MB del 1 GB gratis de la base).
  *
  * No se guarda en el repositorio porque el repositorio es público.
  */
@@ -17,7 +17,7 @@ const db = admin.firestore();
 const COLECCION = "respaldosDiarios";
 const NO_COPIAR = new Set([COLECCION, "presencia", "xubioLog", "xubioPedidos", "respaldos"]);
 const PARTE = 700000;
-const DIAS = 30;
+const DIAS = 15;
 
 const plano = (v) => {
   if (v instanceof admin.firestore.Timestamp) return { __timestamp__: v.toMillis() };

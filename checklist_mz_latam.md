@@ -1187,7 +1187,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 91. Respaldo diario automático
 
 - Recomendación aceptada por el usuario ("el 3 ok").
-- [x] GitHub Actions ("Respaldo diario", `.github/workflows/respaldo.yml` + `respaldo/respaldar.js`) copia todos los días a las 03:13 (hora Argentina) todas las colecciones de Producción (sin las de QA ni registros técnicos) en un JSON comprimido, guardado en la misma base: `respaldosDiarios/{AAAA-MM-DD}` (en partes de 700 KB). Se conservan los últimos 30 días.
+- [x] GitHub Actions ("Respaldo diario", `.github/workflows/respaldo.yml` + `respaldo/respaldar.js`) copia todos los días a las 03:13 (hora Argentina) todas las colecciones de Producción (sin las de QA ni registros técnicos) en un JSON comprimido, guardado en la misma base: `respaldosDiarios/{AAAA-MM-DD}` (en partes de 700 KB). Se conservan los últimos 15 días.
+- [x] Primer respaldo (03/10/2026): 14 MB de datos (7,5 MB comprimido, 11 partes): app, 145 facturas, ediciones, papelera, historial, 13 PDF de órdenes de compra, roles y estados de Xubio. Por el peso de los PDF se guardan 15 días (≈110 MB del 1 GB gratis de la base).
 - [x] No se guarda en el repositorio porque es público.
 - [x] Para bajar un respaldo a archivo: `node respaldo/restaurar_a_archivo.js AAAA-MM-DD` (con la cuenta de servicio).
 
