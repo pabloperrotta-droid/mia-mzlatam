@@ -15,7 +15,9 @@ admin.initializeApp({ credential: admin.credential.applicationDefault(), project
 const db = admin.firestore();
 
 const COLECCION = "respaldosDiarios";
-const NO_COPIAR = new Set([COLECCION, "presencia", "xubioLog", "xubioPedidos", "respaldos"]);
+// Los PDF (órdenes de compra y facturas de proveedores) no entran en el respaldo diario: no cambian, el
+// usuario tiene los originales, y copiarlos 15 días seguidos multiplicaría el espacio usado.
+const NO_COPIAR = new Set([COLECCION, "presencia", "xubioLog", "xubioPedidos", "respaldos", "pdfsOC", "pdfsFacturasPago"]);
 const PARTE = 700000;
 const DIAS = 15;
 
