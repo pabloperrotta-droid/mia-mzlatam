@@ -704,3 +704,61 @@ function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar }) {
     ),
   );
 }
+
+// ---------- La tabla de Proveedores aprende de Pagos (Sección 97) ----------
+// Completa SOLO lo vacío de cada proveedor con lo cargado en sus líneas de Pagos: CUIT (válido), razón
+// social, CBU (el último cargado), MAT/MO e imputación habitual (lo más usado; sin contar gastos
+// internos) y Factura A si alguna línea la tiene. Devuelve la tabla nueva, o null si no cambia nada.
+function aprenderProveedores(tabla, lineas) {
+  if (!tabla || !tabla.length) return null;
+  const por = {};
+  (lineas || []).forEach((l) => {
+    const pr = (l.proveedorPago || "").trim().toUpperCase();
+    pr && (por[pr] = por[pr] || []).push(l);
+  });
+  let cambio = false;
+  const nueva = tabla.map((r) => {
+    const ls = por[(r.proveedor || "").trim().toUpperCase()];
+    if (!ls) return r;
+    const vacio = (k) => !String(r[k] == null ? "" : r[k]).trim(),
+      ultimo = (fn) => {
+        for (let i = ls.length - 1; i >= 0; i--) {
+          const v = fn(ls[i]);
+          if (v) return v;
+        }
+        return "";
+      },
+      masUsado = (fn) => {
+        const c = {};
+        ls.forEach((l) => {
+          const v = fn(l);
+          v && (c[v] = (c[v] || 0) + 1);
+        });
+        return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || "";
+      },
+      p = {};
+    vacio("cuit") && (p.cuit = ultimo((l) => (cuitValido(l.cuit) ? String(l.cuit).trim() : "")));
+    vacio("razonSocial") && (p.razonSocial = ultimo((l) => String(l.razonSocial || "").trim()));
+    vacio("cbu") && (p.cbu = ultimo((l) => String(l.cbu || "").trim()));
+    vacio("actividad") && (p.actividad = masUsado((l) => (l.mat && !l.mo ? "MAT" : l.mo && !l.mat ? "MO" : "")));
+    vacio("factura") && ls.some((l) => l.facturaA) && (p.factura = "A");
+    vacio("imputacion") &&
+      (p.imputacion = masUsado((l) => ((l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS ? "" : (l.proveedor || "").trim().toUpperCase())));
+    Object.keys(p).forEach((k) => p[k] || delete p[k]);
+    if (!Object.keys(p).length) return r;
+    cambio = true;
+    return { ...r, ...p };
+  });
+  return cambio ? nueva : null;
+}
+// La factura en PDF manda en el tipo: si es B o C, el proveedor no es "Factura A" (y al revés).
+function corregirTipoFacturaProveedores(tabla, tipos) {
+  let cambio = false;
+  const nueva = (tabla || []).map((r) => {
+    const letra = tipos[(r.proveedor || "").trim().toUpperCase()];
+    if (!letra || !/^[ABC]$/.test(letra) || (r.factura || "").trim().toUpperCase() === letra) return r;
+    cambio = true;
+    return { ...r, factura: letra };
+  });
+  return cambio ? nueva : null;
+}

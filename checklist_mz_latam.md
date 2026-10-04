@@ -1270,6 +1270,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] "NO" como palabra suelta en el nombre del archivo → **Se paga = NO** (confirmado por el usuario: "si pongo no, es que tiene que ponerse como que no se paga").
 
+- [x] **La tabla de Proveedores aprende de Pagos** (pedido del usuario: "ir alimentando la base de proveedores a medida que yo te voy agregando facturas… el CUIT, CBU… imputación… MO o MAT, Fac A o no"): cada vez que cambian las líneas de Pagos, a cada proveedor de la tabla se le completa **solo lo vacío** con lo cargado en sus líneas: CUIT (si es válido), razón social y CBU (el último cargado), MAT/MO e imputación habitual (lo más usado, sin contar gastos internos) y Factura A si alguna línea la tiene. Nunca pisa lo que ya está cargado.
+- [x] **El PDF corrige el tipo de factura** (pedido del usuario: "si es factura C o B, no es factura A… si yo en el proveedor le puse factura A, deberías sacárselo"): al cargar facturas en PDF, el tipo leído (A/B/C) se guarda en la columna Factura de la tabla de Proveedores (ahora con opciones —, A, B, C). Como queda "B"/"C" y no vacío, el aprendizaje no le vuelve a poner "A".
+- [x] Probado en el navegador: tras cargar la factura de Eurolamp, la tabla quedó con CUIT 33714322589, razón social ILUMINACION EUROLAMP S.R.L., Factura A e imputación EUROLAMP.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".

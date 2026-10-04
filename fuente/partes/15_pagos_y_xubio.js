@@ -628,6 +628,12 @@ function PagosView({
   useEffect(() => {
     ne && fcPdfLimpiarHuerfanos(n);
   }, [fcSt.cargado, n.length]);
+  // La tabla de Proveedores se completa sola (solo lo vacío) con lo cargado en Pagos.
+  useEffect(() => {
+    if (!ne) return;
+    const t = aprenderProveedores(A, n);
+    t && k(t);
+  }, [n, A]);
   function fcDisponibles(cc) {
     if (!cc || !cc.centroCosto) return [];
     const qo = obraKey(cc.cliente, cc.centroCosto),
@@ -886,6 +892,14 @@ function PagosView({
         : x.formaPago && (l[x.formaPago] = Number(l.importe) || 0),
     );
     nuevas.length && ye(nuevas.map(([l]) => l));
+    // Tipo de factura leído del PDF → corrige "Factura A" en la tabla de Proveedores.
+    const tipos = {};
+    filas.forEach((x) => {
+      const pr = ((x.linea && x.linea.proveedorPago) || (x.existente && x.existente.proveedorPago) || x.prov || "").trim().toUpperCase();
+      pr && x.fc && x.fc.letra && x.modo !== "nc" && (tipos[pr] = x.fc.letra);
+    });
+    const tablaCorregida = corregirTipoFacturaProveedores(A, tipos);
+    tablaCorregida && k(tablaCorregida);
     setFcRev(null);
     const res = [];
     for (let i = 0; i < subir.length; i++) {
@@ -3781,6 +3795,8 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                         { style: Ve, value: l.factura || "", onChange: (U) => At(I, { factura: U.target.value }) },
                         React.createElement("option", { value: "" }, "—"),
                         React.createElement("option", { value: "A" }, "A"),
+                        React.createElement("option", { value: "B" }, "B"),
+                        React.createElement("option", { value: "C" }, "C"),
                       ),
                     ),
                     React.createElement(

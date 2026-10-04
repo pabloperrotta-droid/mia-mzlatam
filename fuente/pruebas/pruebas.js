@@ -178,6 +178,20 @@ prueba("Factura PDF: interno + rubro, sub obra abreviada e imputación por una p
   assert.strictEqual(f.imputacionDesdeNombreArchivo("W Morón Pintura.pdf", "SAN ANDRES", ["ARIEL CASAS", "PINTURA"], [], moron), "PINTURA");
   assert.strictEqual(f.imputacionDesdeNombreArchivo("w moron.pdf", "ARIEL CASAS", ["ARIEL CASAS", "PINTURA"], [], moron), "");
 });
+prueba("Proveedores: la tabla aprende de Pagos (solo lo vacío) y el PDF corrige el tipo de factura", () => {
+  const tabla = [{ proveedor: "SAN ANDRES", cuit: "", razonSocial: "YA CARGADA", cbu: "", actividad: "", factura: "", imputacion: "" }, { proveedor: "OTRO", cuit: "1" }];
+  const lineas = [
+    { proveedorPago: "SAN ANDRES", cuit: "20-12345678-6", razonSocial: "FERNANDEZ", cbu: "111", mo: true, facturaA: true, proveedor: "PINTURA", cliente: "WU" },
+    { proveedorPago: "SAN ANDRES", cuit: "20-12345678-6", cbu: "222", mo: true, proveedor: "PINTURA", cliente: "WU" },
+    { proveedorPago: "SAN ANDRES", proveedor: "", cliente: "INTERNO", centroCosto: "VARIOS" },
+  ];
+  const t = JSON.parse(JSON.stringify(f.aprenderProveedores(tabla, lineas)));
+  assert.deepStrictEqual(t[0], { proveedor: "SAN ANDRES", cuit: "20-12345678-6", razonSocial: "YA CARGADA", cbu: "222", actividad: "MO", factura: "A", imputacion: "PINTURA" });
+  assert.strictEqual(f.aprenderProveedores(t, lineas), null, "sin cambios la segunda vez");
+  const c = JSON.parse(JSON.stringify(f.corregirTipoFacturaProveedores(t, { "SAN ANDRES": "C" })));
+  assert.strictEqual(c[0].factura, "C");
+  assert.strictEqual(f.aprenderProveedores(c, lineas), null, "no vuelve a poner A después de la corrección");
+});
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };
   const lineas = [
