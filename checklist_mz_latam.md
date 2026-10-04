@@ -1215,7 +1215,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] La app principal (11.000 líneas) queda en 4 archivos: estado, carga y guardado, acciones y pantalla.
 - [x] Prueba de pantalla automática: abre la app en Chromium con una base simulada (sin datos reales) y recorre todas las pestañas y las de Cashflow buscando errores. Corre en GitHub en cada cambio.
 - [x] La página de QA se volvió a armar (cambian solo los nombres internos comprimidos; el comportamiento es el mismo). Publicado en QA.
-- [ ] Subida a Producción (solo con OK del usuario).
+- [x] Revisión del usuario en QA ("esta ok"): Venta Total, WU CIVIL WORK (OC, PDF, sub obras), editar y deshacer, Pagos, Cashflow, Facturación y EERR.
+- [x] **Subido a Producción** (03/10/2026), con el OK del usuario. `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
