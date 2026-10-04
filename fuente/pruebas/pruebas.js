@@ -71,8 +71,21 @@ prueba("Factura PDF: del texto sale CUIT del emisor (no el nuestro), número, ti
   assert.strictEqual(fc.factura, "00014-00000002");
   assert.strictEqual(fc.letra, "A");
   assert.strictEqual(fc.total, 121000);
+  assert.strictEqual(fc.neto, 100000);
   assert.strictEqual(fc.fecha, "02/10/2026");
   assert.strictEqual(fc.razonSocial, "FERNANDEZ JORGE Y CHUMBA");
+});
+prueba("Factura PDF: el Importe Bruto es el de los productos (sin IVA ni percepciones de IIBB)", () => {
+  const conPercepcion = ["FACTURA", "A", "COD. 01", "Subtotal: $ 200.000,00", "Importe Neto Gravado: $ 200.000,00", "IVA 21%: $ 42.000,00",
+    "Percepción IIBB: $ 6.000,00", "Importe Otros Tributos: $ 6.000,00", "Importe Total: $ 248.000,00"];
+  const a = f.armarFactura(null, f.facturaDesdeTexto(conPercepcion));
+  assert.strictEqual(a.total, 248000);
+  assert.strictEqual(a.neto, 200000);
+  const c = f.armarFactura(null, f.facturaDesdeTexto(["FACTURA", "C", "COD. 011", "Subtotal: $ 80.000,00", "Importe Otros Tributos: $ 0,00", "Importe Total: $ 80.000,00"]));
+  assert.strictEqual(c.letra, "C");
+  assert.strictEqual(c.neto, 80000);
+  const soloQr = f.armarFactura({ cuit: "1", pv: 1, nro: 1, tipo: 1, total: 121000 }, {});
+  assert.strictEqual(soloQr.neto, 0, "Factura A sin el detalle: el bruto queda para completar a mano");
 });
 prueba("Factura PDF: el QR de ARCA manda (nota de crédito C)", () => {
   const d = { ver: 1, fecha: "2026-10-02", cuit: 27111111117, ptoVta: 2, tipoCmp: 13, nroCmp: 15, importe: 3000, moneda: "PES", ctz: 1 };
@@ -115,7 +128,7 @@ prueba("Factura PDF: proveedor con el nombre de MIA (por CUIT) e imputación seg
   assert.strictEqual(f.imputacionSugerida("SAN ANDRES", { cliente: "N", centroCosto: "NUEVA", subObra: "" }, lineas, ["ELECTRICIDAD"]), "");
 });
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
-  const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, letra: "A" };
+  const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };
   const lineas = [
     { id: "a", proveedorPago: "SAN ANDRES", factura: "", importe: 50000, fechaPagado: "" },
     { id: "b", proveedorPago: "SAN ANDRES", factura: "", importe: 121000, fechaPagado: "" },
@@ -125,7 +138,7 @@ prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar na
   assert.strictEqual(f.lineaParaFactura(fc, lineas.slice(0, 2), "SAN ANDRES").linea.id, "b");
   assert.strictEqual(f.lineaParaFactura(fc, lineas.slice(0, 1), "SAN ANDRES"), null);
   const r = f.completarLineaConFactura({ id: "a", factura: "", importe: 120000, importeBruto: 0, cuit: "", razonSocial: "", facturaA: false }, fc, "FERNANDEZ");
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.cambios)), { factura: "00014-00000002", cuit: "20123456786", razonSocial: "FERNANDEZ", importeBruto: 121000, facturaA: true });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.cambios)), { factura: "00014-00000002", cuit: "20123456786", razonSocial: "FERNANDEZ", importeBruto: 100000, facturaA: true });
   assert.strictEqual(r.avisos.length, 1);
 });
 

@@ -705,6 +705,7 @@ function PagosView({
       cc.centroCosto ||
         faltan.push(cc.ambiguo ? "el centro de costo (el nombre del archivo coincide con más de uno)" : "el centro de costo (no está en el nombre del archivo)");
       cc.centroCosto && prov && !imput && faltan.push("la imputación");
+      leida && !fc.neto && faltan.push("el Importe Bruto (no se encontró el importe sin IVA en el PDF)");
       nuevas.push({
         id,
         sePaga: "SI",
@@ -721,7 +722,7 @@ function PagosView({
         mo: !!dp.mo,
         facturaA: fc.letra ? fc.letra === "A" : !!dp.facturaA,
         importe: total || 0,
-        importeBruto: total || 0,
+        importeBruto: (fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto) || 0,
         observaciones: fc.notaCredito ? "Nota de crédito" : "",
       });
       subir.push([id, file, fc, archivo]);
@@ -1948,7 +1949,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
               ),
               thOrd("Factura A", "facturaA", { textAlign: "center" }, "Si está tildado, en Costos se imputa el Importe Bruto tal cual está cargado (sin dividir por 1.21)"),
               thOrd("Importe Final", "importe", { textAlign: "right" }),
-              thOrd("Importe Bruto", "importeBruto", { textAlign: "right" }, "Importe con IVA incluido. La Retención de Ganancias ya no se calcula ni se muestra acá factura por factura: se descarga consolidada por Proveedor con el botón 'Retenciones'"),
+              thOrd("Importe Bruto", "importeBruto", { textAlign: "right" }, "Importe de los productos, sin IVA ni percepciones de Ingresos Brutos (al cargar una factura en PDF se toma de ahí). La Retención de Ganancias ya no se calcula ni se muestra acá factura por factura: se descarga consolidada por Proveedor con el botón 'Retenciones'"),
               thOrd("Diego Levy", "diegoLevy", { textAlign: "right" }),
               thOrd("Efectivo", "efectivo", { textAlign: "right" }),
               thOrd("Transferencia", "transferencia", { textAlign: "right" }),

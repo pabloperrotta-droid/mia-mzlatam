@@ -96,6 +96,18 @@ function facturaDesdeTexto(items) {
     const todos = [...plano.matchAll(/\btotal:?\s*(?:\$|ars)?\s*([\d.]*\d,\d{2}|\d+\.\d{2})\b/gi)];
     todos.length && (r.total = fcLeerImporte(todos[todos.length - 1][1]));
   }
+  // Importe de los productos, sin IVA ni percepciones (va al Importe Bruto).
+  const imp = (re) => {
+      const x = plano.match(re);
+      return x ? fcLeerImporte(x[1]) : 0;
+    },
+    N = "\\s*:?\\s*(?:\\$|ars)?\\s*(-?[\\d.,]*\\d)";
+  const gravado = imp(new RegExp("(?:importe\\s+)?neto\\s+gravado" + N, "i")),
+    noGravado = imp(new RegExp("(?:importe\\s+)?neto\\s+no\\s+gravado" + N, "i")),
+    exento = imp(new RegExp("(?:importe\\s+)?exento" + N, "i")),
+    subtotal = imp(new RegExp("\\bsub\\s*-?\\s*total" + N, "i"));
+  gravado || noGravado || exento ? (r.neto = gravado + noGravado + exento) : subtotal && (r.neto = subtotal);
+  r.conImpuestos = /\biva\s+\d{1,2}(?:[.,]5)?\s*%|otros\s+tributos|percepci[oó]n/i.test(plano);
   m = plano.match(/fecha\s+de\s+emisi[oó]n:?\s*(\d{2}\/\d{2}\/\d{4})/i) || plano.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
   m && (r.fecha = m[1]);
   const cuits = [...plano.matchAll(/\b(\d{2})-?(\d{8})-?(\d)\b/g)].map((x) => x[1] + x[2] + x[3]).filter((c) => cuitValido(c) && c !== NUESTRO_CUIT);
@@ -121,6 +133,7 @@ function armarFactura(qr, txt) {
     letra,
     notaCredito: FC_NOTAS_CREDITO.has(tipo) || (!q.tipo && !!t.notaCredito),
     total: q.total || t.total || 0,
+    neto: t.neto || (letra === "C" && !t.conImpuestos ? q.total || t.total || 0 : 0),
     fecha: q.fecha || t.fecha || "",
     razonSocial: t.razonSocial || "",
     moneda: q.moneda || "PES",
@@ -237,7 +250,8 @@ function completarLineaConFactura(l, fc, razonSocialProveedor) {
   rs && vacio("razonSocial") && (p.razonSocial = rs);
   const total = fc.notaCredito ? -Math.abs(fc.total) : fc.total;
   total && !(Number(l.importe) || 0) && (p.importe = total);
-  total && !(Number(l.importeBruto) || 0) && (p.importeBruto = total);
+  const neto = fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto || 0;
+  neto && !(Number(l.importeBruto) || 0) && (p.importeBruto = neto);
   fc.letra === "A" && !l.facturaA && (p.facturaA = true);
   const avisos = [];
   fc.total && (Number(l.importe) || 0) && Math.abs(Math.abs(Number(l.importe)) - Math.abs(fc.total)) >= 1 &&
