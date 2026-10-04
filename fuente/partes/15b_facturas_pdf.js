@@ -934,3 +934,25 @@ function finalesProporcionales(total, brutos) {
   r[r.length - 1] = Math.round((t - r.slice(0, -1).reduce((a, b) => a + b, 0)) * 100) / 100;
   return r;
 }
+
+// ---------- Forma de pago aprendida (Sección 97) ----------
+// La última línea de Pagos de ese proveedor con esa misma imputación que tenga forma de pago cargada
+// (si no hay, la última de ese proveedor con cualquier imputación) → misma forma de pago: si fue toda por
+// un medio, ese medio; si no, "mixto" con los mismos porcentajes. null si no hay historial.
+const FC_MEDIOS = ["efectivo", "transferencia", "echeq", "diegoLevy"];
+function formaPagoAprendida(lineas, proveedorPago, imputacion) {
+  const P = (proveedorPago || "").trim().toUpperCase(),
+    I = (imputacion || "").trim().toUpperCase();
+  if (!P) return null;
+  const pago = (l) => FC_MEDIOS.reduce((a, k) => a + (Number(l[k]) || 0), 0),
+    delProv = (lineas || []).filter((l) => (l.proveedorPago || "").trim().toUpperCase() === P && pago(l) > 0),
+    conImp = delProv.filter((l) => (l.proveedor || "").trim().toUpperCase() === I),
+    l = (conImp.length ? conImp : delProv).slice(-1)[0];
+  if (!l) return null;
+  const total = pago(l),
+    usados = FC_MEDIOS.filter((k) => (Number(l[k]) || 0) > 0);
+  if (usados.length === 1) return { formaPago: usados[0], mix: null, desde: conImp.length ? "imputacion" : "proveedor" };
+  const mix = {};
+  usados.forEach((k) => (mix[k] = String(Math.round(((Number(l[k]) || 0) / total) * 10000) / 100)));
+  return { formaPago: "mixto", mix, desde: conImp.length ? "imputacion" : "proveedor" };
+}

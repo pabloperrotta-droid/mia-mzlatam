@@ -233,6 +233,20 @@ prueba("Factura con varios centros de costo: partes numeradas en el nombre, brut
   assert.deepStrictEqual(r.finales, [1243.33, 2276.67]);
   assert.ok(!f.finalesConIva(1000, [400, 600], [0.21, 0]).porAlicuota, "si falta una alícuota, proporcional");
 });
+prueba("Forma de pago aprendida: por proveedor + imputación, y si no por proveedor", () => {
+  const L = [
+    { proveedorPago: "ARIEL CASAS", proveedor: "ARIEL CASAS", transferencia: 500, echeq: 500 },
+    { proveedorPago: "ARIEL CASAS", proveedor: "VICTOR NUÑEZ", echeq: 900 },
+    { proveedorPago: "SANZ", proveedor: "SANITARIOS", echeq: 100 },
+    { proveedorPago: "SANZ", proveedor: "SANITARIOS" },
+  ];
+  const j = (x) => JSON.parse(JSON.stringify(x));
+  assert.deepStrictEqual(j(f.formaPagoAprendida(L, "ARIEL CASAS", "VICTOR NUÑEZ")), { formaPago: "echeq", mix: null, desde: "imputacion" });
+  assert.deepStrictEqual(j(f.formaPagoAprendida(L, "ARIEL CASAS", "ARIEL CASAS")), { formaPago: "mixto", mix: { transferencia: "50", echeq: "50" }, desde: "imputacion" });
+  assert.deepStrictEqual(j(f.formaPagoAprendida(L, "ARIEL CASAS", "PINTURA")), { formaPago: "echeq", mix: null, desde: "proveedor" });
+  assert.deepStrictEqual(j(f.formaPagoAprendida(L, "SANZ", "SANITARIOS")), { formaPago: "echeq", mix: null, desde: "imputacion" });
+  assert.strictEqual(f.formaPagoAprendida(L, "NADIE", "X"), null);
+});
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };
   const lineas = [

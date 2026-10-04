@@ -809,6 +809,10 @@ function PagosView({
           ...(parte ? { parteFactura: ip + 1 + "/" + partes.length } : {}),
         },
       });
+      // Forma de pago: la misma que la última vez a ese proveedor (con esa imputación, si la hay).
+      const recien = filas[filas.length - 1],
+        fp = formaPagoAprendida(n, recien.linea.proveedorPago, recien.linea.proveedor);
+      fp && Object.assign(recien, { formaPago: fp.formaPago, mix: fp.mix || undefined, formaAprendida: true });
       });
     }
     // Notas de crédito: por defecto se descuentan de la factura de ese proveedor de esta misma carga, o de
@@ -854,6 +858,10 @@ function PagosView({
       if (!x.impDeArchivo && ("proveedorPago" in cambios || "centroCosto" in cambios || "subObra" in cambios || "cliente" in cambios))
         l.proveedor = fcImputacion(l.proveedorPago, l, "").valor;
       "proveedor" in cambios && (nx.impDeArchivo = true);
+      if (!x.formaManual && ("proveedorPago" in cambios || "proveedor" in cambios || "cliente" in cambios || "centroCosto" in cambios || "subObra" in cambios)) {
+        const fp = formaPagoAprendida(n, l.proveedorPago, l.proveedor);
+        fp ? Object.assign(nx, { formaPago: fp.formaPago, mix: fp.mix || undefined, formaAprendida: true }) : x.formaAprendida && Object.assign(nx, { formaPago: "", mix: undefined, formaAprendida: false });
+      }
       return nx;
     });
   }
@@ -1017,7 +1025,7 @@ function PagosView({
                 value: "",
                 onChange: (e) => {
                   const v = e.target.value;
-                  setFcRev((xs) => xs.map((x) => (x.modo === "nueva" ? { ...x, formaPago: v === "-" ? "" : v } : x)));
+                  setFcRev((xs) => xs.map((x) => (x.modo === "nueva" ? { ...x, formaPago: v === "-" ? "" : v, formaManual: true, formaAprendida: false } : x)));
                 },
                 style: inp,
               },
@@ -1321,9 +1329,15 @@ function PagosView({
                     { style: celda },
                     React.createElement(
                       "select",
-                      { value: x.formaPago, onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, formaPago: e.target.value })), style: { ...inp, width: 120 } },
+                      {
+                        value: x.formaPago,
+                        onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, formaPago: e.target.value, formaManual: true, formaAprendida: false })),
+                        style: { ...inp, width: 120 },
+                      },
                       FORMAS_PAGO.map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
                     ),
+                    x.formaAprendida &&
+                      React.createElement("div", { style: { fontSize: 10.5, color: GREEN, marginTop: 2 } }, "Como la última vez"),
                     x.formaPago === "mixto"
                       ? React.createElement(
                           "div",
@@ -1339,7 +1353,7 @@ function PagosView({
                                 placeholder: "0",
                                 onChange: (e) => {
                                   const v = e.target.value.replace(",", ".").replace(/[^\d.]/g, "");
-                                  fcCambiarFila(x.key, (y) => ({ ...y, mix: { ...(y.mix || {}), [k]: v } }));
+                                  fcCambiarFila(x.key, (y) => ({ ...y, mix: { ...(y.mix || {}), [k]: v }, formaManual: true, formaAprendida: false }));
                                 },
                                 style: { ...inp, width: 46, textAlign: "right", fontSize: 11.5 },
                               }),
