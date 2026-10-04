@@ -227,15 +227,23 @@ function fcPalabrasArchivo(nombre) {
 // HONORARIOS…): igual, sinónimo, o casi igual (hasta 2 letras de diferencia en palabras largas).
 const FC_SINONIMOS_RUBROS = {
   MARKETING: "MKT", PUBLICIDAD: "MKT", FINANZAS: "FINANCIERO", FINANCIERA: "FINANCIERO", FINANCIEROS: "FINANCIERO", BANCO: "FINANCIERO",
-  SUELDO: "SUELDOS", HONORARIO: "HONORARIOS", CONTADOR: "CONTADORES", CONTABLE: "CONTADORES", EXPENSA: "EXPENSAS", ALQUILERES: "ALQUILER",
+  SUELDO: "SUELDOS", SISTEMA: "SISTEMAS", SOFTWARE: "SISTEMAS", INFORMATICA: "SISTEMAS", HONORARIO: "HONORARIOS", CONTADOR: "CONTADORES", CONTABLE: "CONTADORES", EXPENSA: "EXPENSAS", ALQUILERES: "ALQUILER",
 };
-function fcRubroInterno(palabra) {
+// Rubros de gastos internos: los fijos más los creados por el usuario en líneas INTERNO de Pagos.
+function rubrosInternos(lineas) {
+  const set = new Set(RUBROS_GASTOS_INTERNOS);
+  (lineas || []).forEach((l) => {
+    (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS && (l.centroCosto || "").trim() && set.add(l.centroCosto.trim().toUpperCase());
+  });
+  return [...RUBROS_GASTOS_INTERNOS, ...[...set].filter((r) => !RUBROS_GASTOS_INTERNOS.includes(r)).sort()];
+}
+function fcRubroInterno(palabra, lista) {
   const w = normalizarTexto(palabra);
   if (w.length < 3) return "";
-  const rubros = RUBROS_GASTOS_INTERNOS.map((r) => normalizarTexto(r)),
+  const rubros = (lista || RUBROS_GASTOS_INTERNOS).map((r) => normalizarTexto(r)),
     exacto = rubros.find((r) => r === w);
   if (exacto) return exacto;
-  if (FC_SINONIMOS_RUBROS[w]) return FC_SINONIMOS_RUBROS[w];
+  if (FC_SINONIMOS_RUBROS[w] && rubros.includes(FC_SINONIMOS_RUBROS[w])) return FC_SINONIMOS_RUBROS[w];
   if (w.length < 5) return "";
   const cerca = rubros.filter((r) => r.length >= 5 && distanciaLevenshtein(r, w) <= (w.length >= 8 ? 2 : 1));
   return cerca.length === 1 ? cerca[0] : "";
@@ -243,14 +251,14 @@ function fcRubroInterno(palabra) {
 // Centro de costo / sub obra que aparezca en el nombre del archivo (sin formato fijo). Se acepta el nombre
 // completo o sin las palabras del cliente ("w moron" o "moron" → sub obra WU MORON de WU). Si dice
 // "interno", el cliente es INTERNO y el centro de costo es el rubro escrito (ej. "interno sueldos").
-function centroDesdeNombreArchivo(nombre, obras, subObrasMap) {
+function centroDesdeNombreArchivo(nombre, obras, subObrasMap, rubros) {
   const limpiar = (s) => normalizarTexto(String(s || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " ")),
     palabras = fcPalabrasArchivo(nombre),
     archivo = " " + palabras.join(" ") + " ";
   if (palabras.includes("INTERNO") || palabras.includes("INTERNOS")) {
     const k = Math.max(palabras.indexOf("INTERNO"), palabras.indexOf("INTERNOS")),
       orden = [...palabras.slice(k + 1), ...palabras.slice(0, k).reverse()],
-      rubro = orden.map(fcRubroInterno).find(Boolean) || "";
+      rubro = orden.map((w) => fcRubroInterno(w, rubros)).find(Boolean) || "";
     return { cliente: CLIENTE_GASTOS_INTERNOS, centroCosto: rubro, subObra: "" };
   }
   const variantes = (x, cliente) => {
@@ -329,7 +337,7 @@ function proveedorPorRazonSocial(razon, tabla) {
 // Imputación escrita en el nombre del archivo (ej. "... victor nunez wu moron.pdf" → VICTOR NUÑEZ).
 // Primero entre los proveedores de ese centro / sub obra, después entre todos los conocidos. No cuenta
 // si el nombre encontrado es el mismo proveedor al que se le paga.
-function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc) {
+function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc, razonSocial) {
   const limpiar = (x) => normalizarTexto(String(x || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " ")),
     palabras = fcPalabrasArchivo(nombre),
     archivo = " " + palabras.join(" ") + " ",
@@ -357,8 +365,27 @@ function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc) {
       const c = (lista || []).filter((x) => limpiar(x) !== P && limpiar(x).split(" ").some((w) => w.length >= 4 && libres.some((l) => parecida(w, l))));
       return c.length === 1 ? c[0] : "";
     };
-  return porPalabra(disponibles) || porPalabra(todos);
+  const conocida = porPalabra(disponibles) || porPalabra(todos);
+  if (conocida) return conocida;
+  // Lo que sobra del nombre (ej. "natura cabildo pablo morh" → PABLO MORH) es una imputación nueva:
+  // sin números, sin palabras genéricas y sin nada parecido al proveedor de la factura.
+  const delProveedor = limpiar([prov, razonSocial].join(" "))
+      .split(" ")
+      .filter((w) => w.length >= 3),
+    resto = libres.filter(
+      (w) =>
+        w.length >= 3 &&
+        !FC_PALABRAS_GENERICAS.has(w) &&
+        !delProveedor.some((p) => p === w || (p.length >= 5 && w.length >= 5 && distanciaLevenshtein(p, w) <= 2)),
+    );
+  return resto.length && resto.length <= 4 ? resto.join(" ") : "";
 }
+const FC_PALABRAS_GENERICAS = new Set(
+  ("MZ MZLATAM LATAM FACTURA FACTURAS ELECTRONICA FC FAC FCA NC ND NOTA CREDITO DEBITO ORIGINAL COPIA DUPLICADO PV COMP " +
+    "PAGO PAGOS REMITO PDF SRL SAS DEL LAS LOS ENE FEB MAR ABR MAY JUN JUL AGO SEP SET OCT NOV DIC ENERO FEBRERO MARZO ABRIL MAYO " +
+    "JUNIO JULIO AGOSTO SEPTIEMBRE OCTUBRE NOVIEMBRE DICIEMBRE")
+    .split(" "),
+);
 // Número de factura comparable (sin ceros a la izquierda): "14-2" === "00014-00000002".
 function fcClaveNumero(s) {
   const g = String(s || "").match(/\d+/g) || [];

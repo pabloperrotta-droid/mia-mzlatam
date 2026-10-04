@@ -159,7 +159,7 @@ prueba("Factura PDF: nombre de archivo de ARCA + imputación y sub obra escritas
   const subs = { "WU|WU CIVIL WORK": [{ id: "s1", nombre: "WU MORÓN" }, { id: "s2", nombre: "WU FLORES" }] };
   assert.deepStrictEqual(JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo(nombre, obras, subs))), { cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORÓN" });
   assert.strictEqual(f.imputacionDesdeNombreArchivo(nombre, "ARIEL CASA", ["PINTURA"], ["VICTOR NUÑEZ", "ARIEL CASA"]), "VICTOR NUÑEZ");
-  assert.strictEqual(f.imputacionDesdeNombreArchivo("San Andres - Palermo.pdf", "SAN ANDRES", [], ["SAN ANDRES"]), "");
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("San Andres - Palermo.pdf", "SAN ANDRES", [], ["SAN ANDRES"], { cliente: "ARCOS", centroCosto: "PALERMO", subObra: "" }), "");
   assert.strictEqual(f.proveedorPorRazonSocial("CASA ARIEL S.R.L.", [{ proveedor: "Ariel Casa" }]), "ARIEL CASA");
 });
 prueba("Factura PDF: interno + rubro, sub obra abreviada e imputación por una palabra", () => {
@@ -191,6 +191,21 @@ prueba("Proveedores: la tabla aprende de Pagos (solo lo vacío) y el PDF corrige
   const c = JSON.parse(JSON.stringify(f.corregirTipoFacturaProveedores(t, { "SAN ANDRES": "C" })));
   assert.strictEqual(c[0].factura, "C");
   assert.strictEqual(f.aprenderProveedores(c, lineas), null, "no vuelve a poner A después de la corrección");
+});
+prueba("Factura PDF: casos del usuario (NO interno finanzas, sistemas, imputación nueva del nombre)", () => {
+  const c = (n) => JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo(n, [], {})));
+  assert.deepStrictEqual(c("27271455165_011_00001_00000220 NO INTERNO FINANZAS.pdf"), { cliente: "INTERNO", centroCosto: "FINANCIERO", subObra: "" });
+  assert.deepStrictEqual(c("interno 20203505109_001_00002_00005891_MZ_Latam interno sistemas.pdf"), { cliente: "INTERNO", centroCosto: "SISTEMAS", subObra: "" });
+  const nc = { cliente: "NATURA", centroCosto: "NATURA CABILDO", subObra: "" };
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("Factura A-00003-0000002683 natura cabildo pablo morh.pdf", "SOLO HIERROS", [], [], nc, "Solo Hierros SA"), "PABLO MORH");
+  const moron = { cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORON" };
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("Factura Electrónica A (PV 14) A00014-00000013 - MZ LATAM  wu moron eurolmap.pdf", "EUROLAMP", [], [], moron, "ILUMINACION EUROLAMP S.R.L."), "");
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("27374280371_011_00002_00000249 WU MORON AYELEN.pdf", "", [], [], moron, ""), "AYELEN");
+});
+prueba("Rubros internos: se pueden crear nuevos y se reconocen en el nombre del archivo", () => {
+  const r = f.rubrosInternos([{ cliente: "INTERNO", centroCosto: "Seguros" }, { cliente: "WU", centroCosto: "X" }]);
+  assert.ok(r.includes("SEGUROS") && r.includes("SISTEMAS") && !r.includes("X"));
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo("fc interno seguros.pdf", [], {}, r))), { cliente: "INTERNO", centroCosto: "SEGUROS", subObra: "" });
 });
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };

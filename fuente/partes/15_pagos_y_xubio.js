@@ -706,9 +706,9 @@ function PagosView({
   }
   // Imputación de una factura: 1) la escrita en el nombre del archivo; 2) la de la tabla de Proveedores;
   // 3) el mismo proveedor de la factura.
-  function fcImputacion(prov, cc, archivo) {
+  function fcImputacion(prov, cc, archivo, razonSocial) {
     const disp = fcDisponibles(cc),
-      deArchivo = archivo && (cc.cliente || "").trim().toUpperCase() !== CLIENTE_GASTOS_INTERNOS ? imputacionDesdeNombreArchivo(archivo, prov, disp, V, cc) : "";
+      deArchivo = archivo && (cc.cliente || "").trim().toUpperCase() !== CLIENTE_GASTOS_INTERNOS ? imputacionDesdeNombreArchivo(archivo, prov, disp, V, cc, razonSocial) : "";
     if (deArchivo) return { valor: deArchivo, deArchivo: true };
     if (!prov || !cc || !cc.centroCosto || (cc.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS) return { valor: "", deArchivo: false };
     const base = String((G[prov] || {}).imputacion || "").trim() || prov;
@@ -757,8 +757,8 @@ function PagosView({
         filas.push({ ...fila, modo: m.como, lineaId: m.linea.id, existente: m.linea, cambios, avisos });
         continue;
       }
-      const cc = centroDesdeNombreArchivo(archivo, d, p),
-        imp = fcImputacion(prov, cc, archivo),
+      const cc = centroDesdeNombreArchivo(archivo, d, p, rubrosInt),
+        imp = fcImputacion(prov, cc, archivo, fc.razonSocial),
         total = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
         neto = fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto || 0;
       cc.ambiguo && fila.avisos.push("El nombre del archivo coincide con más de un centro de costo: elegilo");
@@ -1106,7 +1106,7 @@ function PagosView({
                 const cc = { cliente: l.cliente, centroCosto: l.centroCosto, subObra: l.subObra },
                   interno = (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS,
                   centros = interno
-                    ? RUBROS_GASTOS_INTERNOS
+                    ? rubrosInt
                     : l.cliente
                       ? Array.from(new Set(d.filter((o) => o.cliente === l.cliente).map((o) => o.obra))).sort()
                       : [],
@@ -1211,7 +1211,20 @@ function PagosView({
                   React.createElement(
                     "td",
                     { style: celda },
-                    sel(l.centroCosto, centros, (v) => fcCambiarLinea(x, { centroCosto: v, subObra: "" }), !centros.includes(l.centroCosto), 150, "Elegí centro"),
+                    interno
+                      ? React.createElement(
+                          "div",
+                          { style: { width: 150, ...(centros.includes(l.centroCosto) ? {} : { outline: "2px solid " + RED, borderRadius: 4 }) } },
+                          React.createElement(CascadingSelect, {
+                            style: { ...inp, width: "100%" },
+                            value: l.centroCosto,
+                            options: centros,
+                            emptyLabel: "Elegí un rubro",
+                            newLabel: "+ Crear nuevo rubro",
+                            onCommit: (v) => fcCambiarLinea(x, { centroCosto: String(v || "").trim().toUpperCase(), subObra: "" }),
+                          }),
+                        )
+                      : sel(l.centroCosto, centros, (v) => fcCambiarLinea(x, { centroCosto: v, subObra: "" }), !centros.includes(l.centroCosto), 150, "Elegí centro"),
                   ),
                   React.createElement(
                     "td",
@@ -1246,7 +1259,22 @@ function PagosView({
                               },
                             }),
                           ),
-                    x.impDeArchivo && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
+                    !interno &&
+                      l.centroCosto &&
+                      l.proveedor &&
+                      !impOk &&
+                      React.createElement(
+                        "button",
+                        {
+                          onClick: () => {
+                            M(l.cliente, l.centroCosto, l.subObra, l.proveedor, {});
+                          },
+                          style: { display: "block", marginTop: 3, border: "none", background: "none", color: "#0969DA", cursor: "pointer", fontSize: 11, padding: 0, textAlign: "left" },
+                          title: "Da de alta " + l.proveedor + " en " + (l.subObra || l.centroCosto) + " con presupuesto 0 (se edita después en Costos)",
+                        },
+                        "+ Crear " + l.proveedor + " en " + (l.subObra || l.centroCosto),
+                      ),
+                    x.impDeArchivo && !interno && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
                   ),
                   React.createElement(
                     "td",
@@ -1344,7 +1372,7 @@ function PagosView({
   function lineaConError(l) {
     const ce = (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS,
       me = obraKey(l.cliente, l.centroCosto),
-      ge = ce ? RUBROS_GASTOS_INTERNOS : l.cliente ? Array.from(new Set(d.filter((B) => B.cliente === l.cliente).map((B) => B.obra))) : [],
+      ge = ce ? rubrosInt : l.cliente ? Array.from(new Set(d.filter((B) => B.cliente === l.cliente).map((B) => B.obra))) : [],
       Ke = ce ? [] : p[me] || [],
       Y = Ke.map((B) => B.nombre),
       se = Y.findIndex((B) => B.trim().toUpperCase() === (l.subObra || "").trim().toUpperCase()),
@@ -1566,6 +1594,8 @@ function PagosView({
     }
     await fcPdfGuardar(l.id, file, fc || {});
   }
+  // Rubros de gastos internos: los fijos más los que se fueron creando en líneas de Pagos (INTERNO).
+  const rubrosInt = useMemo(() => rubrosInternos(n), [n]);
   // CUIT repetidos en la tabla de Proveedores (posibles duplicados con distinto nombre).
   const cuitsRepetidos = useMemo(() => {
     const m = {};
@@ -2806,7 +2836,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                 ce = (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS,
                 me = obraKey(l.cliente, l.centroCosto),
                 ge = ce
-                  ? RUBROS_GASTOS_INTERNOS
+                  ? rubrosInt
                   : l.cliente
                     ? Array.from(new Set(d.filter((B) => B.cliente === l.cliente).map((B) => B.obra))).sort()
                     : [],
@@ -3015,17 +3045,15 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                       : void 0,
                   },
                   ce
-                    ? React.createElement(
-                        "select",
-                        {
-                          style: Ve,
-                          value: l.centroCosto || "",
-                          disabled: !ne || Le(l),
-                          onChange: (B) => Z(l.id, { centroCosto: B.target.value, subObra: "", proveedor: "" }),
-                        },
-                        React.createElement("option", { value: "" }, "Elegí un rubro"),
-                        RUBROS_GASTOS_INTERNOS.map((B) => React.createElement("option", { key: B, value: B }, B)),
-                      )
+                    ? React.createElement(CascadingSelect, {
+                        style: Ve,
+                        value: l.centroCosto,
+                        options: rubrosInt,
+                        disabled: !ne || Le(l),
+                        emptyLabel: "Elegí un rubro",
+                        newLabel: "+ Crear nuevo rubro",
+                        onCommit: (B) => Z(l.id, { centroCosto: String(B || "").trim().toUpperCase(), subObra: "", proveedor: "" }),
+                      })
                     : React.createElement(CascadingSelect, {
                         style: Ve,
                         value: l.centroCosto,

@@ -278,6 +278,7 @@ const CLIENTE_GASTOS_INTERNOS = "INTERNO",
     "CONTADORES",
     "FINANCIERO",
     "DANIEL",
+    "SISTEMAS",
     "VARIOS",
   ];
 function parseFechaMesAnio(n) {
