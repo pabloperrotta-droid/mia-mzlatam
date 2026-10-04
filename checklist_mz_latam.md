@@ -1207,6 +1207,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - Próximas etapas: dividir la app principal (11.000 líneas) en partes más chicas y sumar pruebas de pantalla.
 - No hay nada que subir a Producción en esta etapa (la página es la misma).
 
+### 94. Código ordenado (etapa 2): nombres claros y prueba de pantalla
+
+- Continuación de la Sección 93 (pedido del usuario: "porque no lo haces ahora?").
+- [x] 91 variables y funciones internas de la app principal pasan a tener nombres claros (ej. `Pe` → `ordenesCompraMap`, `Z` → `costoSubobrasMap`, `Oe` → `tipoCambio`, `Me` → `dbRef`, `gi` → `agregarOrdenCompra`, `Br` → `importarOrdenCompraPdf`). Lista completa en `fuente/herramientas/renombres_hechos_2026-10-03.json`.
+- [x] El cambio de nombres se hizo con el motor de TypeScript (entiende el alcance de cada variable) y se verificó token por token que el programa es el mismo salvo esos nombres (182.207 tokens, 803 cambios de nombre esperados, ninguna otra diferencia).
+- [x] La app principal (11.000 líneas) queda en 4 archivos: estado, carga y guardado, acciones y pantalla.
+- [x] Prueba de pantalla automática: abre la app en Chromium con una base simulada (sin datos reales) y recorre todas las pestañas y las de Cashflow buscando errores. Corre en GitHub en cada cambio.
+- [x] La página de QA se volvió a armar (cambian solo los nombres internos comprimidos; el comportamiento es el mismo). Publicado en QA.
+- [ ] Subida a Producción (solo con OK del usuario).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

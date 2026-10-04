@@ -1,6 +1,7 @@
 # Controles automáticos de MIA en cada cambio del código fuente:
 #  1) pruebas de los cálculos (fuente/pruebas/pruebas.js);
-#  2) que MIAQA.html sea exactamente lo que sale de fuente/partes (nadie lo editó a mano).
+#  2) que MIAQA.html sea exactamente lo que sale de fuente/partes (nadie lo editó a mano);
+#  3) prueba de pantalla: abre la app en un navegador con una base simulada y recorre todas las pestañas.
 name: Controles
 on:
   push:
@@ -11,7 +12,7 @@ on:
 jobs:
   controles:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,3 +22,11 @@ jobs:
         run: node fuente/pruebas/pruebas.js
       - name: MIAQA.html coincide con el código fuente
         run: bash fuente/construir.sh revisar
+      - name: Preparar navegador para la prueba de pantalla
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw" && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.48.2
+          npx --prefix "$RUNNER_TEMP/pw" playwright install --with-deps chromium
+      - name: Prueba de pantalla (todas las pestañas)
+        env:
+          PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright
+        run: node fuente/pruebas/pantalla.js
