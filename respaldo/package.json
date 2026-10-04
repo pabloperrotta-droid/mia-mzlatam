@@ -1,0 +1,9 @@
+{
+  "name": "mia-respaldo",
+  "description": "Respaldo diario de la base de MIA (Producción)",
+  "private": true,
+  "main": "respaldar.js",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

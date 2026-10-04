@@ -1,0 +1,32 @@
+# Respaldo diario de la base de MIA (Producción) dentro de la misma base (ver respaldo/respaldar.js).
+# Corre todos los días a las 03:13 (hora Argentina) y se puede correr a mano desde "Actions".
+name: Respaldo diario
+on:
+  schedule:
+    - cron: "13 6 * * *"
+  push:
+    branches: [main]
+    paths: ["respaldo/**", ".github/workflows/respaldo.yml"]
+  workflow_dispatch:
+jobs:
+  respaldar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm install --prefix respaldo --omit=dev --no-audit --no-fund
+      - name: Respaldar
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "Falta el secreto FIREBASE_SERVICE_ACCOUNT"; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          node respaldo/respaldar.js
+      - name: Borrar credenciales temporales
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

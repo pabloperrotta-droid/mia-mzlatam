@@ -1173,13 +1173,37 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (02/10/2026), con el OK explícito del usuario ("SUBILO A PRODUCCION"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
+### 90. Datos repartidos en varios documentos (límite de 1 MB de la base)
+
+- Recomendación aceptada por el usuario ("el 1 ok"): todo MIA se guardaba en un solo documento (`app/state`) que tiene un máximo de 1 MB; el 03/10/2026 pesaba 570 KB y crecía unos 15 KB por día.
+- [x] Las 8 claves más pesadas pasan a su propio documento `app/st_<clave>` (campo `v`): cfSalidasValores, pagosSemanales, pagosMap, cfEgresosValores, cfIngresosValores, subCostoPagosMap, proveedoresMap, subCostoProveedoresMap. El resto sigue en `app/state`.
+- [x] Para la pantalla es un solo estado: al leer se juntan todos los documentos; al guardar, cada cambio va a su documento, todo en un único lote (se guarda todo o nada). Se mantienen el guardado parcial, la combinación con cambios de otros usuarios, el pop-up de error y el registro de fallas (Secciones 82–84).
+- [x] Mudanza automática: la primera vez que se abre la versión nueva, lo que está en `app/state` se copia a los documentos nuevos y se borra de `app/state` (en una transacción).
+- [x] El proceso de Xubio lee las líneas de Pagos del documento nuevo (con respaldo al viejo).
+- [x] Probado en QA: la mudanza dejó los datos idénticos (misma huella SHA-256 antes y después: 3d3c008c8d162cef), `app/state` bajó de 551 KB a 45 KB, una edición de prueba en Salidas Semanales se guardó en `st_cfSalidasValores` (no en `app/state`) y al borrarla quedó todo igual que antes.
+- [x] Publicado en QA.
+- [ ] Subida a Producción (solo con OK del usuario). Al subirla, **todos tienen que cerrar y volver a abrir la app** (o Ctrl+F5): una pestaña con la versión vieja abierta seguiría guardando en el formato anterior y esos cambios se perderían.
+
+### 91. Respaldo diario automático
+
+- Recomendación aceptada por el usuario ("el 3 ok").
+- [x] GitHub Actions ("Respaldo diario", `.github/workflows/respaldo.yml` + `respaldo/respaldar.js`) copia todos los días a las 03:13 (hora Argentina) todas las colecciones de Producción (sin las de QA ni registros técnicos) en un JSON comprimido, guardado en la misma base: `respaldosDiarios/{AAAA-MM-DD}` (en partes de 700 KB). Se conservan los últimos 30 días.
+- [x] No se guarda en el repositorio porque es público.
+- [x] Para bajar un respaldo a archivo: `node respaldo/restaurar_a_archivo.js AAAA-MM-DD` (con la cuenta de servicio).
+
+### 92. Código fuente legible en el repositorio
+
+- Recomendación aceptada por el usuario ("el 4 ok").
+- [x] `fuente/app.js` (código legible de toda la app), `fuente/head.html`, `fuente/tail.html` y `fuente/construir.sh` (arma `MIAQA.html`, y con `prd` también `MIA.prd.html`). Verificado: el script arma exactamente el mismo `MIAQA.html` publicado.
+- [x] `index.jsx` de la raíz queda como versión vieja (anotado en `fuente/README.md`).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
 - [ ] Definir si el link de Artifact de Claude se deja fijo apuntando a `MIAQA.html`/`MIA.prd.html`, o se retira directamente, ya que no puede mostrar datos reales.
 - [ ] Si hay gente del equipo que antes entraba a Producción sin PIN (modo solo lectura), avisarles que ahora necesitan un PIN (el de Admin, Comercial, o un rol nuevo que se les cree).
 - [ ] Refrescar la copia de datos de QA (`qa_`) con los de Producción: no hay nada en el código ni en el repo que lo haga automáticamente, y en la publicación del 27/09 no se pudo hacer (sin acceso a Firebase desde el entorno de trabajo).
-- [ ] `index.jsx` del repo está desactualizado (no tiene Firebase ni las secciones recientes); la fuente real es el código dentro de `MIAQA.html`. Evitar subir `MIAQA.html` a mano desde versiones viejas para no pisar cambios (como pasó con la Sección 72).
+- [x] `index.jsx` del repo está desactualizado; desde la Sección 92 la fuente real está en `fuente/app.js`. Evitar subir `MIAQA.html` a mano desde versiones viejas para no pisar cambios (como pasó con la Sección 72).
 
 ---
 
