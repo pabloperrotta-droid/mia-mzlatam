@@ -48,8 +48,12 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     }
   };
   const clic = async (texto) => {
-    const loc = pagina.getByText(texto, { exact: true }).first();
-    await loc.click({ timeout: 5000 });
+    // Clic directo en el elemento (el aviso diario del tipo de cambio queda encima y taparía el clic real).
+    const ok = await pagina.evaluate((t) => {
+      const el = [...document.querySelectorAll("button,a,div,span")].find((e) => e.children.length < 3 && e.textContent.trim() === t);
+      return el ? (el.click(), true) : false;
+    }, texto);
+    if (!ok) throw new Error("No se encontró el botón " + texto);
     await pagina.waitForTimeout(600);
     const vacio = await pagina.evaluate(() => document.getElementById("root").innerText.trim().length < 50);
     if (vacio) throw new Error("La pantalla quedó en blanco");
