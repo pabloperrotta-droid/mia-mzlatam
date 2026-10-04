@@ -1182,7 +1182,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] El proceso de Xubio lee las líneas de Pagos del documento nuevo (con respaldo al viejo).
 - [x] Probado en QA: la mudanza dejó los datos idénticos (misma huella SHA-256 antes y después: 3d3c008c8d162cef), `app/state` bajó de 551 KB a 45 KB, una edición de prueba en Salidas Semanales se guardó en `st_cfSalidasValores` (no en `app/state`) y al borrarla quedó todo igual que antes.
 - [x] Publicado en QA.
-- [ ] Subida a Producción (solo con OK del usuario). Al subirla, **todos tienen que cerrar y volver a abrir la app** (o Ctrl+F5): una pestaña con la versión vieja abierta seguiría guardando en el formato anterior y esos cambios se perderían.
+- [x] **Subido a Producción** (03/10/2026, 21:45), con el OK explícito del usuario ("si esta ok subilo"). Antes de subir: nadie conectado, respaldo diario del 03/10 hecho y huella del estado de Producción 620b6a95f9fcc0f1 (569 KB). Después de subir, todos tienen que cerrar y volver a abrir la app (o Ctrl+F5).
 
 ### 91. Respaldo diario automático
 
