@@ -758,9 +758,12 @@ function PagosView({
         continue;
       }
       const partes = fcPartesArchivo(archivo),
-        brutosPartes = partes.length >= 2 ? repartirFactura(fc, partes.length) : null,
+        reparto = partes.length >= 2 ? repartirFacturaConIva(fc, partes.length) : null,
+        brutosPartes = reparto ? reparto.brutos : null,
         totalFc = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
-        finalesPartes = brutosPartes ? finalesProporcionales(totalFc, brutosPartes) : null;
+        conIva = reparto ? finalesConIva(totalFc, reparto.brutos, reparto.ivas) : null,
+        finalesPartes = conIva ? conIva.finales : null,
+        mezclaSinDetalle = !!conIva && !conIva.porAlicuota && (fc.alicuotas || []).length > 1;
       (partes.length >= 2 ? partes : [null]).forEach((parte, ip) => {
       const nombreParte = parte || archivo,
         cc = centroDesdeNombreArchivo(nombreParte, d, p, rubrosInt),
@@ -771,8 +774,12 @@ function PagosView({
       parte &&
         fila2.avisos.push(
           "Parte " + (ip + 1) + " de " + partes.length + " de la factura (" + fmt(Math.abs(totalFc)) + ")" +
-            (brutosPartes ? "" : ": no se encontraron los importes de cada renglón, completalos"),
+            (brutosPartes ? "" : ": no se encontraron los importes de cada renglón, completalos") +
+            (conIva && conIva.porAlicuota ? " · IVA " + Math.round(reparto.ivas[ip] * 1000) / 10 + " %" : ""),
         );
+      parte &&
+        mezclaSinDetalle &&
+        fila2.avisos.push("La factura tiene IVA " + fc.alicuotas.join(" % y ") + " % y no dice cuál va en cada renglón: revisá el Importe Final");
       cc.ambiguo && fila2.avisos.push("El nombre del archivo coincide con más de un centro de costo: elegilo");
       !(fc.cuit && fc.factura && fc.total) && fila2.avisos.push("No se pudieron leer todos los datos del PDF: completalos");
       fc.total && !fc.neto && fila2.avisos.push("No se encontró el importe sin IVA (Importe Bruto): completalo");

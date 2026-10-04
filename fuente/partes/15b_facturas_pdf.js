@@ -171,8 +171,21 @@ function facturaDesdeTexto(items) {
         const f = filasNum.find((x) => Math.abs(x.y - i.y) < 3);
         f ? i.x > f.x && ((f.x = i.x), (f.v = Math.abs(fcLeerImporte(i.s)))) : filasNum.push({ y: i.y, x: i.x, v: Math.abs(fcLeerImporte(i.s)) });
       });
-    r.renglones = filasNum.sort((a, b) => b.y - a.y).map((x) => x.v).filter((v) => v > 0);
+    // Alícuota de IVA de cada renglón, si la factura la muestra (ej. "21 %", "21.00", "10,5").
+    filasNum.forEach((f) => {
+      const tasas = lista
+        .filter((i) => Math.abs(i.y - f.y) < 3 && i.x < f.x)
+        .map((i) => String(i.s).trim().match(/^(21|10[.,]5|27|2[.,]5)(?:[.,]0+)?\s*%?$/))
+        .filter(Boolean)
+        .map((m) => Number(m[1].replace(",", ".")) / 100);
+      f.iva = new Set(tasas).size === 1 ? tasas[0] : 0;
+    });
+    const ordenadas = filasNum.sort((a, b) => b.y - a.y).filter((x) => x.v > 0);
+    r.renglones = ordenadas.map((x) => x.v);
+    r.renglonesIva = ordenadas.map((x) => x.iva || 0);
   }
+  // Alícuotas que aparecen en la factura (para saber si mezcla 21 % y 10,5 %).
+  r.alicuotas = [...new Set([...plano.matchAll(/iva[^\d%]{0,12}%?\s*(21|10[.,]5|27|2[.,]5)\b/gi)].map((m) => Number(m[1].replace(",", "."))))];
   r.conImpuestos = /\biva\b|otros\s+tributos|percep|impuestos/i.test(plano);
   m = plano.match(/fecha\s+de\s+emisi[oó]n:?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i) || plano.match(/\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/);
   m && (r.fecha = m[1].replace(/-/g, "/"));
@@ -227,6 +240,8 @@ function armarFactura(qr, txt, arch) {
     moneda: q.moneda || "PES",
     conQr: !!qr,
     renglones: t.renglones || [],
+    renglonesIva: t.renglonesIva || [],
+    alicuotas: t.alicuotas || [],
   };
 }
 // Centro de costo / sub obra que aparezca en el nombre del archivo (sin formato fijo).
@@ -869,23 +884,45 @@ function fcPartesArchivo(nombre) {
 // Brutos de cada parte: n renglones seguidos (en el orden de la factura) que suman el subtotal; si no,
 // cualquier combinación de n renglones que lo sume. null si no se encuentra.
 function repartirFactura(fc, n) {
+  const r = repartirFacturaConIva(fc, n);
+  return r ? r.brutos : null;
+}
+// Igual, pero además devuelve la alícuota de IVA de cada renglón elegido (0 si no se sabe).
+function repartirFacturaConIva(fc, n) {
   const neto = Math.abs(Number(fc.neto) || 0),
-    rs = (fc.renglones || []).filter((v) => v > 0 && v < neto + 1);
+    todos = (fc.renglones || []).map((v, i) => ({ v, iva: (fc.renglonesIva || [])[i] || 0 })),
+    rs = todos.filter((x) => x.v > 0 && x.v < neto + 1);
   if (!neto || n < 2 || rs.length < n) return null;
-  const cerca = (a) => Math.abs(a - neto) < 1;
+  const cerca = (a) => Math.abs(a - neto) < 1,
+    salida = (xs) => ({ brutos: xs.map((x) => x.v), ivas: xs.map((x) => x.iva) });
   for (let i = 0; i + n <= rs.length; i++) {
     const tramo = rs.slice(i, i + n);
-    if (cerca(tramo.reduce((a, b) => a + b, 0))) return tramo;
+    if (cerca(tramo.reduce((a, b) => a + b.v, 0))) return salida(tramo);
   }
   let hallado = null;
   const buscar = (desde, elegidos, suma) => {
     if (hallado) return;
     if (elegidos.length === n) return cerca(suma) && (hallado = elegidos.slice());
     for (let i = desde; i < rs.length && rs.length - i >= n - elegidos.length; i++)
-      suma + rs[i] <= neto + 1 && (elegidos.push(rs[i]), buscar(i + 1, elegidos, suma + rs[i]), elegidos.pop());
+      suma + rs[i].v <= neto + 1 && (elegidos.push(rs[i]), buscar(i + 1, elegidos, suma + rs[i].v), elegidos.pop());
   };
   rs.length <= 40 && buscar(0, [], 0);
-  return hallado;
+  return hallado ? salida(hallado) : null;
+}
+// Importe Final de cada parte con la alícuota de su renglón: bruto + IVA de su alícuota + su parte de
+// las percepciones (en proporción al bruto). Si falta alguna alícuota, o las cuentas no cierran, se
+// reparte todo en proporción al bruto. Devuelve { finales, porAlicuota }.
+function finalesConIva(total, brutos, ivas) {
+  const t = Number(total) || 0,
+    suma = brutos.reduce((a, b) => a + b, 0),
+    conTodas = ivas && ivas.length === brutos.length && ivas.every((x) => x > 0);
+  if (!conTodas || !suma) return { finales: finalesProporcionales(t, brutos), porAlicuota: false };
+  const ivaTot = brutos.reduce((a, b, i) => a + b * ivas[i], 0),
+    perc = t - suma - ivaTot;
+  if (perc < -1) return { finales: finalesProporcionales(t, brutos), porAlicuota: false };
+  const r = brutos.map((b, i) => Math.round((b * (1 + ivas[i]) + (perc * b) / suma) * 100) / 100);
+  r[r.length - 1] = Math.round((t - r.slice(0, -1).reduce((a, b) => a + b, 0)) * 100) / 100;
+  return { finales: r, porAlicuota: true };
 }
 // Importe Final de cada parte: el total repartido en proporción al bruto (su IVA + su parte de las
 // percepciones). Los centavos de redondeo van a la última, así suman exacto el total.
