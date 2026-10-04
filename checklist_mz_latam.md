@@ -1238,6 +1238,23 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA (junto con la Sección 95).
 - [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("ok pasalo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
+### 97. Pagos: cargar facturas de proveedores en PDF (sin dejar de poder tipearlas a mano)
+
+- Pedido del usuario: "me gusta poder importar las facturas. Que no sea excluyente, que la pueda importar el PDF o tipear a mano. Ya que hay algunos que me la mandan después y bueno, yo voy adelantando trabajo". Las facturas le llegan por mail o WhatsApp: las baja y las carga en MIA.
+- Sobre el proveedor (verbatim): "en el proveedor yo lo pongo con un nombre más amigable. Por ejemplo, San Andrés se llama Jorge Fernández y Chumba… tomes como referencia el nombre de fantasía". Sobre la imputación: "la imputación puede ser a otro proveedor, por ejemplo, San Andrés, sería a pintura". Sobre el centro de costo: "te lo pongo en el nombre… del PDF".
+- [x] Botón **"Facturas PDF"** en Pagos (uno o varios archivos), o **arrastrar los PDF sobre la tabla**. De cada PDF se lee el **QR de ARCA** (CUIT del emisor, punto de venta, número, tipo, total, fecha) y también el **texto** (si el QR no se puede leer). Nunca toma el CUIT de MZ LATAM como emisor.
+- [x] **Proveedor**: se busca el CUIT en la tabla de Proveedores (MAT/MO/Fact. A) y se usa **el nombre de MIA** (ej. SAN ANDRES), con MAT/MO, razón social y CBU de esa tabla. Si el CUIT no está, también se busca en líneas de Pagos anteriores con ese CUIT; si no aparece, la línea queda con la razón social del PDF y se avisa que falta el proveedor.
+- [x] **Centro de costo / sub obra**: se toma del **nombre del archivo**, sin formato fijo (ej. "San Andres - Palermo.pdf"); de ahí sale el cliente. Si coincide con más de un centro (mismo nombre en dos clientes) se desempata si el nombre del cliente también está en el archivo; si no, queda vacío y en rojo.
+- [x] **Imputación**: 1) la última usada con ese proveedor en ese mismo centro de costo / sub obra; 2) si no, la más usada con ese proveedor que exista en ese centro; 3) el mismo proveedor si está cargado en ese centro; si no, queda vacía para elegir.
+- [x] **No excluyente con la carga a mano**: si ya existe la línea de esa factura (mismo CUIT + número) solo se le adjunta el PDF; si hay una línea tipeada antes **sin número de factura**, sin pagar, del mismo proveedor (por CUIT o nombre) y con el mismo importe (o sin importe), se **completa esa línea** en vez de crear otra. Solo se llenan campos vacíos: nunca se pisa lo tipeado, y si el importe/CUIT/número no coinciden se avisa.
+- [x] Importe Final e Importe Bruto = total de la factura (con IVA). Factura A según el tipo del comprobante. Las **notas de crédito** entran en negativo, con la observación "Nota de crédito".
+- [x] Al terminar se muestra un resumen por archivo: ✅ cargada, ⚠️ con aviso, ✏️ con algo para completar a mano (lo que falta queda en rojo en la línea).
+- [x] Cada línea con PDF muestra **👁 (ver) y ⬇ (descargar)** al lado del número de factura; las que no tienen, **"+PDF"** para adjuntarlo después (completa solo lo vacío y pide confirmación si algo no coincide).
+- [x] El PDF se guarda aparte, uno por línea (colección `pdfsFacturasPago`, `qa_pdfsFacturasPago` en QA, en pedazos como los PDF de las órdenes de compra): el estado principal no crece. Los PDF de líneas borradas se eliminan solos pasada una semana (así "Deshacer" los recupera mientras tanto).
+- [x] Pruebas: 6 pruebas nuevas de cálculo (lectura del texto y del QR, importes y CUIT, centro desde el nombre del archivo, proveedor e imputación, completar línea a mano sin pisar). Probado en navegador con 3 facturas ficticias (A con QR, A sin QR, nota de crédito C) y re-carga de la misma factura ("ya estaba cargada"). La prueba de pantalla automática ahora carga una factura ficticia cuyos datos están solo en el QR (`fuente/pruebas/factura_prueba_qr.pdf`).
+- [x] Publicado en QA.
+- [ ] Subir a Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

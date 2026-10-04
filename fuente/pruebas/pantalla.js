@@ -64,6 +64,16 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await control("Pestaña " + p, () => clic(p));
     if (p === "Cashflow") for (const s of SUB_CASHFLOW) await control("Cashflow → " + s, () => clic(s));
   }
+  // Sección 97: cargar una factura PDF ficticia cuyos datos están solo en el QR (prueba el lector de QR).
+  await control("Pagos → Facturas PDF (lee el QR de ARCA)", async () => {
+    await clic("Pagos");
+    const entrada = await pagina.$("input[type=file][multiple]");
+    if (!entrada) throw new Error("No está el botón Facturas PDF");
+    await entrada.setInputFiles(path.join(__dirname, "factura_prueba_qr.pdf"));
+    await pagina.waitForFunction(() => document.body.innerText.includes("Facturas PDF cargadas"), null, { timeout: 60000 });
+    const texto = await pagina.evaluate(() => document.body.innerText);
+    if (!texto.includes("00007-00000123")) throw new Error("No leyó el número de factura del QR: " + texto.slice(texto.indexOf("Facturas PDF cargadas"), texto.indexOf("Facturas PDF cargadas") + 300));
+  });
   await navegador.close();
   console.log(fallas ? "\n" + fallas + " control(es) de pantalla fallaron" : "\nTodas las pantallas abren sin errores");
   process.exit(fallas ? 1 : 0);

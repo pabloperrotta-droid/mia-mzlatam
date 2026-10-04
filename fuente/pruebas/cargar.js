@@ -15,6 +15,8 @@ const EXPORTAR = [
   "resolverConCoincidencia", "viernesDeLaSemana", "tasaRegalias", "regaliasPorSemana", "regaliaPendiente",
   "generarSemanas", "moverSemanas", "semanaLabelCorta", "calcularRetencionGananciasProveedor",
   "xubioFirma", "xubioFechaISO", "xubioClaveOP", "ocPdfId", "BORRAR_CAMPO", "ESTADO_EXTERNO",
+  "cuitValido", "fcLeerImporte", "facturaDesdeQr", "facturaDesdeTexto", "armarFactura", "centroDesdeNombreArchivo",
+  "proveedorPorCuit", "imputacionSugerida", "lineaParaFactura", "completarLineaConFactura", "fcClaveNumero",
 ];
 
 function cargar() {
@@ -34,7 +36,7 @@ function cargar() {
     window: { __APP_ENV__: "qa", localStorage: { getItem: nada, setItem: nada } },
     console,
     Intl, Date, Math, JSON, Set, Map, Number, String, Array, Object, RegExp, Promise, Symbol, Error, URL,
-    setTimeout, clearTimeout,
+    setTimeout, clearTimeout, atob, escape,
   };
   vm.createContext(ctx);
   vm.runInContext(codigo + "\nglobalThis.__exp = {" + EXPORTAR.map((n) => n + ": typeof " + n + " === 'undefined' ? undefined : " + n).join(",") + "};", ctx, {

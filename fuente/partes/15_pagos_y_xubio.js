@@ -617,6 +617,155 @@ function PagosView({
         l
       );
     }, [A]);
+  // Sección 97: facturas en PDF (botón "Facturas PDF", arrastrar sobre la tabla, o "+PDF" en cada línea).
+  const fcSt = useFcPdfs(),
+    [fcProg, setFcProg] = useState(""),
+    [fcRes, setFcRes] = useState(null),
+    [fcArrastre, setFcArrastre] = useState(false);
+  useEffect(() => {
+    ne && fcPdfLimpiarHuerfanos(n);
+  }, [fcSt.cargado, n.length]);
+  function fcDisponibles(cc) {
+    if (!cc || !cc.centroCosto) return [];
+    const qo = obraKey(cc.cliente, cc.centroCosto),
+      ao = p[qo] || [],
+      nn = cc.subObra ? ao.findIndex((x) => normalizarTexto(x.nombre) === normalizarTexto(cc.subObra)) : -1,
+      Zt = nn >= 0 ? subCostoKey(qo, ao[nn].id) : null;
+    return (Zt ? g[Zt] || [] : c[qo] || []).map((x) => x.proveedor);
+  }
+  function fcDatosProveedor(prov) {
+    const reg = G[prov] || {},
+      info = (f || {})[prov] || {},
+      hist = Gt[prov] || {},
+      act = (reg.actividad || "").trim().toUpperCase();
+    return {
+      razonSocial: reg.razonSocial || hist.razonSocial || info.razonSocial || "",
+      cbu: reg.cbu || hist.cbu || info.cbu || "",
+      mat: act === "MAT",
+      mo: act === "MO",
+      facturaA: (reg.factura || "").trim().toUpperCase() === "A",
+    };
+  }
+  async function importarFacturasPdf(lista) {
+    const archivos = Array.from(lista || []).filter((x) => /\.pdf$/i.test(x.name || "") || x.type === "application/pdf");
+    if (!archivos.length) {
+      window.alert("Elegí archivos PDF de facturas.");
+      return;
+    }
+    const res = [],
+      nuevas = [],
+      usadas = new Set(),
+      subir = [],
+      base = Date.now().toString(36);
+    for (let i = 0; i < archivos.length; i++) {
+      const file = archivos[i],
+        archivo = file.name || "factura.pdf";
+      setFcProg("Leyendo " + (i + 1) + " de " + archivos.length + "…");
+      let fc;
+      try {
+        fc = await leerFacturaPdf(file);
+      } catch (e) {
+        fc = armarFactura(null, {});
+      }
+      const prov = proveedorPorCuit(fc.cuit, A, f, n),
+        dp = prov ? fcDatosProveedor(prov) : {},
+        leida = !!(fc.cuit && fc.factura && fc.total),
+        repetida = nuevas.find(
+          (x) => fc.cuit && fc.factura && fcSoloDigitos(x.cuit) === fc.cuit && fcClaveNumero(x.factura) === fcClaveNumero(fc.factura),
+        );
+      if (repetida) {
+        res.push({ archivo, tipo: "aviso", texto: "Repetida en esta misma carga: no se agregó de nuevo" });
+        continue;
+      }
+      const m = lineaParaFactura(fc, n.filter((l) => !usadas.has(l.id)), prov, (id) => !!fcSt.metas[id]);
+      if (m) {
+        usadas.add(m.linea.id);
+        const { cambios, avisos } = completarLineaConFactura(m.linea, fc, dp.razonSocial);
+        Object.keys(cambios).length && Z(m.linea.id, cambios);
+        subir.push([m.linea.id, file, fc, archivo]);
+        res.push({
+          archivo,
+          tipo: avisos.length ? "aviso" : "ok",
+          texto:
+            (m.como === "misma"
+              ? "Esa factura ya estaba cargada: se le adjuntó el PDF"
+              : "Se completó la línea que ya tenías de " + (m.linea.proveedorPago || prov || "ese proveedor") +
+                (m.linea.centroCosto ? " (" + m.linea.centroCosto + ")" : "")) +
+            (avisos.length ? ". Ojo: " + avisos.join("; ") : ""),
+        });
+        continue;
+      }
+      const cc = centroDesdeNombreArchivo(archivo, d, p),
+        imput = imputacionSugerida(prov, cc, n, fcDisponibles(cc)),
+        total = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
+        id = base + "-fc" + i + "-" + Math.random().toString(36).slice(2, 8),
+        faltan = [];
+      leida || faltan.push(fc.cuit || fc.factura || fc.total ? "parte de los datos de la factura" : "los datos de la factura (no se pudo leer el PDF)");
+      prov || faltan.push(fc.cuit ? "el proveedor (el CUIT " + fc.cuit + " no está en la tabla de Proveedores)" : "el proveedor");
+      cc.centroCosto ||
+        faltan.push(cc.ambiguo ? "el centro de costo (el nombre del archivo coincide con más de uno)" : "el centro de costo (no está en el nombre del archivo)");
+      cc.centroCosto && prov && !imput && faltan.push("la imputación");
+      nuevas.push({
+        id,
+        sePaga: "SI",
+        cliente: cc.cliente,
+        centroCosto: cc.centroCosto,
+        subObra: cc.subObra,
+        proveedor: imput,
+        proveedorPago: prov,
+        factura: fc.factura,
+        cuit: fc.cuit || "",
+        razonSocial: dp.razonSocial || fc.razonSocial || "",
+        cbu: dp.cbu || "",
+        mat: !!dp.mat,
+        mo: !!dp.mo,
+        facturaA: fc.letra ? fc.letra === "A" : !!dp.facturaA,
+        importe: total || 0,
+        importeBruto: total || 0,
+        observaciones: fc.notaCredito ? "Nota de crédito" : "",
+      });
+      subir.push([id, file, fc, archivo]);
+      res.push({
+        archivo,
+        tipo: faltan.length ? "falta" : "ok",
+        texto:
+          "Línea nueva: " +
+          [prov || fc.razonSocial || "proveedor ?", fc.factura, total ? fmt(total) : "", cc.subObra || cc.centroCosto]
+            .filter(Boolean)
+            .join(" · ") +
+          (fc.notaCredito ? " (nota de crédito, en negativo)" : "") +
+          (faltan.length ? ". Completá a mano: " + faltan.join(", ") : ""),
+      });
+    }
+    nuevas.length && ye(nuevas);
+    for (let i = 0; i < subir.length; i++) {
+      const [id, file, fc, archivo] = subir[i];
+      setFcProg("Guardando PDF " + (i + 1) + " de " + subir.length + "…");
+      try {
+        await fcPdfGuardar(id, file, fc);
+      } catch (e) {
+        res.push({ archivo, tipo: "falta", texto: "No se pudo guardar el PDF: " + ((e && e.message) || e) });
+      }
+    }
+    setFcProg("");
+    setFcRes(res);
+  }
+  async function adjuntarPdfALinea(l, file) {
+    let fc = null;
+    try {
+      fc = await leerFacturaPdf(file);
+    } catch {}
+    if (fc && (fc.cuit || fc.factura || fc.total)) {
+      const prov = proveedorPorCuit(fc.cuit, A, f, n),
+        dp = prov ? fcDatosProveedor(prov) : {},
+        { cambios, avisos } = completarLineaConFactura(l, fc, dp.razonSocial);
+      if (avisos.length && !window.confirm("Ojo con esta factura:\n- " + avisos.join("\n- ") + "\n\n¿Adjuntar el PDF igual? (no se cambia nada de lo que ya está cargado)"))
+        return;
+      !(l.proveedorPago || "").trim() && prov && Object.assign(cambios, { proveedorPago: prov, mat: !!dp.mat, mo: !!dp.mo }, dp.cbu && !l.cbu ? { cbu: dp.cbu } : {});
+      Object.keys(cambios).length && Z(l.id, cambios);
+    }
+    await fcPdfGuardar(l.id, file, fc || {});
+  }
   function te(l, I, U) {
     const ce = String(I || "").trim(),
       me = String(U || "").trim();
@@ -1636,6 +1785,28 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           React.createElement(
             "label",
             {
+              style: { ...smallBtnGhost, ...(fcProg ? { opacity: 0.7, cursor: "wait" } : {}) },
+              title:
+                "Cargar una o varias facturas de proveedores en PDF (también podés arrastrarlas sobre la tabla). Se lee el CUIT, número, tipo y total; el proveedor sale de la tabla de Proveedores por CUIT (con tu nombre, no la razón social) y el centro de costo / sub obra del nombre del archivo (ej. 'San Andres - Palermo.pdf'). Si ya tenías la línea tipeada sin factura, se completa esa en vez de crear otra. El PDF queda guardado en la línea (👁 / ⬇).",
+            },
+            React.createElement(Upload, { size: 13, style: { verticalAlign: "-2px" } }),
+            " " + (fcProg || "Facturas PDF"),
+            React.createElement("input", {
+              type: "file",
+              accept: "application/pdf,.pdf",
+              multiple: true,
+              disabled: !!fcProg,
+              style: { display: "none" },
+              onChange: (l) => {
+                const I = Array.from(l.target.files || []);
+                ((l.target.value = ""), importarFacturasPdf(I));
+              },
+            }),
+          ),
+        ne &&
+          React.createElement(
+            "label",
+            {
               style: smallBtnGhost,
               title:
                 "Importar varias líneas de una vez desde un Excel/CSV con columnas: Se Paga, Cliente, Centro de Costo, Sub Obra, Imputación, Proveedor, Factura, Importe Final, Importe Bruto, Diego Levy, Efectivo, Transferencia, E-Cheq, Observaciones. El resto (MAT/MO, Factura A, CUIT, Razón Social, CBU) se completa solo según la tabla de Proveedores. Si algún Cliente/Centro de Costo/Sub Obra/Imputación/Proveedor no coincide con datos ya cargados, se intenta corregir solo (si hay una única opción razonable); si no se puede, la línea se agrega igual pero queda marcada en rojo para corregir antes de poder pagarla.",
@@ -1661,6 +1832,46 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           ),
       ),
     ),
+    fcRes &&
+      React.createElement(
+        "div",
+        {
+          style: {
+            background: "#fff",
+            border: "1px solid " + BORDER,
+            borderRadius: 10,
+            padding: "10px 14px",
+            marginBottom: 10,
+            fontSize: 12.5,
+            boxShadow: CARD_SHADOW,
+          },
+        },
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+          React.createElement("strong", { style: { color: NAVY } }, "Facturas PDF cargadas (" + fcRes.length + ")"),
+          React.createElement(
+            "button",
+            { onClick: () => setFcRes(null), style: { border: "none", background: "none", cursor: "pointer", color: MUTED, fontSize: 14 }, title: "Cerrar" },
+            "✕",
+          ),
+        ),
+        fcRes.map((r, i) =>
+          React.createElement(
+            "div",
+            { key: i, style: { padding: "3px 0", borderTop: i ? "1px solid #F0EFE9" : "none", lineHeight: 1.4 } },
+            React.createElement("span", null, r.tipo === "ok" ? "✅ " : r.tipo === "aviso" ? "⚠️ " : "✏️ "),
+            React.createElement("span", { style: { color: MUTED } }, r.archivo + ": "),
+            r.texto,
+          ),
+        ),
+        fcRes.some((r) => r.tipo === "falta") &&
+          React.createElement(
+            "div",
+            { style: { color: MUTED, fontSize: 11.5, marginTop: 6 } },
+            "Lo que falta queda en rojo en la línea para completarlo a mano. Tip: si cargás el CUIT del proveedor en la tabla de Proveedores, la próxima factura de ese proveedor sale sola.",
+          ),
+      ),
     // Sección 95: la explicación queda plegada para que la tabla arranque más arriba.
     React.createElement(
       "details",
@@ -1690,7 +1901,22 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
         {
           className: "pagos-scroll",
           ref: attachDragScroll,
-          style: { overflowX: "scroll", overflowY: "auto", maxHeight: "70vh" },
+          onDragOver: (l) => {
+            ne && !fcProg && l.dataTransfer && Array.from(l.dataTransfer.types || []).includes("Files") && (l.preventDefault(), fcArrastre || setFcArrastre(true));
+          },
+          onDragLeave: (l) => {
+            l.currentTarget.contains(l.relatedTarget) || setFcArrastre(false);
+          },
+          onDrop: (l) => {
+            if (!ne || !l.dataTransfer || !l.dataTransfer.files || !l.dataTransfer.files.length) return;
+            (l.preventDefault(), setFcArrastre(false), fcProg || importarFacturasPdf(Array.from(l.dataTransfer.files)));
+          },
+          style: {
+            overflowX: "scroll",
+            overflowY: "auto",
+            maxHeight: "70vh",
+            ...(fcArrastre ? { outline: "3px dashed #C9A227", outlineOffset: -3, background: "#FFFBEA" } : {}),
+          },
         },
         React.createElement(
           "table",
@@ -2242,14 +2468,21 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                 React.createElement(
                   "td",
                   { style: Ae },
-                  React.createElement("input", {
-                    style: Ve,
-                    defaultValue: l.factura,
-                    disabled: !ne || Le(l),
-                    onBlur: (B) => {
-                      B.target.value !== l.factura && Z(l.id, { factura: B.target.value });
-                    },
-                  }),
+                  React.createElement(
+                    "div",
+                    { style: { display: "flex", alignItems: "center", gap: 2 } },
+                    React.createElement("input", {
+                      key: "fc-" + (l.factura || ""),
+                      style: { ...Ve, minWidth: 118 },
+                      title: l.factura || "",
+                      defaultValue: l.factura,
+                      disabled: !ne || Le(l),
+                      onBlur: (B) => {
+                        B.target.value !== l.factura && Z(l.id, { factura: B.target.value });
+                      },
+                    }),
+                    React.createElement(FacturaPdfCelda, { linea: l, puedeEditar: ne && !Le(l), onAdjuntar: adjuntarPdfALinea }),
+                  ),
                 ),
                 React.createElement(
                   "td",

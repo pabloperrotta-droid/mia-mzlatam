@@ -232,7 +232,7 @@
         alertaPresupuesto: false,
         restanteAntesPago: 0,
         ...a,
-        id: t + "-" + r + "-" + Math.random().toString(36).slice(2, 8),
+        id: a.id || t + "-" + r + "-" + Math.random().toString(36).slice(2, 8),
       }));
     setPagosSemanales((a) => [...a, ...o]);
   }
