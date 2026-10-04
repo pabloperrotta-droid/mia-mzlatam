@@ -367,6 +367,8 @@ function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc, razo
     };
   const conocida = porPalabra(disponibles) || porPalabra(todos);
   if (conocida) return conocida;
+  // Sin centro de costo reconocido, lo que sobra podría ser el nombre de la obra: no se adivina.
+  if (!cc || !cc.centroCosto) return "";
   // Lo que sobra del nombre (ej. "natura cabildo pablo morh" → PABLO MORH) es una imputación nueva:
   // sin números, sin palabras genéricas y sin nada parecido al proveedor de la factura.
   const delProveedor = limpiar([prov, razonSocial].join(" "))
