@@ -23,14 +23,11 @@ function cuitValido(s) {
   v === 10 && (v = 9);
   return v === Number(c[10]);
 }
-// Importe escrito a la argentina ("1.234.567,89") o con punto decimal ("1234567.89").
+// Importe escrito a la argentina ("1.234.567,89"), a la inglesa ("18,166,291" / "3,814,921.11") o
+// con punto decimal ("376000.00"). Si hay coma y punto, el último es el decimal; si hay uno solo, es
+// decimal salvo que aparezca varias veces o tenga justo 3 cifras después (separador de miles).
 function fcLeerImporte(s) {
-  let t = String(s == null ? "" : s).replace(/[^\d.,-]/g, "");
-  if (!t) return 0;
-  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
-  else if ((t.match(/\./g) || []).length > 1 || /\.\d{3}$/.test(t)) t = t.replace(/\./g, "");
-  const n = Number(t);
-  return isFinite(n) ? n : 0;
+  return leerNumeroFlexible(s);
 }
 // Códigos de comprobante de ARCA → letra y si es nota de crédito.
 const FC_TIPOS = {
@@ -74,46 +71,117 @@ function facturaDesdeQr(texto) {
     fecha: /^\d{4}-\d{2}-\d{2}/.test(d.fecha || "") ? d.fecha.slice(8, 10) + "/" + d.fecha.slice(5, 7) + "/" + d.fecha.slice(0, 4) : "",
   };
 }
-// Textos de la primera página (como los da pdf.js) → lo que se pueda reconocer.
+// Importe que acompaña a una etiqueta ("Subtotal", "Total", ...) según la posición en la hoja: en el
+// mismo texto, a la derecha en el mismo renglón, o debajo (facturas con los totales en tabla). Los
+// textos vienen de pdf.js con su posición ({ s, x, y, w, h }; y crece hacia arriba).
+function fcEsImporte(s) {
+  const t = String(s || "").trim();
+  return /\d/.test(t) && /^(?:\$|ars)?\s*-?\s*\$?\s*[\d.,]*\d\s*-?$/i.test(t) && fcSoloDigitos(t).length < 16;
+}
+function fcValorJunto(items, re, abajoDeTodo) {
+  let etiquetas = items.filter((i) => re.test(i.s));
+  if (!etiquetas.length) return null;
+  if (abajoDeTodo) {
+    const ymin = Math.min(...etiquetas.map((i) => i.y));
+    etiquetas = etiquetas.filter((i) => Math.abs(i.y - ymin) < 3);
+  }
+  etiquetas.sort((a, b) => b.y - a.y || a.x - b.x);
+  for (const L of etiquetas) {
+    const resto = L.s.replace(re, "").replace(/^[\s:]+/, "");
+    if (fcEsImporte(resto)) return fcLeerImporte(resto);
+    if (L.w == null) continue;
+    const alto = Math.max(L.h || 0, 6),
+      derecha = items
+        .filter((i) => i !== L && Math.abs(i.y - L.y) <= alto * 0.6 && i.x >= L.x + L.w - 2 && String(i.s).trim() !== "$")
+        .sort((a, b) => a.x - b.x);
+    if (derecha.length && fcEsImporte(derecha[0].s)) return fcLeerImporte(derecha[0].s);
+    const abajo = items
+      .filter((i) => i.y < L.y - 1 && i.y > L.y - alto * 3.5 && i.x < L.x + L.w + 6 && i.x + (i.w || 0) > L.x - 6 && fcEsImporte(i.s))
+      .sort((a, b) => b.y - a.y);
+    if (abajo.length) return fcLeerImporte(abajo[0].s);
+  }
+  return null;
+}
+// Textos de la primera página → lo que se pueda reconocer. Acepta textos sueltos (sin posición) o
+// los objetos de pdf.js con posición.
 function facturaDesdeTexto(items) {
-  const plano = (items || []).join(" ").replace(/\s+/g, " "),
+  const lista = (items || []).map((i) => (typeof i === "string" ? { s: i, x: 0, y: 0 } : i)).filter((i) => String(i.s || "").trim()),
+    conPos = lista.some((i) => i.w != null),
+    plano = lista.map((i) => i.s).join(" ").replace(/\s+/g, " "),
     r = {};
   let m =
     plano.match(/punto\s+de\s+venta:?\s*(\d{1,5})\s*comp\.?\s*nro\.?:?\s*(\d{1,8})/i) ||
-    plano.match(/n(?:ro|[°º])?\.?:?\s*(\d{4,5})\s*-\s*(\d{8})\b/i) ||
-    plano.match(/\b(\d{4,5})\s*-\s*(\d{8})\b/);
+    plano.match(/(?:^|[^\d])[ABCM]?\s?(\d{4,5})\s*-\s*(\d{8})(?!\d)/);
   m && ((r.pv = Number(m[1])), (r.nro = Number(m[2])));
   m = plano.match(/c[oó]d(?:igo)?\.?\s*(?:n[°º]\.?\s*)?(\d{1,3})\b/i);
   m && FC_TIPOS[Number(m[1])] && (r.tipo = Number(m[1]));
   if (!r.tipo) {
-    const letra = (plano.match(/\b(?:factura|nota\s+de\s+cr[eé]dito|nota\s+de\s+d[eé]bito)\s+(?:electr[oó]nica\s+)?([ABCM])\b/i) || [])[1];
+    const letra =
+      (plano.match(/\b(?:factura|nota\s+de\s+cr[eé]dito|nota\s+de\s+d[eé]bito)\s+(?:electr[oó]nica\s+)?([ABCM])\b/i) || [])[1] ||
+      (plano.match(/(?:^|[^\w])([ABCM])\s?\d{4,5}\s*-\s*\d{8}(?!\d)/) || [])[1];
     letra && (r.letra = letra.toUpperCase());
   }
   /nota\s+de\s+cr[eé]dito/i.test(plano) && (r.notaCredito = true);
-  m = plano.match(/importe\s+total:?\s*(?:\$|ars)?\s*(-?[\d.,]+\d)/i);
-  if (m) r.total = fcLeerImporte(m[1]);
-  else {
-    const todos = [...plano.matchAll(/\btotal:?\s*(?:\$|ars)?\s*([\d.]*\d,\d{2}|\d+\.\d{2})\b/gi)];
-    todos.length && (r.total = fcLeerImporte(todos[todos.length - 1][1]));
-  }
-  // Importe de los productos, sin IVA ni percepciones (va al Importe Bruto).
-  const imp = (re) => {
-      const x = plano.match(re);
-      return x ? fcLeerImporte(x[1]) : 0;
+  // Importes: primero por posición (sirve para cualquier diseño), si no, por el texto corrido.
+  const pos = (re, abajo) => (conPos ? fcValorJunto(lista, re, abajo) : null),
+    N = "\\s*:?\\s*(?:\\$|ars)?\\s*(-?[\\d.,]*\\d)",
+    plan = (re) => {
+      const x = plano.match(new RegExp(re + N, "i"));
+      return x ? fcLeerImporte(x[1]) : null;
     },
-    N = "\\s*:?\\s*(?:\\$|ars)?\\s*(-?[\\d.,]*\\d)";
-  const gravado = imp(new RegExp("(?:importe\\s+)?neto\\s+gravado" + N, "i")),
-    noGravado = imp(new RegExp("(?:importe\\s+)?neto\\s+no\\s+gravado" + N, "i")),
-    exento = imp(new RegExp("(?:importe\\s+)?exento" + N, "i")),
-    subtotal = imp(new RegExp("\\bsub\\s*-?\\s*total" + N, "i"));
-  gravado || noGravado || exento ? (r.neto = gravado + noGravado + exento) : subtotal && (r.neto = subtotal);
-  r.conImpuestos = /\biva\s+\d{1,2}(?:[.,]5)?\s*%|otros\s+tributos|percepci[oó]n/i.test(plano);
-  m = plano.match(/fecha\s+de\s+emisi[oó]n:?\s*(\d{2}\/\d{2}\/\d{4})/i) || plano.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
-  m && (r.fecha = m[1]);
+    importe = (rePos, reTexto, abajo) => {
+      const a = pos(rePos, abajo);
+      return a != null ? a : plan(reTexto);
+    };
+  const total = importe(/^\s*(?:importe\s+)?total\b(?!\s+(?:gravado|neto))/i, "(?:importe\\s+)?\\btotal\\b", true);
+  total && (r.total = Math.abs(total));
+  const gravado = importe(/^\s*(?:importe\s+)?(?:neto|sub\s*-?\s*total)\s+gravado\b/i, "(?:importe\\s+)?(?:neto|sub\\s*-?\\s*total)\\s+gravado") || 0,
+    noGravado = importe(/^\s*(?:importe\s+)?(?:neto|sub\s*-?\s*total)\s+no\s+gravado\b/i, "(?:importe\\s+)?(?:neto|sub\\s*-?\\s*total)\\s+no\\s+gravado") || 0,
+    exento = importe(/^\s*(?:importe\s+|neto\s+)?exento\b/i, "(?:importe\\s+|neto\\s+)?exento") || 0,
+    subtotal = importe(/^\s*sub\s*-?\s*total\s*:?\s*$|^\s*sub\s*-?\s*total\s*:?\s*\$?\s*[\d.,]+\s*$/i, "\\bsub\\s*-?\\s*total", true) || 0;
+  gravado || noGravado || exento ? (r.neto = Math.abs(gravado + noGravado + exento)) : subtotal && (r.neto = Math.abs(subtotal));
+  // Totales sin títulos legibles (ej. títulos dibujados como imagen): un renglón de importes donde el
+  // mayor es la suma de los demás → ese es el total y el primero (a la izquierda) el subtotal.
+  if (conPos && (!r.total || !r.neto)) {
+    const nums = lista.filter((i) => fcEsImporte(i.s)).map((i) => ({ ...i, v: Math.abs(fcLeerImporte(i.s)) })).filter((i) => i.v > 100);
+    const filas = [];
+    nums.forEach((i) => {
+      const f = filas.find((x) => Math.abs(x[0].y - i.y) < 3);
+      f ? f.push(i) : filas.push([i]);
+    });
+    for (const f of filas.filter((x) => x.length >= 3).sort((a, b) => a[0].y - b[0].y)) {
+      const mayor = f.reduce((a, b) => (b.v > a.v ? b : a)),
+        otros = f.filter((i) => i !== mayor).sort((a, b) => a.x - b.x),
+        suma = otros.reduce((a, b) => a + b.v, 0);
+      if (Math.abs(suma - mayor.v) < 1 && (!r.total || Math.abs(r.total - mayor.v) < 1)) {
+        r.total || (r.total = mayor.v);
+        r.neto || (r.neto = otros[0].v);
+        break;
+      }
+    }
+  }
+  r.neto && r.total && r.neto > r.total + 1 && delete r.neto;
+  r.conImpuestos = /\biva\b|otros\s+tributos|percep|impuestos/i.test(plano);
+  m = plano.match(/fecha\s+de\s+emisi[oó]n:?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i) || plano.match(/\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/);
+  m && (r.fecha = m[1].replace(/-/g, "/"));
   const cuits = [...plano.matchAll(/\b(\d{2})-?(\d{8})-?(\d)\b/g)].map((x) => x[1] + x[2] + x[3]).filter((c) => cuitValido(c) && c !== NUESTRO_CUIT);
   cuits.length && (r.cuit = cuits[0]);
+  // Código de barras viejo de AFIP: CUIT(11) tipo(3) punto de venta(4-5) CAE(14) vencimiento(8) dígito.
+  const barras = plano.match(/\b(\d{11})(\d{3})(\d{4,5})(\d{14})(20\d{6})\d\b/);
+  if (barras && cuitValido(barras[1]) && barras[1] !== NUESTRO_CUIT) {
+    r.cuit || (r.cuit = barras[1]);
+    r.tipo || (FC_TIPOS[Number(barras[2])] && (r.tipo = Number(barras[2])));
+    r.pv || (r.pv = Number(barras[3]));
+  }
   m = plano.match(/raz[oó]n\s+social:?\s*(.+?)\s+(?:fecha|domicilio|cuit|condici[oó]n|ingresos|punto)/i);
-  m && fcSoloDigitos(m[1]).length < 6 && (r.razonSocial = m[1].trim().slice(0, 80));
+  m && fcSoloDigitos(m[1]).length < 6 && !/mz\s*latam/i.test(m[1]) && (r.razonSocial = m[1].trim().slice(0, 80));
+  // Si no está rotulada: el primer nombre de empresa (SRL, SA, SAS…) que no sea MZ LATAM.
+  if (!r.razonSocial) {
+    const emp = lista.map((i) => String(i.s).replace(/[\/|]+\s*$/, "").trim()).find(
+      (t) => /\b(?:S\.?\s?R\.?\s?L|S\.?\s?A\.?\s?S?|S\.?\s?H|S\.?\s?C\.?\s?A)\.?$/i.test(t) && !/mz\s*latam/i.test(t) && t.length <= 60 && fcSoloDigitos(t).length < 4 && /[a-z]{3}/i.test(t),
+    );
+    emp && (r.razonSocial = emp);
+  }
   return r;
 }
 // Nombre con el que ARCA descarga los comprobantes: CUIT-emisor_tipo_puntoDeVenta_número (ej.
@@ -410,11 +478,15 @@ async function fcLeerQrDePagina(page) {
       if (c) return c.rawValue;
     } catch {}
   }
+  // jsQR encuentra mejor el QR cuando ocupa más lugar en la imagen: primero la hoja entera y después
+  // pedazos superpuestos (mitad de ancho × un tercio de alto), que cubren cualquier ubicación del QR.
   const jsQR = await fcCargarJsQr(),
-    zonas = [
-      [0, 0, canvas.width, canvas.height],
-      [0, Math.floor(canvas.height / 2), canvas.width, Math.ceil(canvas.height / 2)],
-    ];
+    W = canvas.width,
+    H = canvas.height,
+    tw = Math.floor(W / 2),
+    th = Math.floor(H / 3),
+    zonas = [[0, 0, W, H]];
+  for (let y = H - th; y >= 0; y -= Math.floor(th / 2)) for (let x = 0; x + tw <= W; x += Math.floor(tw / 2)) zonas.push([x, y, tw, th]);
   for (const [x, y, w, h] of zonas) {
     const img = ctx.getImageData(x, y, w, h),
       r = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
@@ -426,7 +498,9 @@ async function leerFacturaPdf(file) {
   if (!window.pdfjsLib) throw new Error("No se pudo cargar el lector de PDF (pdf.js).");
   const doc = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise,
     page = await doc.getPage(1),
-    items = (await page.getTextContent()).items.map((i) => (i.str || "").trim()).filter(Boolean);
+    items = (await page.getTextContent()).items
+      .filter((i) => (i.str || "").trim())
+      .map((i) => ({ s: i.str.trim(), x: i.transform[4], y: i.transform[5], w: i.width || 0, h: i.height || Math.abs(i.transform[3]) || 8 }));
   let qr = null;
   try {
     qr = facturaDesdeQr(await fcLeerQrDePagina(page));
@@ -493,5 +567,68 @@ function FacturaPdfCelda({ linea: l, puedeEditar, onAdjuntar }) {
         },
         "+PDF",
       ),
+  );
+}
+
+// ---------- Alta de proveedor (tabla de Proveedores) desde Pagos o desde la revisión de facturas ----------
+function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar }) {
+  const [v, setV] = React.useState({ actividad: "", facturaA: false, cuit: "", razonSocial: "", cbu: "", imputacion: "", ...(inicial || {}) }),
+    campo = { width: "100%", boxSizing: "border-box", fontSize: 11.5, padding: "4px 6px", border: "1px solid #D0D0D0", borderRadius: 4, marginBottom: 6, color: TEXT, background: "#fff" },
+    etiqueta = (t) => React.createElement("label", { style: { fontSize: 10, color: MUTED, display: "block", marginBottom: 2 } }, t),
+    texto = (k, ph, extra) =>
+      React.createElement("input", { style: campo, value: v[k] || "", placeholder: ph, onChange: (e) => setV((x) => ({ ...x, [k]: e.target.value })), ...(extra || {}) }),
+    cuitMal = fcSoloDigitos(v.cuit) && !cuitValido(v.cuit),
+    listaId = "np-imp-" + React.useMemo(() => Math.random().toString(36).slice(2, 8), []);
+  return React.createElement(
+    "div",
+    { style: { width: 260 } },
+    React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: NAVY, marginBottom: 6 } }, "Nuevo proveedor: ", v.nombre),
+    etiqueta("Nombre en MIA"),
+    texto("nombre", "Ej. SAN ANDRES", { onChange: (e) => setV((x) => ({ ...x, nombre: e.target.value.toUpperCase() })) }),
+    React.createElement(
+      "div",
+      { style: { display: "flex", gap: 8 } },
+      React.createElement(
+        "div",
+        { style: { flex: 1 } },
+        etiqueta("Actividad"),
+        React.createElement(
+          "select",
+          { style: campo, value: v.actividad, onChange: (e) => setV((x) => ({ ...x, actividad: e.target.value })) },
+          React.createElement("option", { value: "" }, "(ninguna)"),
+          React.createElement("option", { value: "MAT" }, "MAT"),
+          React.createElement("option", { value: "MO" }, "MO"),
+        ),
+      ),
+      React.createElement(
+        "label",
+        { style: { fontSize: 11, color: NAVY, display: "flex", alignItems: "center", gap: 5, marginTop: 10 } },
+        React.createElement("input", { type: "checkbox", checked: !!v.facturaA, onChange: (e) => setV((x) => ({ ...x, facturaA: e.target.checked })) }),
+        "Factura A",
+      ),
+    ),
+    etiqueta("CUIT"),
+    texto("cuit", "20-12345678-9", cuitMal ? { style: { ...campo, borderColor: RED, background: "#FBEAE7" }, title: "El CUIT no es válido" } : null),
+    etiqueta("Razón social"),
+    texto("razonSocial", "Como figura en la factura"),
+    etiqueta("CBU"),
+    texto("cbu", "CBU o alias"),
+    etiqueta("Imputación habitual (opcional)"),
+    texto("imputacion", "Ej. PINTURA", { list: listaId, onChange: (e) => setV((x) => ({ ...x, imputacion: e.target.value.toUpperCase() })) }),
+    React.createElement("datalist", { id: listaId }, (imputaciones || []).map((x) => React.createElement("option", { key: x, value: x }))),
+    React.createElement(
+      "div",
+      { style: { display: "flex", gap: 6, marginTop: 2 } },
+      React.createElement(
+        "button",
+        {
+          disabled: !String(v.nombre || "").trim(),
+          onClick: () => onCrear({ ...v, nombre: String(v.nombre || "").trim().toUpperCase(), cuit: String(v.cuit || "").trim() }),
+          style: { ...smallBtnPrimary, padding: "4px 10px", fontSize: 11 },
+        },
+        "Crear",
+      ),
+      React.createElement("button", { onClick: onCancelar, style: { ...smallBtnGhost, padding: "4px 10px", fontSize: 11 } }, "Cancelar"),
+    ),
   );
 }

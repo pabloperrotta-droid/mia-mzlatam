@@ -87,6 +87,35 @@ prueba("Factura PDF: el Importe Bruto es el de los productos (sin IVA ni percepc
   const soloQr = f.armarFactura({ cuit: "1", pv: 1, nro: 1, tipo: 1, total: 121000 }, {});
   assert.strictEqual(soloQr.neto, 0, "Factura A sin el detalle: el bruto queda para completar a mano");
 });
+// Diseños reales distintos (datos inventados, mismas posiciones): totales a la derecha, totales en
+// tabla con el título arriba, números a la inglesa, y títulos que no se pueden leer (son imagen).
+const it = (s, x, y, w = 40, h = 9) => ({ s, x, y, w, h });
+prueba("Factura PDF: importes por posición en distintos diseños de factura", () => {
+  // Totales a la derecha, pero en el texto los importes quedan corridos respecto de su título.
+  const a = f.facturaDesdeTexto([it("Cuit: 20-12345678-6", 380, 760, 90), it("Nº A00014-00000013", 380, 790, 100), it("COMERCIAL PRUEBA S.R.L. /", 80, 720, 120),
+    it("$ 1000.00", 480, 120, 50), it("Subtotal:", 390, 120, 40), it("Neto gravado:", 390, 105, 55), it("$ 1000.00", 480, 105, 50),
+    it("IVA 21%:", 390, 60, 40), it("$ 210.00", 480, 60, 50), it("TOTAL:", 390, 40, 35), it("$ 1210.00", 480, 40, 50)]);
+  assert.strictEqual(a.total, 1210);
+  assert.strictEqual(a.neto, 1000);
+  assert.strictEqual(a.razonSocial, "COMERCIAL PRUEBA S.R.L.");
+  assert.strictEqual(f.armarFactura(null, a).factura, "00014-00000013");
+  // Totales en tabla (título arriba, importe abajo) y números a la inglesa.
+  const b = f.facturaDesdeTexto([it("Sub Total", 30, 100, 45), it("Impuestos", 110, 100, 45), it("Total", 480, 100, 25),
+    it("18,000,000", 20, 88, 60), it("500500.00", 100, 88, 45), it("3,780,000.00", 360, 88, 60), it("22,280,500.00", 470, 88, 65)]);
+  assert.strictEqual(b.neto, 18000000);
+  assert.strictEqual(b.total, 22280500);
+  // Mismo caso pero sin títulos legibles: el renglón donde un importe es la suma de los demás.
+  const c = f.facturaDesdeTexto([it("18,000,000", 20, 88, 60), it("500500.00", 100, 88, 45), it("3,780,000.00", 360, 88, 60), it("22,280,500.00", 470, 88, 65),
+    it("307083776150010000286405811971722202610121", 20, 20, 300)]);
+  assert.strictEqual(c.neto, 18000000);
+  assert.strictEqual(c.total, 22280500);
+  assert.strictEqual(c.cuit, "30708377615", "CUIT del código de barras de AFIP");
+  // "Subtotal Gravado" (y no el "Subtotal" de la columna de los renglones de arriba).
+  const d = f.facturaDesdeTexto([it("Subtotal", 520, 600, 40), it("13,863.21", 520, 588, 45), it("Subtotal Gravado :", 400, 120, 75), it("$23,878.76", 515, 120, 50),
+    it("Total :", 455, 60, 30), it("$28,893.30", 510, 60, 50)]);
+  assert.strictEqual(d.neto, 23878.76);
+  assert.strictEqual(d.total, 28893.3);
+});
 prueba("Factura PDF: el QR de ARCA manda (nota de crédito C)", () => {
   const d = { ver: 1, fecha: "2026-10-02", cuit: 27111111117, ptoVta: 2, tipoCmp: 13, nroCmp: 15, importe: 3000, moneda: "PES", ctz: 1 };
   const qr = f.facturaDesdeQr("https://www.afip.gob.ar/fe/qr/?p=" + Buffer.from(JSON.stringify(d)).toString("base64"));
@@ -146,6 +175,19 @@ prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar na
   const r = f.completarLineaConFactura({ id: "a", factura: "", importe: 120000, importeBruto: 0, cuit: "", razonSocial: "", facturaA: false }, fc, "FERNANDEZ");
   assert.deepStrictEqual(JSON.parse(JSON.stringify(r.cambios)), { factura: "00014-00000002", cuit: "20123456786", razonSocial: "FERNANDEZ", importeBruto: 100000, facturaA: true });
   assert.strictEqual(r.avisos.length, 1);
+});
+
+prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
+  assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
+  assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);
+  assert.strictEqual(f.evaluarCuenta("=(1.500+2.300)*2"), 7600);
+  assert.strictEqual(f.evaluarCuenta("=50%*80.000"), 40000);
+  assert.strictEqual(f.evaluarCuenta("1000x3"), 3000);
+  assert.strictEqual(f.evaluarCuenta("=10/3"), 3.33);
+  assert.strictEqual(f.evaluarCuenta("=1.234,5+0,5"), 1235);
+  assert.strictEqual(f.evaluarCuenta("=13000/"), null);
+  assert.strictEqual(f.evaluarCuenta("=alert(1)"), null);
+  assert.ok(f.esCuenta("=5") && f.esCuenta("13.000/4") && f.esCuenta("100-20") && !f.esCuenta("-1000") && !f.esCuenta("13.000"));
 });
 
 console.log("Foto del comportamiento actual (" + Object.keys(casos).length + " funciones):");

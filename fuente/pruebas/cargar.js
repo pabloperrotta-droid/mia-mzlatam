@@ -15,7 +15,7 @@ const EXPORTAR = [
   "resolverConCoincidencia", "viernesDeLaSemana", "tasaRegalias", "regaliasPorSemana", "regaliaPendiente",
   "generarSemanas", "moverSemanas", "semanaLabelCorta", "calcularRetencionGananciasProveedor",
   "xubioFirma", "xubioFechaISO", "xubioClaveOP", "ocPdfId", "BORRAR_CAMPO", "ESTADO_EXTERNO",
-  "cuitValido", "fcLeerImporte", "facturaDesdeQr", "facturaDesdeTexto", "armarFactura", "centroDesdeNombreArchivo",
+  "cuitValido", "evaluarCuenta", "esCuenta", "leerNumeroFlexible", "fcLeerImporte", "facturaDesdeQr", "facturaDesdeTexto", "armarFactura", "centroDesdeNombreArchivo",
   "proveedorPorCuit", "proveedorPorRazonSocial", "facturaDesdeNombreArchivo", "imputacionDesdeNombreArchivo", "lineaParaFactura", "completarLineaConFactura", "fcClaveNumero",
 ];
 

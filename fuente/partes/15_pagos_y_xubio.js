@@ -621,7 +621,9 @@ function PagosView({
   const fcSt = useFcPdfs(),
     [fcProg, setFcProg] = useState(""),
     [fcRes, setFcRes] = useState(null),
-    [fcArrastre, setFcArrastre] = useState(false);
+    [fcArrastre, setFcArrastre] = useState(false),
+    [fcRev, setFcRev] = useState(null),
+    [fcCrear, setFcCrear] = useState(null);
   useEffect(() => {
     ne && fcPdfLimpiarHuerfanos(n);
   }, [fcSt.cargado, n.length]);
@@ -646,17 +648,74 @@ function PagosView({
       facturaA: (reg.factura || "").trim().toUpperCase() === "A",
     };
   }
+  // Alta (o actualización si ya existe con ese nombre) en la tabla de Proveedores.
+  function crearProveedorTabla(np) {
+    const fila = {
+        proveedor: np.nombre,
+        actividad: np.actividad || "",
+        factura: np.facturaA ? "A" : "",
+        cuit: np.cuit || "",
+        razonSocial: np.razonSocial || "",
+        cbu: np.cbu || "",
+        imputacion: np.imputacion || "",
+      },
+      lista = [...(A || [])],
+      i = lista.findIndex((x) => (x.proveedor || "").trim().toUpperCase() === np.nombre);
+    i >= 0 ? (lista[i] = { ...lista[i], ...Object.fromEntries(Object.entries(fila).filter(([, x]) => x)) }) : lista.push(fila);
+    k(lista);
+  }
+  // Facturas iguales (mismo CUIT o mismo proveedor + mismo número) en otras líneas de Pagos.
+  const fcIndice = useMemo(() => {
+    const m = {};
+    n.forEach((l) => {
+      const num = fcClaveNumero(l.factura);
+      if (!num) return;
+      const c = fcSoloDigitos(l.cuit),
+        pr = (l.proveedorPago || "").trim().toUpperCase();
+      c && (m["C" + c + "|" + num] = [...(m["C" + c + "|" + num] || []), l]);
+      pr && (m["P" + pr + "|" + num] = [...(m["P" + pr + "|" + num] || []), l]);
+    });
+    return m;
+  }, [n]);
+  function facturasIguales(l, factura) {
+    const num = fcClaveNumero(factura);
+    if (!num) return [];
+    const c = fcSoloDigitos(l.cuit),
+      pr = (l.proveedorPago || "").trim().toUpperCase(),
+      todas = [...((c && fcIndice["C" + c + "|" + num]) || []), ...((pr && fcIndice["P" + pr + "|" + num]) || [])];
+    return todas.filter((x, i) => x.id !== l.id && todas.indexOf(x) === i);
+  }
+  function textoFacturaRepetida(otras) {
+    return otras
+      .map(
+        (x) =>
+          (x.proveedorPago || x.razonSocial || "") +
+          " " +
+          (x.factura || "") +
+          (x.fechaPagado ? " — PAGADA el " + x.fechaPagado : " — sin pagar todavía") +
+          (x.centroCosto ? " (" + (x.subObra || x.centroCosto) + ")" : ""),
+      )
+      .join("\n");
+  }
+  // Imputación de una factura: 1) la escrita en el nombre del archivo; 2) la de la tabla de Proveedores;
+  // 3) el mismo proveedor de la factura.
+  function fcImputacion(prov, cc, archivo) {
+    const disp = fcDisponibles(cc),
+      deArchivo = archivo ? imputacionDesdeNombreArchivo(archivo, prov, disp, V) : "";
+    if (deArchivo) return { valor: deArchivo, deArchivo: true };
+    if (!prov || !cc || !cc.centroCosto) return { valor: "", deArchivo: false };
+    const base = String((G[prov] || {}).imputacion || "").trim() || prov;
+    return { valor: disp.find((x) => normalizarTexto(x) === normalizarTexto(base)) || base.toUpperCase(), deArchivo: false };
+  }
+  // Paso 1: leer los PDF y armar la ventana de revisión (todavía no se crea nada).
   async function importarFacturasPdf(lista) {
     const archivos = Array.from(lista || []).filter((x) => /\.pdf$/i.test(x.name || "") || x.type === "application/pdf");
     if (!archivos.length) {
       window.alert("Elegí archivos PDF de facturas.");
       return;
     }
-    const res = [],
-      nuevas = [],
-      usadas = new Set(),
-      subir = [],
-      base = Date.now().toString(36);
+    const filas = [],
+      usadas = new Set();
     for (let i = 0; i < archivos.length; i++) {
       const file = archivos[i],
         archivo = file.name || "factura.pdf";
@@ -669,96 +728,419 @@ function PagosView({
       }
       const prov = proveedorPorCuit(fc.cuit, A, f, n) || proveedorPorRazonSocial(fc.razonSocial, A),
         dp = prov ? fcDatosProveedor(prov) : {},
-        leida = !!(fc.cuit && fc.factura && fc.total),
-        repetida = nuevas.find(
-          (x) => fc.cuit && fc.factura && fcSoloDigitos(x.cuit) === fc.cuit && fcClaveNumero(x.factura) === fcClaveNumero(fc.factura),
+        fila = { key: "f" + i + "-" + Date.now(), archivo, file, fc, incluir: true, formaPago: "", avisos: [] },
+        repetida = filas.find(
+          (x) => fc.cuit && fc.factura && fcSoloDigitos(x.fc.cuit) === fc.cuit && fcClaveNumero(x.fc.factura) === fcClaveNumero(fc.factura),
         );
       if (repetida) {
-        res.push({ archivo, tipo: "aviso", texto: "Repetida en esta misma carga: no se agregó de nuevo" });
+        filas.push({ ...fila, modo: "repetida", incluir: false, avisos: ["Es la misma factura que " + repetida.archivo + ": no se carga dos veces"] });
         continue;
       }
       const m = lineaParaFactura(fc, n.filter((l) => !usadas.has(l.id)), prov, (id) => !!fcSt.metas[id]);
       if (m) {
         usadas.add(m.linea.id);
         const { cambios, avisos } = completarLineaConFactura(m.linea, fc, dp.razonSocial);
-        Object.keys(cambios).length && Z(m.linea.id, cambios);
-        subir.push([m.linea.id, file, fc, archivo]);
-        res.push({
-          archivo,
-          tipo: avisos.length ? "aviso" : "ok",
-          texto:
-            (m.como === "misma"
-              ? "Esa factura ya estaba cargada: se le adjuntó el PDF"
-              : "Se completó la línea que ya tenías de " + (m.linea.proveedorPago || prov || "ese proveedor") +
-                (m.linea.centroCosto ? " (" + m.linea.centroCosto + ")" : "")) +
-            (avisos.length ? ". Ojo: " + avisos.join("; ") : ""),
-        });
+        m.como === "misma" &&
+          m.linea.fechaPagado &&
+          avisos.unshift("Esta factura YA ESTÁ PAGADA (" + m.linea.fechaPagado + "). Solo se le adjunta el PDF.");
+        filas.push({ ...fila, modo: m.como, lineaId: m.linea.id, existente: m.linea, cambios, avisos });
         continue;
       }
       const cc = centroDesdeNombreArchivo(archivo, d, p),
-        disp = fcDisponibles(cc),
-        deTabla = prov && cc.centroCosto ? String((G[prov] || {}).imputacion || "").trim() : "",
-        imput =
-          imputacionDesdeNombreArchivo(archivo, prov, disp, V) ||
-          (deTabla && (disp.find((x) => normalizarTexto(x) === normalizarTexto(deTabla)) || deTabla.toUpperCase())) ||
-          (prov && cc.centroCosto ? disp.find((x) => normalizarTexto(x) === normalizarTexto(prov)) || prov : ""),
+        imp = fcImputacion(prov, cc, archivo),
         total = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
-        id = base + "-fc" + i + "-" + Math.random().toString(36).slice(2, 8),
-        faltan = [];
-      leida || faltan.push(fc.cuit || fc.factura || fc.total ? "parte de los datos de la factura" : "los datos de la factura (no se pudo leer el PDF)");
-      prov || faltan.push(fc.cuit ? "el proveedor (el CUIT " + fc.cuit + " no está en la tabla de Proveedores)" : "el proveedor");
-      cc.centroCosto ||
-        faltan.push(cc.ambiguo ? "el centro de costo (el nombre del archivo coincide con más de uno)" : "el centro de costo (no está en el nombre del archivo)");
-      cc.centroCosto && !imput && faltan.push("la imputación");
-      cc.centroCosto &&
-        imput &&
-        !disp.some((x) => normalizarTexto(x) === normalizarTexto(imput)) &&
-        faltan.push("la imputación " + imput + " todavía no está cargada en " + (cc.subObra || cc.centroCosto) + " (agregala ahí o elegí otra)");
-      leida && !fc.neto && faltan.push("el Importe Bruto (no se encontró el importe sin IVA en el PDF)");
-      nuevas.push({
-        id,
-        sePaga: "SI",
-        cliente: cc.cliente,
-        centroCosto: cc.centroCosto,
-        subObra: cc.subObra,
-        proveedor: imput,
-        proveedorPago: prov,
-        factura: fc.factura,
-        cuit: fc.cuit || "",
-        razonSocial: dp.razonSocial || fc.razonSocial || "",
-        cbu: dp.cbu || "",
-        mat: !!dp.mat,
-        mo: !!dp.mo,
-        facturaA: fc.letra ? fc.letra === "A" : !!dp.facturaA,
-        importe: total || 0,
-        importeBruto: (fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto) || 0,
-        observaciones: fc.notaCredito ? "Nota de crédito" : "",
-      });
-      subir.push([id, file, fc, archivo]);
-      res.push({
-        archivo,
-        tipo: faltan.length ? "falta" : "ok",
-        texto:
-          "Línea nueva: " +
-          [prov || fc.razonSocial || "proveedor ?", fc.factura, total ? fmt(total) : "", imput ? "imputación " + imput : "", cc.subObra || cc.centroCosto]
-            .filter(Boolean)
-            .join(" · ") +
-          (fc.notaCredito ? " (nota de crédito, en negativo)" : "") +
-          (faltan.length ? ". Completá a mano: " + faltan.join(", ") : ""),
+        neto = fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto || 0;
+      cc.ambiguo && fila.avisos.push("El nombre del archivo coincide con más de un centro de costo: elegilo");
+      !(fc.cuit && fc.factura && fc.total) && fila.avisos.push("No se pudieron leer todos los datos del PDF: completalos");
+      fc.total && !fc.neto && fila.avisos.push("No se encontró el importe sin IVA (Importe Bruto): completalo");
+      fc.notaCredito && fila.avisos.push("Nota de crédito: entra en negativo");
+      filas.push({
+        ...fila,
+        modo: "nueva",
+        impDeArchivo: imp.deArchivo,
+        linea: {
+          sePaga: "SI",
+          cliente: cc.cliente,
+          centroCosto: cc.centroCosto,
+          subObra: cc.subObra,
+          proveedor: imp.valor,
+          proveedorPago: prov,
+          factura: fc.factura,
+          cuit: fc.cuit || "",
+          razonSocial: dp.razonSocial || fc.razonSocial || "",
+          cbu: dp.cbu || "",
+          mat: !!dp.mat,
+          mo: !!dp.mo,
+          facturaA: fc.letra ? fc.letra === "A" : !!dp.facturaA,
+          importe: total || 0,
+          importeBruto: neto || 0,
+          observaciones: fc.notaCredito ? "Nota de crédito" : "",
+        },
       });
     }
+    setFcProg("");
+    setFcRev(filas);
+  }
+  function fcCambiarFila(key, fn) {
+    setFcRev((xs) => (xs || []).map((x) => (x.key === key ? fn(x) : x)));
+  }
+  function fcCambiarLinea(fila, cambios) {
+    fcCambiarFila(fila.key, (x) => {
+      const l = { ...x.linea, ...cambios },
+        nx = { ...x, linea: l };
+      if ("proveedorPago" in cambios) {
+        const dp = cambios.proveedorPago ? fcDatosProveedor(cambios.proveedorPago) : {};
+        dp.razonSocial && (l.razonSocial = dp.razonSocial);
+        dp.cbu && (l.cbu = dp.cbu);
+        l.mat = !!dp.mat;
+        l.mo = !!dp.mo;
+      }
+      if (!x.impDeArchivo && ("proveedorPago" in cambios || "centroCosto" in cambios || "subObra" in cambios || "cliente" in cambios))
+        l.proveedor = fcImputacion(l.proveedorPago, l, "").valor;
+      "proveedor" in cambios && (nx.impDeArchivo = true);
+      return nx;
+    });
+  }
+  // Paso 2: cargar lo revisado.
+  async function confirmarFacturasPdf() {
+    const filas = (fcRev || []).filter((x) => x.incluir && x.modo !== "repetida"),
+      nuevas = [],
+      subir = [],
+      base = Date.now().toString(36);
+    filas.forEach((x, i) => {
+      if (x.modo === "nueva") {
+        const id = base + "-fc" + i + "-" + Math.random().toString(36).slice(2, 8),
+          l = { id, ...x.linea };
+        x.formaPago && (l[x.formaPago] = Number(l.importe) || 0);
+        nuevas.push(l);
+        subir.push([id, x]);
+      } else {
+        Object.keys(x.cambios || {}).length && Z(x.lineaId, x.cambios);
+        subir.push([x.lineaId, x]);
+      }
+    });
     nuevas.length && ye(nuevas);
+    setFcRev(null);
+    const res = [];
     for (let i = 0; i < subir.length; i++) {
-      const [id, file, fc, archivo] = subir[i];
+      const [id, x] = subir[i];
       setFcProg("Guardando PDF " + (i + 1) + " de " + subir.length + "…");
       try {
-        await fcPdfGuardar(id, file, fc);
+        await fcPdfGuardar(id, x.file, x.fc);
+        res.push({ archivo: x.archivo, tipo: "ok", texto: x.modo === "nueva" ? "Línea nueva cargada" : "PDF adjuntado a la línea que ya estaba" });
       } catch (e) {
-        res.push({ archivo, tipo: "falta", texto: "No se pudo guardar el PDF: " + ((e && e.message) || e) });
+        res.push({ archivo: x.archivo, tipo: "falta", texto: "No se pudo guardar el PDF: " + ((e && e.message) || e) });
       }
     }
     setFcProg("");
     setFcRes(res);
+  }
+  const FORMAS_PAGO = [
+    ["", "—"],
+    ["efectivo", "Efectivo"],
+    ["transferencia", "Transferencia"],
+    ["echeq", "E-Cheq"],
+    ["diegoLevy", "Diego Levy"],
+  ];
+  function fcVerPdf(file) {
+    const url = URL.createObjectURL(file);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
+  function renderRevisionFacturas() {
+    const filas = fcRev || [],
+      provs = Object.keys(G).sort(),
+      cargables = filas.filter((x) => x.incluir && x.modo !== "repetida"),
+      celda = { padding: "5px 6px", borderBottom: "1px solid #EEE", verticalAlign: "top", fontSize: 12 },
+      th = { ...celda, fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", background: "#FAFAF7", position: "sticky", top: 0, zIndex: 2, textAlign: "left", whiteSpace: "nowrap" },
+      inp = { fontSize: 12, padding: "3px 5px", border: "1px solid #D0D0D0", borderRadius: 4, background: "#fff", color: TEXT, boxSizing: "border-box" },
+      mal = (b) => (b ? { borderColor: RED, background: "#FBEAE7" } : {}),
+      sel = (valor, opciones, onCambio, malo, ancho, vacio) =>
+        React.createElement(
+          "select",
+          { value: valor || "", onChange: (e) => onCambio(e.target.value), style: { ...inp, width: ancho, ...mal(malo) } },
+          React.createElement("option", { value: "" }, vacio || "—"),
+          valor && !opciones.includes(valor) && React.createElement("option", { value: valor }, valor + " (no existe)"),
+          opciones.map((o) => React.createElement("option", { key: o, value: o }, o)),
+        );
+    return React.createElement(
+      "div",
+      { style: { position: "fixed", inset: 0, background: "rgba(20,20,20,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 } },
+      React.createElement(
+        "div",
+        { style: { background: "#fff", borderRadius: 12, width: "97%", maxWidth: 1600, height: "88%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: "1px solid " + BORDER } },
+          React.createElement("div", { style: { fontWeight: 700, color: NAVY, fontSize: 14 } }, "Revisar facturas antes de cargarlas (" + filas.length + ")"),
+          React.createElement(
+            "button",
+            { onClick: () => setFcRev(null), style: { border: "none", background: "none", cursor: "pointer", color: MUTED }, title: "Cancelar: no se carga nada" },
+            React.createElement(X, { size: 18 }),
+          ),
+        ),
+        React.createElement(
+          "div",
+          { style: { padding: "8px 18px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid " + BORDER, fontSize: 12, color: MUTED } },
+          "Lo marcado en rojo hay que completarlo o corregirlo (igual se puede cargar y corregir después en Pagos). En los importes podés escribir cuentas, ej. =13.000/2.",
+          React.createElement(
+            "label",
+            { style: { display: "flex", gap: 6, alignItems: "center", color: NAVY, fontWeight: 600 } },
+            "Forma de pago para todas:",
+            React.createElement(
+              "select",
+              {
+                value: "",
+                onChange: (e) => {
+                  const v = e.target.value;
+                  setFcRev((xs) => xs.map((x) => (x.modo === "nueva" ? { ...x, formaPago: v === "-" ? "" : v } : x)));
+                },
+                style: inp,
+              },
+              React.createElement("option", { value: "" }, "Elegir…"),
+              FORMAS_PAGO.slice(1).map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
+              React.createElement("option", { value: "-" }, "(sin definir)"),
+            ),
+          ),
+        ),
+        React.createElement(
+          "div",
+          { style: { flex: 1, overflow: "auto" } },
+          React.createElement(
+            "table",
+            { style: { borderCollapse: "collapse", width: "100%", minWidth: 1500 } },
+            React.createElement(
+              "thead",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                ["", "Archivo", "Proveedor", "Factura", "Cliente", "Centro de costo", "Sub obra", "Imputación", "Importe Final", "Importe Bruto", "Forma de pago", "Se paga"].map((t, i) =>
+                  React.createElement("th", { key: i, style: th }, t),
+                ),
+              ),
+            ),
+            React.createElement(
+              "tbody",
+              null,
+              filas.map((x) => {
+                const l = x.linea || {},
+                  apagada = !x.incluir,
+                  check = React.createElement("input", {
+                    type: "checkbox",
+                    checked: !!x.incluir,
+                    disabled: x.modo === "repetida",
+                    title: "Cargar esta factura",
+                    onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, incluir: e.target.checked })),
+                  }),
+                  archivo = React.createElement(
+                    "div",
+                    { style: { maxWidth: 210 } },
+                    React.createElement(
+                      "button",
+                      { onClick: () => fcVerPdf(x.file), title: "Ver el PDF", style: { border: "none", background: "none", cursor: "pointer", padding: 0, marginRight: 4 } },
+                      "👁",
+                    ),
+                    React.createElement("span", { style: { fontSize: 11, color: MUTED, wordBreak: "break-all" } }, x.archivo),
+                    x.avisos.map((a, i) =>
+                      React.createElement("div", { key: i, style: { color: /PAGADA/.test(a) ? RED : "#9A6700", fontSize: 11, fontWeight: /PAGADA/.test(a) ? 700 : 400, marginTop: 2 } }, "⚠️ " + a),
+                    ),
+                  );
+                if (x.modo !== "nueva") {
+                  const e = x.existente || {},
+                    desc =
+                      x.modo === "repetida"
+                        ? "No se carga"
+                        : (x.modo === "misma" ? "Esa factura ya está cargada en Pagos: se le adjunta el PDF" : "Completa la línea que ya tenías cargada") +
+                          " — " +
+                          [e.proveedorPago, e.factura || "(sin número)", e.subObra || e.centroCosto, e.importe ? fmt(e.importe) : "", e.fechaPagado ? "pagada " + e.fechaPagado : ""].filter(Boolean).join(" · ") +
+                          (Object.keys(x.cambios || {}).length ? ". Se completa: " + Object.keys(x.cambios).join(", ") : "");
+                  return React.createElement(
+                    "tr",
+                    { key: x.key, style: { opacity: apagada ? 0.45 : 1, background: "#F7F5EE" } },
+                    React.createElement("td", { style: celda }, check),
+                    React.createElement("td", { style: celda }, archivo),
+                    React.createElement("td", { style: { ...celda, color: NAVY }, colSpan: 10 }, desc),
+                  );
+                }
+                const cc = { cliente: l.cliente, centroCosto: l.centroCosto, subObra: l.subObra },
+                  centros = l.cliente ? Array.from(new Set(d.filter((o) => o.cliente === l.cliente).map((o) => o.obra))).sort() : [],
+                  subs = (p[obraKey(l.cliente, l.centroCosto)] || []).map((o) => o.nombre),
+                  disp = fcDisponibles(cc),
+                  provOk = !!G[(l.proveedorPago || "").trim().toUpperCase()],
+                  impOk = !!l.proveedor && disp.some((o) => normalizarTexto(o) === normalizarTexto(l.proveedor)),
+                  listaImp = "fc-imp-" + x.key,
+                  listaProv = "fc-prov-" + x.key;
+                return React.createElement(
+                  "tr",
+                  { key: x.key, style: { opacity: apagada ? 0.45 : 1 } },
+                  React.createElement("td", { style: celda }, check),
+                  React.createElement("td", { style: celda }, archivo),
+                  React.createElement(
+                    "td",
+                    { style: { ...celda, position: "relative" } },
+                    React.createElement("input", {
+                      list: listaProv,
+                      value: l.proveedorPago || "",
+                      placeholder: "Elegí o creá",
+                      onChange: (e) => fcCambiarLinea(x, { proveedorPago: e.target.value.toUpperCase() }),
+                      style: { ...inp, width: 150, ...mal(!provOk) },
+                      title: provOk ? l.razonSocial || "" : "No está en la tabla de Proveedores: elegí uno o crealo",
+                    }),
+                    React.createElement("datalist", { id: listaProv }, provs.map((o) => React.createElement("option", { key: o, value: o }))),
+                    !provOk &&
+                      React.createElement(
+                        "button",
+                        {
+                          onClick: () => setFcCrear(fcCrear === x.key ? null : x.key),
+                          style: { display: "block", marginTop: 3, border: "none", background: "none", color: "#0969DA", cursor: "pointer", fontSize: 11, padding: 0 },
+                        },
+                        "+ Crear proveedor",
+                      ),
+                    React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, [l.razonSocial, l.cuit].filter(Boolean).join(" · ")),
+                    fcCrear === x.key &&
+                      React.createElement(
+                        "div",
+                        { style: { position: "absolute", zIndex: 5, top: "100%", left: 0, background: "#fff", border: "1px solid " + BORDER, borderRadius: 8, boxShadow: CARD_SHADOW, padding: 10 } },
+                        React.createElement(NuevoProveedorForm, {
+                          inicial: { nombre: "", cuit: l.cuit || "", razonSocial: l.razonSocial || x.fc.razonSocial || "", facturaA: x.fc.letra ? x.fc.letra === "A" : !!l.facturaA, cbu: l.cbu || "" },
+                          imputaciones: V,
+                          onCrear: (np) => {
+                            crearProveedorTabla(np);
+                            setFcCrear(null);
+                            fcCambiarFila(x.key, (y) => {
+                              const ln = {
+                                ...y.linea,
+                                proveedorPago: np.nombre,
+                                mat: np.actividad === "MAT",
+                                mo: np.actividad === "MO",
+                                facturaA: !!np.facturaA,
+                                cuit: np.cuit || y.linea.cuit,
+                                razonSocial: np.razonSocial || y.linea.razonSocial,
+                                cbu: np.cbu || y.linea.cbu,
+                              };
+                              if (!y.impDeArchivo && ln.centroCosto) {
+                                const base = np.imputacion || np.nombre,
+                                  dd = fcDisponibles(ln);
+                                ln.proveedor = dd.find((o) => normalizarTexto(o) === normalizarTexto(base)) || base;
+                              }
+                              return { ...y, linea: ln };
+                            });
+                          },
+                          onCancelar: () => setFcCrear(null),
+                        }),
+                      ),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement("input", {
+                      value: l.factura || "",
+                      onChange: (e) => fcCambiarLinea(x, { factura: e.target.value }),
+                      style: { ...inp, width: 125, ...mal(!l.factura) },
+                    }),
+                    (() => {
+                      const otras = facturasIguales({ ...l, id: "" }, l.factura);
+                      return otras.length
+                        ? React.createElement(
+                            "div",
+                            { style: { color: RED, fontSize: 11, fontWeight: 700, marginTop: 2 }, title: textoFacturaRepetida(otras) },
+                            "⚠️ Ya está en Pagos" + (otras.some((o) => o.fechaPagado) ? " (PAGADA)" : ""),
+                          )
+                        : null;
+                    })(),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    sel(l.cliente, dt, (v) => fcCambiarLinea(x, { cliente: v, centroCosto: "", subObra: "" }), !dt.includes(l.cliente), 130, "Elegí cliente"),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    sel(l.centroCosto, centros, (v) => fcCambiarLinea(x, { centroCosto: v, subObra: "" }), !centros.includes(l.centroCosto), 150, "Elegí centro"),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    subs.length || l.subObra
+                      ? sel(l.subObra, subs, (v) => fcCambiarLinea(x, { subObra: v }), !!l.subObra && !subs.includes(l.subObra), 140, "(ninguna)")
+                      : React.createElement("span", { style: { color: MUTED } }, "—"),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement("input", {
+                      list: listaImp,
+                      value: l.proveedor || "",
+                      placeholder: "Imputación",
+                      onChange: (e) => fcCambiarLinea(x, { proveedor: e.target.value.toUpperCase() }),
+                      style: { ...inp, width: 150, ...mal(!impOk) },
+                      title: impOk ? "" : l.proveedor ? "No está cargado en ese centro de costo / sub obra (se puede agregar después en Pagos)" : "Falta la imputación",
+                    }),
+                    React.createElement("datalist", { id: listaImp }, disp.map((o) => React.createElement("option", { key: o, value: o }))),
+                    x.impDeArchivo && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement(MilesInput, {
+                      value: l.importe,
+                      onChange: (v) => fcCambiarLinea(x, { importe: v }),
+                      style: { ...inp, width: 115, textAlign: "right", ...mal(!Number(l.importe)) },
+                    }),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement(MilesInput, {
+                      value: l.importeBruto,
+                      onChange: (v) => fcCambiarLinea(x, { importeBruto: v }),
+                      style: { ...inp, width: 115, textAlign: "right", ...mal(!(Number(l.importeBruto) > 0)) },
+                      title: "Importe de los productos, sin IVA ni percepciones",
+                    }),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement(
+                      "select",
+                      { value: x.formaPago, onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, formaPago: e.target.value })), style: { ...inp, width: 120 } },
+                      FORMAS_PAGO.map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
+                    ),
+                    React.createElement(
+                      "div",
+                      { style: { fontSize: 10.5, color: MUTED, marginTop: 2, maxWidth: 125 } },
+                      x.formaPago ? "Va el Importe Final entero" : "Para repartir, hacelo en la línea",
+                    ),
+                  ),
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement(
+                      "select",
+                      { value: l.sePaga || "SI", onChange: (e) => fcCambiarLinea(x, { sePaga: e.target.value }), style: { ...inp, width: 60 } },
+                      React.createElement("option", { value: "SI" }, "SI"),
+                      React.createElement("option", { value: "NO" }, "NO"),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 18px", borderTop: "1px solid " + BORDER } },
+          React.createElement("button", { onClick: () => setFcRev(null), style: smallBtnGhost }, "Cancelar"),
+          React.createElement(
+            "button",
+            { onClick: confirmarFacturasPdf, disabled: !cargables.length, style: { ...smallBtnPrimary, opacity: cargables.length ? 1 : 0.5 } },
+            "Cargar " + cargables.length + " factura" + (cargables.length === 1 ? "" : "s"),
+          ),
+        ),
+      ),
+    );
   }
   async function adjuntarPdfALinea(l, file) {
     let fc = null;
@@ -1846,6 +2228,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           ),
       ),
     ),
+    fcRev && renderRevisionFacturas(),
     fcRes &&
       React.createElement(
         "div",
@@ -2379,82 +2762,27 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                           borderRadius: 8,
                           boxShadow: CARD_SHADOW,
                           padding: 10,
-                          width: 230,
                         },
                       },
-                      React.createElement(
-                        "div",
-                        { style: { fontSize: 11, fontWeight: 700, color: NAVY, marginBottom: 6 } },
-                        "Nuevo proveedor: ",
-                        Re.nombre,
-                      ),
-                      React.createElement(
-                        "label",
-                        { style: { fontSize: 10, color: MUTED, display: "block", marginBottom: 2 } },
-                        "Actividad",
-                      ),
-                      React.createElement(
-                        "select",
-                        {
-                          style: { ...Ve, width: "100%", marginBottom: 6, boxSizing: "border-box" },
-                          value: Re.actividad,
-                          onChange: (B) => at((re) => ({ ...re, actividad: B.target.value })),
+                      React.createElement(NuevoProveedorForm, {
+                        inicial: { nombre: Re.nombre, actividad: Re.actividad, facturaA: Re.facturaA, cuit: l.cuit || "", razonSocial: l.razonSocial || "", cbu: l.cbu || "" },
+                        imputaciones: V,
+                        onCrear: (np) => {
+                          crearProveedorTabla(np);
+                          const cambios = {
+                            proveedorPago: np.nombre,
+                            mat: np.actividad === "MAT",
+                            mo: np.actividad === "MO",
+                            facturaA: !!np.facturaA,
+                            ...(np.cuit ? { cuit: np.cuit } : {}),
+                            ...(np.razonSocial ? { razonSocial: np.razonSocial } : {}),
+                            ...(np.cbu ? { cbu: np.cbu } : {}),
+                          };
+                          np.imputacion && !(l.proveedor || "").trim() && (cambios.proveedor = np.imputacion);
+                          (Z(Re.rowId, cambios), at(null));
                         },
-                        React.createElement("option", { value: "" }, "(ninguna)"),
-                        React.createElement("option", { value: "MAT" }, "MAT"),
-                        React.createElement("option", { value: "MO" }, "MO"),
-                      ),
-                      React.createElement(
-                        "label",
-                        {
-                          style: {
-                            fontSize: 11,
-                            color: NAVY,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            marginBottom: 8,
-                          },
-                        },
-                        React.createElement("input", {
-                          type: "checkbox",
-                          checked: !!Re.facturaA,
-                          onChange: (B) => at((re) => ({ ...re, facturaA: B.target.checked })),
-                        }),
-                        "Factura A",
-                      ),
-                      React.createElement(
-                        "div",
-                        { style: { display: "flex", gap: 6 } },
-                        React.createElement(
-                          "button",
-                          {
-                            onClick: () => {
-                              const { rowId: B, nombre: re, actividad: ot, facturaA: Ht } = Re;
-                              (k([
-                                ...(A || []),
-                                {
-                                  proveedor: re,
-                                  actividad: ot,
-                                  factura: Ht ? "A" : "",
-                                  cuit: "",
-                                  razonSocial: "",
-                                  cbu: "",
-                                },
-                              ]),
-                                Z(B, { proveedorPago: re, mat: ot === "MAT", mo: ot === "MO", facturaA: !!Ht }),
-                                at(null));
-                            },
-                            style: { ...smallBtnPrimary, padding: "4px 10px", fontSize: 11 },
-                          },
-                          "Crear",
-                        ),
-                        React.createElement(
-                          "button",
-                          { onClick: () => at(null), style: { ...smallBtnGhost, padding: "4px 10px", fontSize: 11 } },
-                          "Cancelar",
-                        ),
-                      ),
+                        onCancelar: () => at(null),
+                      }),
                     ),
                 ),
                 React.createElement(
@@ -2492,9 +2820,34 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                       defaultValue: l.factura,
                       disabled: !ne || Le(l),
                       onBlur: (B) => {
-                        B.target.value !== l.factura && Z(l.id, { factura: B.target.value });
+                        const v = B.target.value;
+                        if (v === (l.factura || "")) return;
+                        const otras = facturasIguales(l, v);
+                        if (
+                          otras.length &&
+                          !window.confirm(
+                            "Ojo: esa factura ya está cargada en Pagos para ese proveedor:\n\n" + textoFacturaRepetida(otras) + "\n\n¿La cargás igual?",
+                          )
+                        ) {
+                          B.target.value = l.factura || "";
+                          return;
+                        }
+                        Z(l.id, { factura: v });
                       },
                     }),
+                    (() => {
+                      const otras = facturasIguales(l, l.factura);
+                      return otras.length
+                        ? React.createElement(
+                            "span",
+                            {
+                              title: "Esta factura también está en otra línea de Pagos:\n" + textoFacturaRepetida(otras),
+                              style: { cursor: "help", fontSize: 12, color: otras.some((o) => o.fechaPagado) ? RED : "#9A6700" },
+                            },
+                            "⚠️",
+                          )
+                        : null;
+                    })(),
                     React.createElement(FacturaPdfCelda, { linea: l, puedeEditar: ne && !Le(l), onAdjuntar: adjuntarPdfALinea }),
                   ),
                 ),

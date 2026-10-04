@@ -31,6 +31,82 @@ function conSeparadorMiles(n) {
   const f = (C || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return (c ? "-" : "") + f + (S ? "," + S : g !== -1 ? "," : "");
 }
+// Número escrito a la argentina ("13.000", "1.234,5"), a la inglesa ("18,166,291.10") o con punto
+// decimal ("376000.00"): si hay coma y punto, el último es el decimal; si hay uno solo, es decimal salvo
+// que aparezca varias veces o tenga justo 3 cifras después (separador de miles).
+function leerNumeroFlexible(s) {
+  let t = String(s == null ? "" : s).replace(/[^\d.,-]/g, "");
+  if (!/\d/.test(t)) return 0;
+  const neg = /^-|-$/.test(t);
+  t = t.replace(/-/g, "");
+  const c = t.lastIndexOf(","),
+    p = t.lastIndexOf(".");
+  let dec = "";
+  if (c >= 0 && p >= 0) dec = c > p ? "," : ".";
+  else if (c >= 0 || p >= 0) {
+    const sep = c >= 0 ? "," : ".",
+      veces = t.split(sep).length - 1,
+      cifras = t.length - t.lastIndexOf(sep) - 1;
+    veces === 1 && cifras !== 3 && (dec = sep);
+  }
+  const partes = dec ? [t.slice(0, t.lastIndexOf(dec)), t.slice(t.lastIndexOf(dec) + 1)] : [t, ""],
+    n = Number(partes[0].replace(/[.,]/g, "") + (partes[1] ? "." + partes[1] : ""));
+  return isFinite(n) ? (neg ? -n : n) : 0;
+}
+// Cuentas en los importes (Sección 97): "=13.000/4", "=(1.500+2.300)*2", "=50%*80.000", "=1000x3".
+// Solo números, + - * / x %, y paréntesis; devuelve null si la cuenta no se entiende.
+function evaluarCuenta(texto) {
+  const s = String(texto || "").replace(/^\s*=/, "").replace(/\s+/g, "").replace(/[xX×]/g, "*").replace(/÷/g, "/").replace(/\$/g, "");
+  if (!s || /[^\d.,+\-*/()%]/.test(s)) return null;
+  let i = 0;
+  const num = () => {
+      const m = s.slice(i).match(/^[\d.,]+/);
+      if (!m) throw 0;
+      i += m[0].length;
+      let v = leerNumeroFlexible(m[0]);
+      s[i] === "%" && (i++, (v = v / 100));
+      return v;
+    },
+    factor = () => {
+      if (s[i] === "-") return i++, -factor();
+      if (s[i] === "+") return i++, factor();
+      if (s[i] === "(") {
+        i++;
+        const v = expr();
+        if (s[i] !== ")") throw 0;
+        return i++, v;
+      }
+      return num();
+    },
+    term = () => {
+      let v = factor();
+      while (s[i] === "*" || s[i] === "/") {
+        const op = s[i++],
+          w = factor();
+        v = op === "*" ? v * w : v / w;
+      }
+      return v;
+    },
+    expr = () => {
+      let v = term();
+      while (s[i] === "+" || s[i] === "-") {
+        const op = s[i++],
+          w = term();
+        v = op === "+" ? v + w : v - w;
+      }
+      return v;
+    };
+  try {
+    const v = expr();
+    return i === s.length && isFinite(v) ? Math.round(v * 100) / 100 : null;
+  } catch {
+    return null;
+  }
+}
+function esCuenta(t) {
+  const s = String(t || "").trim();
+  return s.startsWith("=") || /\d\s*[+*/xX×÷]\s*[\d(]/.test(s) || /\d\s*-\s*[\d(]/.test(s.replace(/^-/, ""));
+}
 function MilesInput({
   value: n,
   onChange: d,
@@ -45,8 +121,19 @@ function MilesInput({
   hint: k,
 }) {
   const L = useRef(null),
-    [oe, ve] = useState(false);
+    [oe, ve] = useState(false),
+    [cuenta, setCuenta] = useState(null),
+    resultado = cuenta != null ? evaluarCuenta(cuenta) : null,
+    aplicarCuenta = () => {
+      if (cuenta == null) return;
+      const v = evaluarCuenta(cuenta);
+      (setCuenta(null), v != null && d(v));
+    };
   function P(ye) {
+    if (cuenta != null || esCuenta(ye.target.value)) {
+      setCuenta(ye.target.value);
+      return;
+    }
     const Z = ye.target,
       Ye = Z.selectionStart ?? Z.value.length,
       ee = (Z.value.slice(0, Ye).match(/-|[0-9]/g) || []).length,
@@ -86,19 +173,21 @@ function MilesInput({
       style: { ...Pe, width: "100%" },
       placeholder: f,
       title: A,
-      value: conSeparadorMiles(n),
+      value: cuenta != null ? cuenta : conSeparadorMiles(n),
       onChange: P,
+      onKeyDown: (ye) => {
+        cuenta != null && (ye.key === "Enter" ? (aplicarCuenta(), ye.preventDefault()) : ye.key === "Escape" && setCuenta(null));
+      },
       onFocus: (ye) => {
         (ve(true), ye.target.select(), c && c(ye));
       },
       onBlur: (ye) => {
-        (ve(false), p && p(ye));
+        (ve(false), aplicarCuenta(), p && p(ye));
       },
       onPaste: g,
       disabled: F,
     }),
-    k &&
-      oe &&
+    (cuenta != null || (k && oe)) &&
       React.createElement(
         "span",
         {
@@ -120,7 +209,7 @@ function MilesInput({
             boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
           },
         },
-        k,
+        cuenta != null ? (resultado != null ? "= " + conSeparadorMiles(resultado) : "Cuenta incompleta (ej. =13.000/4)") : k,
       ),
   );
 }
