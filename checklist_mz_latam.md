@@ -1227,7 +1227,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Toda la app: números con ancho fijo (las cifras de las tablas quedan alineadas) y foco visible al moverse con el teclado.
 - [x] Revisado con capturas de pantalla (encabezado de QA naranja y de Producción negro, menú abierto, Pagos) y prueba de pantalla automática.
 - [x] Publicado en QA.
-- [ ] Subida a Producción (solo con OK del usuario).
+- [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("ok pasalo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ### 96. Botón "Rehacer"
 
@@ -1236,7 +1236,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Si después de deshacer se hace un cambio nuevo, lo que había para rehacer se descarta (como en cualquier programa).
 - [x] Probado en el navegador: Deshacer (2) → deshacer → "Deshacer (1)" y "Rehacer (1)" → rehacer → "Deshacer (2)" → deshacer de nuevo → "Deshacer (1)" y "Rehacer (1)", sin errores.
 - [x] Publicado en QA (junto con la Sección 95).
-- [ ] Subida a Producción (solo con OK del usuario).
+- [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("ok pasalo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
 ## 41. Pendientes / recomendaciones
 
