@@ -643,13 +643,21 @@ function FacturaPdfCelda({ linea: l, puedeEditar, onAdjuntar }) {
 }
 
 // ---------- Alta de proveedor (tabla de Proveedores) desde Pagos o desde la revisión de facturas ----------
-function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar }) {
+function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar, tabla, onUsarExistente }) {
   const [v, setV] = React.useState({ actividad: "", facturaA: false, cuit: "", razonSocial: "", cbu: "", imputacion: "", ...(inicial || {}) }),
     campo = { width: "100%", boxSizing: "border-box", fontSize: 11.5, padding: "4px 6px", border: "1px solid #D0D0D0", borderRadius: 4, marginBottom: 6, color: TEXT, background: "#fff" },
     etiqueta = (t) => React.createElement("label", { style: { fontSize: 10, color: MUTED, display: "block", marginBottom: 2 } }, t),
     texto = (k, ph, extra) =>
       React.createElement("input", { style: campo, value: v[k] || "", placeholder: ph, onChange: (e) => setV((x) => ({ ...x, [k]: e.target.value })), ...(extra || {}) }),
     cuitMal = fcSoloDigitos(v.cuit) && !cuitValido(v.cuit),
+    // Para no duplicar: si ese CUIT (o ese nombre) ya está en la tabla, se ofrece usar el existente.
+    existente = (tabla || []).find(
+      (r) =>
+        r &&
+        r.proveedor &&
+        ((fcSoloDigitos(v.cuit).length === 11 && fcSoloDigitos(r.cuit) === fcSoloDigitos(v.cuit)) ||
+          (String(v.nombre || "").trim() && normalizarTexto(r.proveedor) === normalizarTexto(v.nombre))),
+    ),
     listaId = "np-imp-" + React.useMemo(() => Math.random().toString(36).slice(2, 8), []);
   return React.createElement(
     "div",
@@ -688,6 +696,24 @@ function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar }) {
     etiqueta("Imputación habitual (opcional)"),
     texto("imputacion", "Ej. PINTURA", { list: listaId, onChange: (e) => setV((x) => ({ ...x, imputacion: e.target.value.toUpperCase() })) }),
     React.createElement("datalist", { id: listaId }, (imputaciones || []).map((x) => React.createElement("option", { key: x, value: x }))),
+    existente &&
+      React.createElement(
+        "div",
+        { style: { background: "#FFF4D6", border: "1px solid #E5C25A", borderRadius: 6, padding: "6px 8px", fontSize: 11, color: TEXT, marginBottom: 6 } },
+        "Ya existe en la tabla como ",
+        React.createElement("strong", null, existente.proveedor),
+        fcSoloDigitos(existente.cuit) === fcSoloDigitos(v.cuit) && fcSoloDigitos(v.cuit) ? " (mismo CUIT)" : " (mismo nombre)",
+        ". ",
+        onUsarExistente &&
+          React.createElement(
+            "button",
+            {
+              onClick: () => onUsarExistente(existente.proveedor.trim().toUpperCase()),
+              style: { border: "none", background: "none", color: "#0969DA", cursor: "pointer", padding: 0, fontSize: 11, fontWeight: 700 },
+            },
+            "Usar ese",
+          ),
+      ),
     React.createElement(
       "div",
       { style: { display: "flex", gap: 6, marginTop: 2 } },

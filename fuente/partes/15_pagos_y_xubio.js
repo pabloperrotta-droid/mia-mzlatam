@@ -1151,6 +1151,11 @@ function PagosView({
                         "div",
                         { style: { position: "absolute", zIndex: 5, top: "100%", left: 0, background: "#fff", border: "1px solid " + BORDER, borderRadius: 8, boxShadow: CARD_SHADOW, padding: 10 } },
                         React.createElement(NuevoProveedorForm, {
+                          tabla: A,
+                          onUsarExistente: (nombre) => {
+                            setFcCrear(null);
+                            fcCambiarLinea(x, { proveedorPago: nombre });
+                          },
                           inicial: { nombre: "", cuit: l.cuit || "", razonSocial: l.razonSocial || x.fc.razonSocial || "", facturaA: x.fc.letra ? x.fc.letra === "A" : !!l.facturaA, cbu: l.cbu || "" },
                           imputaciones: V,
                           onCrear: (np) => {
@@ -1561,6 +1566,16 @@ function PagosView({
     }
     await fcPdfGuardar(l.id, file, fc || {});
   }
+  // CUIT repetidos en la tabla de Proveedores (posibles duplicados con distinto nombre).
+  const cuitsRepetidos = useMemo(() => {
+    const m = {};
+    (A || []).forEach((r) => {
+      const c = fcSoloDigitos(r.cuit);
+      c.length === 11 && (m[c] = [...(m[c] || []), r.proveedor]);
+    });
+    Object.keys(m).forEach((c) => m[c].length > 1 || delete m[c]);
+    return m;
+  }, [A]);
   function te(l, I, U) {
     const ce = String(I || "").trim(),
       me = String(U || "").trim();
@@ -3181,6 +3196,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                         },
                       },
                       React.createElement(NuevoProveedorForm, {
+                        tabla: A,
+                        onUsarExistente: (nombre) => {
+                          const dp = fcDatosProveedor(nombre);
+                          (Z(Re.rowId, { proveedorPago: nombre, mat: dp.mat, mo: dp.mo, facturaA: dp.facturaA, ...(dp.cbu ? { cbu: dp.cbu } : {}) }), at(null));
+                        },
                         inicial: { nombre: Re.nombre, actividad: Re.actividad, facturaA: Re.facturaA, cuit: l.cuit || "", razonSocial: l.razonSocial || "", cbu: l.cbu || "" },
                         imputaciones: V,
                         onCrear: (np) => {
@@ -3412,9 +3432,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                     defaultValue: l.cbu,
                     disabled: !ne || Le(l),
                     onBlur: (B) => {
+                      // El CBU nuevo se copia a la tabla de Proveedores, solo si ese proveedor ya está en la
+                      // tabla (nunca crea uno nuevo, para no duplicar).
                       const re = B.target.value,
-                        ot = l.proveedorPago || l.proveedor;
-                      re !== l.cbu && (Z(l.id, { cbu: re }), F(ot, { cbu: re }), go(ot, { cbu: re }));
+                        ot = (l.proveedorPago || "").trim().toUpperCase();
+                      re !== l.cbu && (Z(l.id, { cbu: re }), ot && (F(ot, { cbu: re }), G[ot] && go(ot, { cbu: re })));
                     },
                   }),
                 ),
@@ -3803,11 +3825,18 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                       "td",
                       { style: Ae },
                       React.createElement("input", {
-                        style: Ve,
+                        style: { ...Ve, ...(cuitsRepetidos[fcSoloDigitos(l.cuit)] ? { borderColor: RED, background: "#FBEAE7" } : {}) },
                         value: l.cuit || "",
                         placeholder: "CUIT",
+                        title: cuitsRepetidos[fcSoloDigitos(l.cuit)] ? "Mismo CUIT que: " + cuitsRepetidos[fcSoloDigitos(l.cuit)].filter((x) => x !== l.proveedor).join(", ") + " — ¿es el mismo proveedor?" : "",
                         onChange: (U) => At(I, { cuit: U.target.value }),
                       }),
+                      cuitsRepetidos[fcSoloDigitos(l.cuit)] &&
+                        React.createElement(
+                          "div",
+                          { style: { fontSize: 10.5, color: RED, marginTop: 2 } },
+                          "Repetido con " + cuitsRepetidos[fcSoloDigitos(l.cuit)].filter((x) => x !== l.proveedor).join(", "),
+                        ),
                     ),
                     React.createElement(
                       "td",

@@ -1274,6 +1274,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] **El PDF corrige el tipo de factura** (pedido del usuario: "si es factura C o B, no es factura A… si yo en el proveedor le puse factura A, deberías sacárselo"): al cargar facturas en PDF, el tipo leído (A/B/C) se guarda en la columna Factura de la tabla de Proveedores (ahora con opciones —, A, B, C). Como queda "B"/"C" y no vacío, el aprendizaje no le vuelve a poner "A".
 - [x] Probado en el navegador: tras cargar la factura de Eurolamp, la tabla quedó con CUIT 33714322589, razón social ILUMINACION EUROLAMP S.R.L., Factura A e imputación EUROLAMP.
 
+- [x] **Sin duplicados de proveedores** (inquietud del usuario: "si no pisa, voy a tener varios proveedores duplicados?"; aclarado: el aprendizaje nunca crea filas, completa la fila existente del mismo nombre). Protecciones nuevas: (a) en la tabla de Proveedores, un CUIT repetido en dos proveedores queda en rojo con "Repetido con X"; (b) al crear un proveedor (desde Pagos o desde la revisión de PDF), si ese CUIT o ese nombre ya existen se avisa "Ya existe en la tabla como X" con un botón "Usar ese".
+- [x] **CBU de Pagos → Proveedores** (pedido del usuario: "si yo cambio el CBU en pagos, que se me actualice en proveedores"): ya se copiaba, pero si la línea no tenía Proveedor elegido creaba en la tabla un proveedor nuevo con el nombre de la imputación (podía duplicar). Ahora solo actualiza al proveedor de la línea si ya está en la tabla; nunca crea uno.
+- [x] Recomendación al usuario: cargar todos los CUIT en la tabla de Proveedores (Descargar Excel → completar → Importar Excel, que actualiza por nombre sin duplicar), porque la lectura de facturas identifica al proveedor por CUIT.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".
