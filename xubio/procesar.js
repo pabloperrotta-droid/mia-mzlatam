@@ -2,7 +2,7 @@
  * Integración automática MIA → Xubio (centro de costo de las facturas de compra).
  *
  * GitHub Actions corre este script cada ~5 minutos (.github/workflows/xubio.yml). En cada corrida:
- *   1. Lee las líneas de Pagos de MIA (campo `pagosSemanales` de app/state; qa_app/state en QA).
+ *   1. Lee las líneas de Pagos de MIA (app/st_pagosSemanales desde la Sección 90; antes app/state).
  *   2. Toda línea con CUIT y número de factura se manda a Xubio: busca la factura (por CUIT del
  *      proveedor + número) y le pone el centro de costo. Nunca crea facturas ni centros.
  *   3. El resultado de cada línea queda en `xubioEstado/{id de la línea}` (qa_xubioEstado en QA),
@@ -76,10 +76,18 @@ async function registrar(amb, datos) {
     .catch(() => {});
 }
 
+// Desde la Sección 90 las líneas de Pagos están en su propio documento (app/st_pagosSemanales, campo "v");
+// si todavía no se mudaron, siguen en app/state.
+async function leerPagos(amb) {
+  const ext = await db.doc(amb.prefijo + "app/st_pagosSemanales").get();
+  if (ext.exists) return ext.get("v") || [];
+  const st = await db.doc(amb.prefijo + "app/state").get();
+  return (st.exists && st.get("pagosSemanales")) || [];
+}
+
 // ---------- Líneas de Pagos (automático) ----------
 async function procesarLineas(amb) {
-  const st = await db.doc(amb.prefijo + "app/state").get();
-  const lineas = (st.exists && st.get("pagosSemanales")) || [];
+  const lineas = await leerPagos(amb);
   const col = db.collection(amb.prefijo + "xubioEstado");
   const previos = {};
   (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
@@ -192,8 +200,7 @@ async function procesarOPs(amb) {
   // En Producción se crea al tildar pagada; QA usa el mismo Xubio, así que ahí nunca se crea.
   const crear = amb.nombre === "prd";
 
-  const st = await db.doc(amb.prefijo + "app/state").get();
-  const lineas = ((st.exists && st.get("pagosSemanales")) || []).filter(
+  const lineas = (await leerPagos(amb)).filter(
     (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && fechaISO(l.fechaPagado) && fechaISO(l.fechaPagado) >= cfg.desde,
   );
   if (!lineas.length) return;
