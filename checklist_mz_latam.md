@@ -1198,6 +1198,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] `fuente/app.js` (código legible de toda la app), `fuente/head.html`, `fuente/tail.html` y `fuente/construir.sh` (arma `MIAQA.html`, y con `prd` también `MIA.prd.html`). Verificado: el script arma exactamente el mismo `MIAQA.html` publicado.
 - [x] `index.jsx` de la raíz queda como versión vieja (anotado en `fuente/README.md`).
 
+### 93. Código ordenado y controles automáticos (etapa 1)
+
+- Pedido del usuario: profesionalizar la app, punto 6 "ordenar el código por dentro" ("ok dale").
+- [x] El código fuente (27.000 líneas en un solo archivo) se dividió en 18 partes por tema en `fuente/partes/` (base, datos iniciales, cálculos, guardado, presentaciones, app principal, obras, proveedores, pagos y Xubio, cashflow, facturación, EERR, operaciones…). Verificado: juntas son idénticas al archivo anterior y la página que se arma es exactamente la publicada (no cambia nada en pantalla).
+- [x] Pruebas automáticas (`fuente/pruebas/`): casos reales verificados (retención de Ganancias de EUROLAMP = $248.199,20; markup 30,3% de SHANGAI ITUZAINGO; negativos; OC MZ; guardado parcial y combinación con otros usuarios; datos repartidos) y una "foto" del resultado actual de 40 funciones de cálculo con datos de ejemplo.
+- [x] GitHub corre las pruebas y controla que `MIAQA.html` salga del código fuente en cada cambio ("Controles").
+- Próximas etapas: dividir la app principal (11.000 líneas) en partes más chicas y sumar pruebas de pantalla.
+- No hay nada que subir a Producción en esta etapa (la página es la misma).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

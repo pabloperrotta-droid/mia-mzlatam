@@ -1,0 +1,23 @@
+# Controles automáticos de MIA en cada cambio del código fuente:
+#  1) pruebas de los cálculos (fuente/pruebas/pruebas.js);
+#  2) que MIAQA.html sea exactamente lo que sale de fuente/partes (nadie lo editó a mano).
+name: Controles
+on:
+  push:
+    branches: [main]
+    paths: ["fuente/**", "MIAQA.html", ".github/workflows/controles.yml"]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  controles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pruebas de los cálculos
+        run: node fuente/pruebas/pruebas.js
+      - name: MIAQA.html coincide con el código fuente
+        run: bash fuente/construir.sh revisar

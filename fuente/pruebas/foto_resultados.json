@@ -1,0 +1,331 @@
+{
+ "limpiarNumero": [
+  "-1000.50",
+  "1234567",
+  "12.34",
+  "-",
+  "",
+  "1000"
+ ],
+ "conSeparadorMiles": [
+  "-1.000",
+  "1.234.567,89",
+  "0,5",
+  "-",
+  "",
+  "12,"
+ ],
+ "fmt": [
+  "$1.234.568",
+  "-$500",
+  "$0",
+  "—"
+ ],
+ "pct": [
+  "23.3%",
+  "—",
+  "-2.9%"
+ ],
+ "markupDeMb": [
+  30.310138128746424,
+  null,
+  -2.8182701652089404,
+  0
+ ],
+ "pctMk": [
+  "23.3% / 30.4%",
+  "100.0% / —"
+ ],
+ "parseFechaMesAnio": [
+  null,
+  {
+   "mesIdx": 1,
+   "anio": 2026
+  },
+  null
+ ],
+ "consolidarProveedores": [
+  [
+   {
+    "proveedor": "A",
+    "presupuesto": 10,
+    "presupuestoOriginal": 10
+   },
+   {
+    "proveedor": "a ",
+    "presupuesto": 5,
+    "presupuestoOriginal": 4
+   },
+   {
+    "proveedor": "B",
+    "presupuesto": 1
+   }
+  ]
+ ],
+ "normalizarFecha": [
+  "01/02/2026",
+  "01/02/2026",
+  "01/02/2026",
+  "31/02/2026",
+  "",
+  "hola"
+ ],
+ "normalizeNombreSubobra": [
+  "PALERMO 2",
+  "MARTIN CORONADO"
+ ],
+ "nombresSubobraCoinciden": [
+  true,
+  false
+ ],
+ "ordenCompraIncluye": [
+  true,
+  false,
+  false
+ ],
+ "montosPorOCDe": [
+  {
+   "__heredado__": 100
+  },
+  {
+   "A": 1
+  },
+  {}
+ ],
+ "conMontoDeOC": [
+  {
+   "venta": 150,
+   "ordenCompra": "A, B",
+   "montosPorOC": {
+    "__heredado__": 100,
+    "B": 50
+   }
+  },
+  {
+   "montosPorOC": {
+    "A": 20
+   },
+   "ordenCompra": "A",
+   "venta": 20
+  }
+ ],
+ "sinMontoDeOC": [
+  {
+   "montosPorOC": {
+    "A": 10
+   },
+   "venta": 10,
+   "ordenCompra": "A"
+  },
+  {
+   "venta": 7,
+   "ordenCompra": ""
+  }
+ ],
+ "normOC": [
+  "MZ01",
+  "2640000099"
+ ],
+ "adicionalesPorOC": [
+  {
+   "2640000500": {
+    "oc": "2640000500",
+    "monto": 100,
+    "montoUSD": 0.06666666666666667,
+    "subObras": [
+     "S1"
+    ],
+    "existente": false
+   },
+   "MZ01": {
+    "oc": "MZ01",
+    "monto": 30,
+    "montoUSD": 0,
+    "subObras": [
+     "S2"
+    ],
+    "existente": true
+   }
+  }
+ ],
+ "montoDeSubCostoParaOC": [
+  9,
+  580000
+ ],
+ "fechaPedidoWuADdMmAaaa": [
+  "",
+  "",
+  ""
+ ],
+ "fechaConGuiones": [
+  "25-09-2026",
+  ""
+ ],
+ "fechaEsValida": [
+  true,
+  false,
+  false
+ ],
+ "anioDeFecha": [
+  2026,
+  null
+ ],
+ "mesIdxDeFecha": [
+  8,
+  null
+ ],
+ "capitalizar": [
+  "hola mundo"
+ ],
+ "clavesEjercicioFiscal": [
+  [
+   "2026-07",
+   "2026-08",
+   "2026-09",
+   "2026-10",
+   "2026-11",
+   "2026-12",
+   "2027-01",
+   "2027-02",
+   "2027-03",
+   "2027-04",
+   "2027-05",
+   "2027-06"
+  ]
+ ],
+ "etiquetaEjercicioFiscal": [
+  "2025/2026"
+ ],
+ "cambiosParaGuardar": [
+  [
+   [
+    [
+     "b",
+     "y"
+    ],
+    2
+   ],
+   [
+    [
+     "b",
+     "z"
+    ],
+    "__MIA_BORRAR_CAMPO__"
+   ],
+   [
+    [
+     "c"
+    ],
+    [
+     1,
+     2
+    ]
+   ]
+  ],
+  [
+   [
+    [
+     "a"
+    ],
+    {
+     "": 1
+    }
+   ]
+  ],
+  [
+   [
+    [
+     "a"
+    ],
+    1
+   ]
+  ]
+ ],
+ "aplicarCambios": [
+  {
+   "a": 1,
+   "b": {
+    "x": 1,
+    "y": 2
+   },
+   "c": [
+    1,
+    2
+   ]
+  }
+ ],
+ "combinarEstado": [
+  {
+   "a": 2,
+   "b": {
+    "x": 7,
+    "y": 5
+   },
+   "c": 3
+  }
+ ],
+ "normalizarTexto": [
+  "MARTIN CORONADO",
+  ""
+ ],
+ "distanciaLevenshtein": [
+  2,
+  3
+ ],
+ "resolverConCoincidencia": [
+  {
+   "valor": "WU PALERMO 2",
+   "corregido": true
+  },
+  {
+   "valor": "WU MORON",
+   "corregido": true
+  }
+ ],
+ "tasaRegalias": [
+  0.01,
+  0.01,
+  0.01
+ ],
+ "generarSemanas": [
+  [
+   "02/10/2026",
+   "09/10/2026",
+   "16/10/2026"
+  ]
+ ],
+ "semanaLabelCorta": [
+  "09/10"
+ ],
+ "calcularRetencionGananciasProveedor": [
+  {
+   "retGanTransf": 0,
+   "retGanChe": 248199.2
+  },
+  {
+   "retGanTransf": 14656.6,
+   "retGanChe": 0
+  },
+  {
+   "retGanTransf": 0,
+   "retGanChe": 0
+  },
+  {
+   "retGanTransf": 0,
+   "retGanChe": 0
+  }
+ ],
+ "xubioFirma": [
+  "30707598936|74627|WU|WU CIVIL WORK|WU MARTIN CORONADO||344586.31"
+ ],
+ "xubioFechaISO": [
+  "2026-09-25",
+  ""
+ ],
+ "xubioClaveOP": [
+  "33714322589_2026-09-25"
+ ],
+ "ocPdfId": [
+  "WU|WU CIVIL WORK__MZ01"
+ ]
+}
