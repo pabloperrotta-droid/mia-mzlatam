@@ -1264,6 +1264,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Subir a Producción: pendiente del OK del usuario.
 
+- [x] Ajustes pedidos por el usuario al probar la revisión: (a) **Imputación como lista desplegable** con lo que tiene ese cliente / centro de costo / sub obra (con "+ Crear nuevo proveedor", igual que en la línea de Pagos); (b) con cliente **INTERNO** el centro de costo muestra los rubros (Alquiler, Sueldos, …) y no pide imputación; (c) forma de pago **"Mixto"**: un casillero por forma (Efectivo, Transferencia, E-Cheq, Diego Levy) que acepta cuentas (=454.960/2), con "Falta asignar $X" / "✓ Suma el Importe Final"; (d) **mismo orden de columnas que una línea de Pagos**: Se paga, Cliente, Centro de costo, Sub obra, Imputación, Proveedor, Factura, Importe Final, Importe Bruto, Forma de pago.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".

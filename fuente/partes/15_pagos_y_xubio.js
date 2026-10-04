@@ -704,7 +704,7 @@ function PagosView({
     const disp = fcDisponibles(cc),
       deArchivo = archivo ? imputacionDesdeNombreArchivo(archivo, prov, disp, V) : "";
     if (deArchivo) return { valor: deArchivo, deArchivo: true };
-    if (!prov || !cc || !cc.centroCosto) return { valor: "", deArchivo: false };
+    if (!prov || !cc || !cc.centroCosto || (cc.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS) return { valor: "", deArchivo: false };
     const base = String((G[prov] || {}).imputacion || "").trim() || prov;
     return { valor: disp.find((x) => normalizarTexto(x) === normalizarTexto(base)) || base.toUpperCase(), deArchivo: false };
   }
@@ -879,7 +879,11 @@ function PagosView({
       subir.push([id + "__nc" + cuentaNc[id] + "-" + Date.now().toString(36), x]);
     });
     Object.entries(cambiosNc).forEach(([id, c]) => Z(id, c));
-    nuevas.forEach(([l, x]) => x.formaPago && (l[x.formaPago] = Number(l.importe) || 0));
+    nuevas.forEach(([l, x]) =>
+      x.formaPago === "mixto"
+        ? FORMAS_MIXTO.forEach(([k]) => (l[k] = Number((x.mix || {})[k]) || 0))
+        : x.formaPago && (l[x.formaPago] = Number(l.importe) || 0),
+    );
     nuevas.length && ye(nuevas.map(([l]) => l));
     setFcRev(null);
     const res = [];
@@ -906,7 +910,12 @@ function PagosView({
     ["transferencia", "Transferencia"],
     ["echeq", "E-Cheq"],
     ["diegoLevy", "Diego Levy"],
+    ["mixto", "Mixto"],
   ];
+  const FORMAS_MIXTO = FORMAS_PAGO.slice(1, 5);
+  // Mismo orden de columnas que una línea de Pagos: Se paga, Cliente, Centro de costo, Sub obra,
+  // Imputación, Proveedor, Factura, Importe Final, Importe Bruto, Forma de pago.
+  const fcOrdenColumnas = (xs) => [0, 1, 11, 4, 5, 6, 7, 2, 3, 8, 9, 10].map((i) => xs[i]);
   function fcVerPdf(file) {
     const url = URL.createObjectURL(file);
     window.open(url, "_blank");
@@ -963,7 +972,7 @@ function PagosView({
                 style: inp,
               },
               React.createElement("option", { value: "" }, "Elegir…"),
-              FORMAS_PAGO.slice(1).map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
+              FORMAS_MIXTO.map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
               React.createElement("option", { value: "-" }, "(sin definir)"),
             ),
           ),
@@ -980,7 +989,7 @@ function PagosView({
               React.createElement(
                 "tr",
                 null,
-                ["", "Archivo", "Proveedor", "Factura", "Cliente", "Centro de costo", "Sub obra", "Imputación", "Importe Final", "Importe Bruto", "Forma de pago", "Se paga"].map((t, i) =>
+                fcOrdenColumnas(["", "Archivo", "Proveedor", "Factura", "Cliente", "Centro de costo", "Sub obra", "Imputación", "Importe Final", "Importe Bruto", "Forma de pago", "Se paga"]).map((t, i) =>
                   React.createElement("th", { key: i, style: th }, t),
                 ),
               ),
@@ -1066,16 +1075,24 @@ function PagosView({
                   );
                 }
                 const cc = { cliente: l.cliente, centroCosto: l.centroCosto, subObra: l.subObra },
-                  centros = l.cliente ? Array.from(new Set(d.filter((o) => o.cliente === l.cliente).map((o) => o.obra))).sort() : [],
+                  interno = (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS,
+                  centros = interno
+                    ? RUBROS_GASTOS_INTERNOS
+                    : l.cliente
+                      ? Array.from(new Set(d.filter((o) => o.cliente === l.cliente).map((o) => o.obra))).sort()
+                      : [],
                   subs = (p[obraKey(l.cliente, l.centroCosto)] || []).map((o) => o.nombre),
                   disp = fcDisponibles(cc),
                   provOk = !!G[(l.proveedorPago || "").trim().toUpperCase()],
-                  impOk = !!l.proveedor && disp.some((o) => normalizarTexto(o) === normalizarTexto(l.proveedor)),
-                  listaImp = "fc-imp-" + x.key,
+                  impOk = interno || (!!l.proveedor && disp.some((o) => normalizarTexto(o) === normalizarTexto(l.proveedor))),
+                  mix = x.mix || {},
+                  asignado = FORMAS_MIXTO.reduce((a, [k]) => a + (Number(mix[k]) || 0), 0),
+                  faltaMix = (Number(l.importe) || 0) - asignado,
                   listaProv = "fc-prov-" + x.key;
                 return React.createElement(
                   "tr",
                   { key: x.key, style: { opacity: apagada ? 0.45 : 1 } },
+                  ...fcOrdenColumnas([
                   React.createElement("td", { style: celda }, check),
                   React.createElement("td", { style: celda }, archivo),
                   React.createElement(
@@ -1165,22 +1182,36 @@ function PagosView({
                   React.createElement(
                     "td",
                     { style: celda },
-                    subs.length || l.subObra
+                    !interno && (subs.length || l.subObra)
                       ? sel(l.subObra, subs, (v) => fcCambiarLinea(x, { subObra: v }), !!l.subObra && !subs.includes(l.subObra), 140, "(ninguna)")
                       : React.createElement("span", { style: { color: MUTED } }, "—"),
                   ),
                   React.createElement(
                     "td",
                     { style: celda },
-                    React.createElement("input", {
-                      list: listaImp,
-                      value: l.proveedor || "",
-                      placeholder: "Imputación",
-                      onChange: (e) => fcCambiarLinea(x, { proveedor: e.target.value.toUpperCase() }),
-                      style: { ...inp, width: 150, ...mal(!impOk) },
-                      title: impOk ? "" : l.proveedor ? "No está cargado en ese centro de costo / sub obra (se puede agregar después en Pagos)" : "Falta la imputación",
-                    }),
-                    React.createElement("datalist", { id: listaImp }, disp.map((o) => React.createElement("option", { key: o, value: o }))),
+                    interno
+                      ? React.createElement("span", { style: { color: MUTED } }, "— (gasto interno)")
+                      : !l.centroCosto
+                        ? React.createElement("span", { style: { color: MUTED, fontSize: 11 } }, "Elegí primero el centro de costo")
+                        : React.createElement(
+                            "div",
+                            { style: { width: 170, ...(impOk ? {} : { outline: "2px solid " + RED, borderRadius: 4 }) }, title: impOk ? "" : l.proveedor ? l.proveedor + " no está cargado en ese centro de costo / sub obra" : "Falta la imputación" },
+                            React.createElement(CascadingSelect, {
+                              style: { ...inp, width: "100%" },
+                              value: impOk ? l.proveedor : "",
+                              options: disp,
+                              emptyLabel: l.proveedor && !impOk ? l.proveedor + " (no está en el centro)" : "Elegí la imputación",
+                              newLabel: "+ Crear nuevo proveedor",
+                              camposExtra: [
+                                { key: "presupuestoOriginal", label: "Presupuesto original (opcional)" },
+                                { key: "presupuestoReal", label: "Presupuesto real (opcional)" },
+                              ],
+                              onCommit: (B, re, nuevo) => {
+                                nuevo && M(l.cliente, l.centroCosto, l.subObra, B, re);
+                                fcCambiarLinea(x, { proveedor: String(B || "").toUpperCase() });
+                              },
+                            }),
+                          ),
                     x.impDeArchivo && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
                   ),
                   React.createElement(
@@ -1210,11 +1241,31 @@ function PagosView({
                       { value: x.formaPago, onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, formaPago: e.target.value })), style: { ...inp, width: 120 } },
                       FORMAS_PAGO.map(([k, t]) => React.createElement("option", { key: k, value: k }, t)),
                     ),
-                    React.createElement(
-                      "div",
-                      { style: { fontSize: 10.5, color: MUTED, marginTop: 2, maxWidth: 125 } },
-                      x.formaPago ? "Va el Importe Final entero" : "Para repartir, hacelo en la línea",
-                    ),
+                    x.formaPago === "mixto"
+                      ? React.createElement(
+                          "div",
+                          { style: { marginTop: 4, display: "grid", gridTemplateColumns: "auto 105px", gap: "3px 6px", alignItems: "center", fontSize: 11 } },
+                          FORMAS_MIXTO.map(([k, t]) => [
+                            React.createElement("span", { key: k + "t", style: { color: MUTED } }, t),
+                            React.createElement(MilesInput, {
+                              key: k,
+                              value: mix[k] || 0,
+                              onChange: (v) => fcCambiarFila(x.key, (y) => ({ ...y, mix: { ...(y.mix || {}), [k]: v } })),
+                              style: { ...inp, width: 105, textAlign: "right", fontSize: 11.5 },
+                              title: "Podés escribir cuentas, ej. =" + fmt(Number(l.importe) || 0).replace("$", "") + "/2",
+                            }),
+                          ]),
+                          React.createElement(
+                            "span",
+                            { style: { gridColumn: "1 / 3", fontWeight: 700, color: Math.abs(faltaMix) < 1 ? GREEN : RED } },
+                            Math.abs(faltaMix) < 1 ? "✓ Suma el Importe Final" : (faltaMix > 0 ? "Falta asignar " : "Sobran ") + fmt(Math.abs(faltaMix)),
+                          ),
+                        )
+                      : React.createElement(
+                          "div",
+                          { style: { fontSize: 10.5, color: MUTED, marginTop: 2, maxWidth: 125 } },
+                          x.formaPago ? "Va el Importe Final entero" : "Para repartir, elegí Mixto",
+                        ),
                   ),
                   React.createElement(
                     "td",
@@ -1226,6 +1277,7 @@ function PagosView({
                       React.createElement("option", { value: "NO" }, "NO"),
                     ),
                   ),
+                  ]),
                 );
               }),
             ),
