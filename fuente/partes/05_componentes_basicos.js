@@ -207,3 +207,96 @@ function Tbl({ cols: n, rows: d, totalRow: c, widths: p }) {
       ),
   );
 }
+
+// Menú "Herramientas" del encabezado (Sección 95): junta las herramientas de administración
+// (papelera, roles, backups, registros, auditoría, historial) en una sola lista desplegable.
+function MenuHerramientas({ children }) {
+  const [abierto, setAbierto] = useState(false),
+    ref = useRef(null),
+    items = React.Children.toArray(children).filter(Boolean);
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrar = (e) => ref.current && !ref.current.contains(e.target) && setAbierto(false),
+      tecla = (e) => e.key === "Escape" && setAbierto(false);
+    return (
+      document.addEventListener("mousedown", cerrar),
+      document.addEventListener("keydown", tecla),
+      () => {
+        (document.removeEventListener("mousedown", cerrar), document.removeEventListener("keydown", tecla));
+      }
+    );
+  }, [abierto]);
+  if (!items.length) return null;
+  return React.createElement(
+    "div",
+    { ref, style: { position: "relative" } },
+    React.createElement(
+      "button",
+      {
+        onClick: () => setAbierto((x) => !x),
+        "aria-expanded": abierto,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          border: "1px solid rgba(255,255,255,0.28)",
+          background: abierto ? "rgba(255,255,255,0.12)" : "transparent",
+          color: "rgba(255,255,255,0.9)",
+          padding: "6px 11px",
+          borderRadius: 8,
+          fontSize: 12.5,
+          fontWeight: 600,
+          cursor: "pointer",
+        },
+      },
+      "Herramientas",
+      React.createElement("span", { style: { fontSize: 9, opacity: 0.8 } }, abierto ? "▲" : "▼"),
+    ),
+    abierto &&
+      React.createElement(
+        "div",
+        {
+          role: "menu",
+          style: {
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 6px)",
+            zIndex: 80,
+            minWidth: 240,
+            background: "#fff",
+            border: "1px solid " + BORDER,
+            borderRadius: 10,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.22)",
+            padding: 6,
+          },
+        },
+        items.map((el, i) =>
+          React.cloneElement(el, {
+            key: i,
+            role: "menuitem",
+            onClick: (e) => {
+              (el.props.onClick && el.props.onClick(e), el.type !== "label" && setAbierto(false));
+            },
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              width: "100%",
+              boxSizing: "border-box",
+              textAlign: "left",
+              border: "none",
+              background: "transparent",
+              color: TEXT,
+              padding: "8px 10px",
+              borderRadius: 7,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: el.props.disabled ? "default" : "pointer",
+              opacity: el.props.disabled ? 0.45 : 1,
+            },
+            className: "menu-item",
+          }),
+        ),
+      ),
+  );
+}

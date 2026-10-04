@@ -1661,9 +1661,12 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           ),
       ),
     ),
+    // Sección 95: la explicación queda plegada para que la tabla arranque más arriba.
     React.createElement(
-      "div",
+      "details",
       { style: { fontSize: 11.5, color: MUTED, marginBottom: 10 } },
+      React.createElement("summary", { style: { cursor: "pointer", fontWeight: 600, color: NAVY, fontSize: 12 } }, "Cómo funcionan los pagos"),
+      React.createElement("div", { style: { height: 4 } }),
       '"Sin Fecha Pagado" = Fecha Pagado vacía y Se Paga = SI. "Postergados" = Fecha Pagado vacía y Se Paga = NO. Al completar la Fecha Pagado, la línea deja de contarse ahí y además se registra como pago real en Costos (mismo Cliente + Centro de Costo, o Sub Obra si corresponde): descuenta del presupuesto real del proveedor y aparece también ahí. Si el proveedor todavía no está cargado en esa obra, se da de alta ahí mismo con presupuesto original y real en 0 (para editarlo después en Costos); si la obra en sí todavía no existe, la línea queda sin registrar con el motivo, para corregir y reintentar. "Factura A" tildado: en Costos se imputa el Importe Bruto tal cual está cargado (sin dividir por 1.21); el Importe Final de la línea no cambia.',
     ),
     React.createElement(

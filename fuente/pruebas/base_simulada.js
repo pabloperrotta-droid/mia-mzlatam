@@ -47,7 +47,8 @@
     auth: () => ({ currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }),
     firestore,
   };
+  // Entra como Admin, salvo que la dirección termine en #pin (para ver la pantalla del PIN).
   try {
-    localStorage.setItem("obras-role", "admin");
+    location.hash === "#pin" ? localStorage.removeItem("obras-role") : localStorage.setItem("obras-role", "admin");
   } catch {}
 })();

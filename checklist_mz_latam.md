@@ -1218,6 +1218,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Revisión del usuario en QA ("esta ok"): Venta Total, WU CIVIL WORK (OC, PDF, sub obras), editar y deshacer, Pagos, Cashflow, Facturación y EERR.
 - [x] **Subido a Producción** (03/10/2026), con el OK del usuario. `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd".
 
+### 95. Diseño (etapa 1): encabezado más limpio
+
+- Pedido del usuario: profesionalizar la app, punto 4 (diseño), por partes ("podes continuar").
+- [x] Encabezado: el logo de MZ LATAM (versión sin fondo, recortada) en lugar del texto; pestañas principales con subrayado dorado en la activa (en vez de botón relleno).
+- [x] Las 8 herramientas de administración (Papelera de facturas, Roles, Descargar backup, Ver backup como texto, Registros, Auditoría Venta/Costo/MB, Historial, Restaurar backup) pasan a un único menú **Herramientas ▾** (se cierra con clic afuera o Escape). Quedan a la vista "Nueva obra" y "Deshacer". Se respetan los permisos de cada rol (solo aparecen las que el rol puede usar).
+- [x] Obras: "Importar obras desde Excel" queda plegado (se abre con un clic). Pagos: la explicación larga queda plegada en "Cómo funcionan los pagos".
+- [x] Toda la app: números con ancho fijo (las cifras de las tablas quedan alineadas) y foco visible al moverse con el teclado.
+- [x] Revisado con capturas de pantalla (encabezado de QA naranja y de Producción negro, menú abierto, Pagos) y prueba de pantalla automática.
+- [x] Publicado en QA.
+- [ ] Subida a Producción (solo con OK del usuario).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

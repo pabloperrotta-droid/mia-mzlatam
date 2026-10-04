@@ -144,19 +144,12 @@
             React.createElement(
               "div",
               { style: { display: "flex", alignItems: "center", gap: 12 } },
-              React.createElement(
-                "div",
-                {
-                  style: {
-                    fontFamily: "Calibri, 'Trebuchet MS', sans-serif",
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color: "#fff",
-                    letterSpacing: 0.2,
-                  },
-                },
-                "MZ LATAM",
-              ),
+              // Sección 95: el logo (blanco) en lugar del texto "MZ LATAM".
+              React.createElement("img", {
+                src: LOGO_MZLATAM_TRANSPARENTE,
+                alt: "MZ LATAM",
+                style: { height: 34, width: "auto", display: "block", marginRight: 8 },
+              }),
               React.createElement(
                 "div",
                 {
@@ -552,13 +545,8 @@
               React.createElement(
                 "div",
                 {
-                  style: {
-                    display: "flex",
-                    background: "rgba(255,255,255,0.07)",
-                    borderRadius: 9,
-                    padding: 3,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  },
+                  role: "tablist",
+                  style: { display: "flex", gap: 2, flexWrap: "wrap" },
                 },
                 ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones"]
                   .filter((e) => Jn[e])
@@ -570,17 +558,20 @@
                         onClick: () => {
                           (setVista(e), lo(false), e === "obras" && (be(null), no(null), it(null)));
                         },
+                        role: "tab",
+                        "aria-selected": vista === e,
+                        className: "pestana-principal",
                         style: {
                           border: "none",
-                          padding: "6px 11px",
-                          borderRadius: 7,
-                          fontSize: 13,
-                          fontWeight: 700,
+                          borderBottom: "2px solid " + (vista === e ? GOLD : "transparent"),
+                          padding: "7px 12px 6px",
+                          borderRadius: 0,
+                          fontSize: 13.5,
+                          fontWeight: vista === e ? 700 : 500,
                           cursor: "pointer",
-                          background: vista === e ? GOLD : "transparent",
-                          color: vista === e ? NAVY : "rgba(255,255,255,0.75)",
-                          letterSpacing: 0.2,
-                          transition: "background 0.15s",
+                          background: "transparent",
+                          color: vista === e ? "#fff" : "rgba(255,255,255,0.68)",
+                          transition: "color 0.15s, border-color 0.15s",
                         },
                       },
                       e === "obras"
@@ -676,6 +667,9 @@
                   " Deshacer",
                   historialDeshacer.length > 0 ? " (" + historialDeshacer.length + ")" : "",
                 ),
+              React.createElement(
+                MenuHerramientas,
+                null,
               Zn("obras") === "editar" &&
                 React.createElement(
                   "button",
@@ -842,6 +836,7 @@
                     },
                   }),
                 ),
+              ),
             ),
           ),
         ),
@@ -2050,23 +2045,24 @@
                               React.Fragment,
                               null,
                               fn &&
+                                // Sección 95: la importación de obras queda plegada (se usa poco y ocupaba el principio de la pantalla).
                                 React.createElement(
-                                  "div",
+                                  "details",
                                   {
                                     style: {
                                       background: "#fff",
                                       borderRadius: 12,
                                       border: "1px solid " + BORDER,
-                                      boxShadow: CARD_SHADOW,
-                                      padding: "14px 18px",
+                                      padding: "10px 18px",
                                       marginBottom: 16,
                                     },
                                   },
                                   React.createElement(
-                                    "div",
-                                    { style: { fontSize: 12.5, fontWeight: 700, color: NAVY, marginBottom: 6 } },
-                                    "Importar obras",
+                                    "summary",
+                                    { style: { fontSize: 13, fontWeight: 600, color: NAVY, cursor: "pointer", padding: "2px 0" } },
+                                    "Importar obras desde Excel",
                                   ),
+                                  React.createElement("div", { style: { height: 8 } }),
                                   React.createElement(
                                     "div",
                                     { style: { fontSize: 11.5, color: MUTED, marginBottom: 8 } },
