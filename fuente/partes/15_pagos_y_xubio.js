@@ -665,9 +665,9 @@ function PagosView({
       try {
         fc = await leerFacturaPdf(file);
       } catch (e) {
-        fc = armarFactura(null, {});
+        fc = armarFactura(null, {}, facturaDesdeNombreArchivo(archivo));
       }
-      const prov = proveedorPorCuit(fc.cuit, A, f, n),
+      const prov = proveedorPorCuit(fc.cuit, A, f, n) || proveedorPorRazonSocial(fc.razonSocial, A),
         dp = prov ? fcDatosProveedor(prov) : {},
         leida = !!(fc.cuit && fc.factura && fc.total),
         repetida = nuevas.find(
@@ -696,7 +696,12 @@ function PagosView({
         continue;
       }
       const cc = centroDesdeNombreArchivo(archivo, d, p),
-        imput = imputacionSugerida(prov, cc, n, fcDisponibles(cc)),
+        disp = fcDisponibles(cc),
+        deTabla = prov && cc.centroCosto ? String((G[prov] || {}).imputacion || "").trim() : "",
+        imput =
+          imputacionDesdeNombreArchivo(archivo, prov, disp, V) ||
+          (deTabla && (disp.find((x) => normalizarTexto(x) === normalizarTexto(deTabla)) || deTabla.toUpperCase())) ||
+          (prov && cc.centroCosto ? disp.find((x) => normalizarTexto(x) === normalizarTexto(prov)) || prov : ""),
         total = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
         id = base + "-fc" + i + "-" + Math.random().toString(36).slice(2, 8),
         faltan = [];
@@ -704,7 +709,11 @@ function PagosView({
       prov || faltan.push(fc.cuit ? "el proveedor (el CUIT " + fc.cuit + " no está en la tabla de Proveedores)" : "el proveedor");
       cc.centroCosto ||
         faltan.push(cc.ambiguo ? "el centro de costo (el nombre del archivo coincide con más de uno)" : "el centro de costo (no está en el nombre del archivo)");
-      cc.centroCosto && prov && !imput && faltan.push("la imputación");
+      cc.centroCosto && !imput && faltan.push("la imputación");
+      cc.centroCosto &&
+        imput &&
+        !disp.some((x) => normalizarTexto(x) === normalizarTexto(imput)) &&
+        faltan.push("la imputación " + imput + " todavía no está cargada en " + (cc.subObra || cc.centroCosto) + " (agregala ahí o elegí otra)");
       leida && !fc.neto && faltan.push("el Importe Bruto (no se encontró el importe sin IVA en el PDF)");
       nuevas.push({
         id,
@@ -731,7 +740,7 @@ function PagosView({
         tipo: faltan.length ? "falta" : "ok",
         texto:
           "Línea nueva: " +
-          [prov || fc.razonSocial || "proveedor ?", fc.factura, total ? fmt(total) : "", cc.subObra || cc.centroCosto]
+          [prov || fc.razonSocial || "proveedor ?", fc.factura, total ? fmt(total) : "", imput ? "imputación " + imput : "", cc.subObra || cc.centroCosto]
             .filter(Boolean)
             .join(" · ") +
           (fc.notaCredito ? " (nota de crédito, en negativo)" : "") +
@@ -865,7 +874,7 @@ function PagosView({
   }
   function St() {
     const l = XLSX.utils.aoa_to_sheet([
-        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU"],
+        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU", "Imputación"],
         ...(A || []).map((U) => [
           U.proveedor || "",
           U.actividad || "",
@@ -873,6 +882,7 @@ function PagosView({
           U.cuit || "",
           U.razonSocial || "",
           U.cbu || "",
+          U.imputacion || "",
         ]),
       ]),
       I = XLSX.utils.book_new();
@@ -907,6 +917,9 @@ function PagosView({
               cuit: String(ge(Ue, ["cuit"]) || "").trim(),
               razonSocial: String(ge(Ue, ["razón social", "razon social", "razonsocial"]) || "").trim(),
               cbu: String(ge(Ue, ["cbu"]) || "").trim(),
+              imputacion: String(ge(Ue, ["imputación", "imputacion"]) || "")
+                .toUpperCase()
+                .trim(),
             }))
             .filter((Ue) => Ue.proveedor),
           Y = {};
@@ -2956,6 +2969,15 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                   React.createElement("th", { style: q }, "CUIT"),
                   React.createElement("th", { style: q }, "Razón Social"),
                   React.createElement("th", { style: q }, "CBU"),
+                  React.createElement(
+                    "th",
+                    {
+                      style: q,
+                      title:
+                        "Imputación habitual de este proveedor. Se usa al cargar facturas en PDF (salvo que el nombre del archivo diga otra, para cuando se prestan facturas).",
+                    },
+                    "Imputación",
+                  ),
                   React.createElement("th", { style: q }),
                 ),
               ),
@@ -2968,7 +2990,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                     null,
                     React.createElement(
                       "td",
-                      { colSpan: 7, style: { ...Ae, textAlign: "center", color: MUTED, padding: "18px 8px" } },
+                      { colSpan: 8, style: { ...Ae, textAlign: "center", color: MUTED, padding: "18px 8px" } },
                       'Todavía no hay proveedores cargados acá. Usá "Traer proveedores nuevos de Costos", "Importar Excel" o "Agregar proveedor".',
                     ),
                   ),
@@ -3034,6 +3056,24 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                         value: l.cbu || "",
                         placeholder: "CBU",
                         onChange: (U) => At(I, { cbu: U.target.value }),
+                      }),
+                    ),
+                    React.createElement(
+                      "td",
+                      { style: Ae },
+                      I === 0 &&
+                        React.createElement(
+                          "datalist",
+                          { id: "mia-imputaciones" },
+                          V.map((x) => React.createElement("option", { key: x, value: x })),
+                        ),
+                      React.createElement("input", {
+                        style: Ve,
+                        list: "mia-imputaciones",
+                        value: l.imputacion || "",
+                        placeholder: "Imputación",
+                        title: "Imputación habitual (ej. SAN ANDRES → PINTURA)",
+                        onChange: (U) => At(I, { imputacion: U.target.value.toUpperCase() }),
                       }),
                     ),
                     React.createElement(

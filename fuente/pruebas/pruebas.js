@@ -114,18 +114,24 @@ prueba("Factura PDF: centro de costo / sub obra desde el nombre del archivo", ()
   assert.deepStrictEqual(c("Arcos Palermo.pdf"), { cliente: "ARCOS", centroCosto: "PALERMO", subObra: "" });
   assert.deepStrictEqual(c("factura.pdf"), { cliente: "", centroCosto: "", subObra: "", ambiguo: false });
 });
-prueba("Factura PDF: proveedor con el nombre de MIA (por CUIT) e imputación según lo ya cargado", () => {
+prueba("Factura PDF: proveedor con el nombre de MIA (por CUIT)", () => {
   const tabla = [{ proveedor: "San Andres", cuit: "20-12345678-6", razonSocial: "FERNANDEZ JORGE Y CHUMBA" }];
   assert.strictEqual(f.proveedorPorCuit("20123456786", tabla, {}, []), "SAN ANDRES");
   assert.strictEqual(f.proveedorPorCuit("27111111117", tabla, {}, [{ cuit: "27111111117", proveedorPago: "pepe" }]), "PEPE");
-  const lineas = [
-    { proveedorPago: "SAN ANDRES", proveedor: "PINTURA", cliente: "ARCOS", centroCosto: "PALERMO", subObra: "" },
-    { proveedorPago: "SAN ANDRES", proveedor: "YESERIA", cliente: "ARCOS", centroCosto: "BELGRANO", subObra: "" },
-    { proveedorPago: "SAN ANDRES", proveedor: "PINTURA", cliente: "X", centroCosto: "Y", subObra: "" },
-  ];
-  assert.strictEqual(f.imputacionSugerida("SAN ANDRES", { cliente: "ARCOS", centroCosto: "BELGRANO", subObra: "" }, lineas, ["YESERIA", "PINTURA"]), "YESERIA");
-  assert.strictEqual(f.imputacionSugerida("SAN ANDRES", { cliente: "N", centroCosto: "NUEVA", subObra: "" }, lineas, ["PINTURA", "YESERIA", "OTRO"]), "PINTURA");
-  assert.strictEqual(f.imputacionSugerida("SAN ANDRES", { cliente: "N", centroCosto: "NUEVA", subObra: "" }, lineas, ["ELECTRICIDAD"]), "");
+});
+prueba("Factura PDF: nombre de archivo de ARCA + imputación y sub obra escritas en el nombre", () => {
+  const nombre = "20238459045_001_00001_00000540 victor nunez wu moron.pdf";
+  const a = f.facturaDesdeNombreArchivo(nombre);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), { cuit: "20238459045", tipo: 1, pv: 1, nro: 540 });
+  const fc = f.armarFactura(null, { total: 1000 }, a);
+  assert.strictEqual(fc.factura, "00001-00000540");
+  assert.strictEqual(fc.letra, "A");
+  const obras = [{ cliente: "WU", obra: "WU CIVIL WORK" }, { cliente: "OTRO", obra: "CENTRO" }];
+  const subs = { "WU|WU CIVIL WORK": [{ id: "s1", nombre: "WU MORÓN" }, { id: "s2", nombre: "WU FLORES" }] };
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo(nombre, obras, subs))), { cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORÓN" });
+  assert.strictEqual(f.imputacionDesdeNombreArchivo(nombre, "ARIEL CASA", ["PINTURA"], ["VICTOR NUÑEZ", "ARIEL CASA"]), "VICTOR NUÑEZ");
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("San Andres - Palermo.pdf", "SAN ANDRES", [], ["SAN ANDRES"]), "");
+  assert.strictEqual(f.proveedorPorRazonSocial("CASA ARIEL S.R.L.", [{ proveedor: "Ariel Casa" }]), "ARIEL CASA");
 });
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };

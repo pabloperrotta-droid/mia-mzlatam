@@ -16,7 +16,7 @@ const EXPORTAR = [
   "generarSemanas", "moverSemanas", "semanaLabelCorta", "calcularRetencionGananciasProveedor",
   "xubioFirma", "xubioFechaISO", "xubioClaveOP", "ocPdfId", "BORRAR_CAMPO", "ESTADO_EXTERNO",
   "cuitValido", "fcLeerImporte", "facturaDesdeQr", "facturaDesdeTexto", "armarFactura", "centroDesdeNombreArchivo",
-  "proveedorPorCuit", "imputacionSugerida", "lineaParaFactura", "completarLineaConFactura", "fcClaveNumero",
+  "proveedorPorCuit", "proveedorPorRazonSocial", "facturaDesdeNombreArchivo", "imputacionDesdeNombreArchivo", "lineaParaFactura", "completarLineaConFactura", "fcClaveNumero",
 ];
 
 function cargar() {

@@ -116,9 +116,17 @@ function facturaDesdeTexto(items) {
   m && fcSoloDigitos(m[1]).length < 6 && (r.razonSocial = m[1].trim().slice(0, 80));
   return r;
 }
-// Junta lo del QR (manda) con lo del texto.
-function armarFactura(qr, txt) {
-  const q = qr || {},
+// Nombre con el que ARCA descarga los comprobantes: CUIT-emisor_tipo_puntoDeVenta_número (ej.
+// "20238459045_001_00001_00000540 victor nunez wu moron.pdf"). Sirve si el PDF no se puede leer.
+function facturaDesdeNombreArchivo(nombre) {
+  const m = String(nombre || "").match(/(?:^|\D)(\d{11})_(\d{1,3})_(\d{1,5})_(\d{1,8})(?!\d)/);
+  if (!m || !cuitValido(m[1])) return null;
+  return { cuit: m[1], tipo: Number(m[2]) || 0, pv: Number(m[3]) || 0, nro: Number(m[4]) || 0 };
+}
+// Junta lo del QR (manda), lo del nombre del archivo de ARCA y lo del texto.
+function armarFactura(qr, txt, arch) {
+  const a = arch || {},
+    q = { ...a, ...(qr || {}) },
     t = txt || {},
     tipo = q.tipo || t.tipo || 0,
     pv = q.pv || t.pv || 0,
@@ -189,27 +197,35 @@ function proveedorPorCuit(cuit, tabla, info, lineas) {
   const l = (lineas || []).filter((x) => fcSoloDigitos(x.cuit) === c && (x.proveedorPago || "").trim()).pop();
   return l ? l.proveedorPago.trim().toUpperCase() : "";
 }
-// Imputación para una factura nueva: la imputación no siempre es el mismo proveedor (ej. SAN ANDRES se
-// imputa a PINTURA). 1) la última usada con ese proveedor en ese mismo centro de costo / sub obra;
-// 2) la más usada con ese proveedor que exista en ese centro; 3) el mismo proveedor si está en el centro.
-function imputacionSugerida(prov, cc, lineas, disponibles) {
-  const P = (prov || "").trim().toUpperCase();
-  if (!P || !cc || !cc.centroCosto) return "";
-  const N = (s) => normalizarTexto(s),
-    deEse = (lineas || []).filter((l) => (l.proveedorPago || "").trim().toUpperCase() === P && (l.proveedor || "").trim()),
-    enCentro = deEse.filter(
-      (l) => N(l.cliente) === N(cc.cliente) && N(l.centroCosto) === N(cc.centroCosto) && N(l.subObra) === N(cc.subObra),
-    );
-  if (enCentro.length) return enCentro[enCentro.length - 1].proveedor.trim().toUpperCase();
-  const lista = (disponibles || []).filter(Boolean),
-    enLista = (x) => lista.find((d) => N(d) === N(x)),
-    cuenta = {};
-  deEse.forEach((l) => {
-    const k = enLista(l.proveedor);
-    k && (cuenta[k] = (cuenta[k] || 0) + 1);
-  });
-  const mas = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a])[0];
-  return mas || enLista(P) || "";
+// Si el CUIT no está cargado: razón social del PDF igual a la de la tabla, o al nombre del proveedor
+// (sin importar el orden de las palabras ni "SRL", "SA", etc.: "CASA ARIEL" = "ARIEL CASA").
+function proveedorPorRazonSocial(razon, tabla) {
+  const palabras = (x) =>
+    normalizarTexto(String(x || "").replace(/[.,]/g, " "))
+      .split(" ")
+      .filter((w) => w.length > 1 && !/^(SA|SRL|SAS|SH|SC|DE|LA|EL|LOS|LAS)$/.test(w))
+      .sort()
+      .join(" "),
+    r = palabras(razon);
+  if (r.length < 4) return "";
+  const t = (tabla || []).find((x) => x && x.proveedor && (palabras(x.razonSocial) === r || palabras(x.proveedor) === r));
+  return t ? t.proveedor.trim().toUpperCase() : "";
+}
+// Imputación escrita en el nombre del archivo (ej. "... victor nunez wu moron.pdf" → VICTOR NUÑEZ).
+// Primero entre los proveedores de ese centro / sub obra, después entre todos los conocidos. No cuenta
+// si el nombre encontrado es el mismo proveedor al que se le paga.
+function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos) {
+  const limpiar = (x) => normalizarTexto(String(x || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " ")),
+    archivo = " " + limpiar(nombre) + " ",
+    P = limpiar(prov),
+    buscar = (lista) =>
+      (lista || [])
+        .filter((x) => {
+          const k = limpiar(x);
+          return k.length >= 4 && k !== P && archivo.includes(" " + k + " ");
+        })
+        .sort((x, y) => limpiar(y).length - limpiar(x).length)[0] || "";
+  return buscar(disponibles) || buscar(todos);
 }
 // Número de factura comparable (sin ceros a la izquierda): "14-2" === "00014-00000002".
 function fcClaveNumero(s) {
@@ -415,7 +431,7 @@ async function leerFacturaPdf(file) {
   try {
     qr = facturaDesdeQr(await fcLeerQrDePagina(page));
   } catch {}
-  return armarFactura(qr, facturaDesdeTexto(items));
+  return armarFactura(qr, facturaDesdeTexto(items), facturaDesdeNombreArchivo(file.name));
 }
 
 // ---------- Celda "PDF" al lado del número de factura ----------
