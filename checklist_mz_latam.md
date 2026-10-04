@@ -1278,6 +1278,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] **CBU de Pagos → Proveedores** (pedido del usuario: "si yo cambio el CBU en pagos, que se me actualice en proveedores"): ya se copiaba, pero si la línea no tenía Proveedor elegido creaba en la tabla un proveedor nuevo con el nombre de la imputación (podía duplicar). Ahora solo actualiza al proveedor de la línea si ya está en la tabla; nunca crea uno.
 - [x] Recomendación al usuario: cargar todos los CUIT en la tabla de Proveedores (Descargar Excel → completar → Importar Excel, que actualiza por nombre sin duplicar), porque la lectura de facturas identifica al proveedor por CUIT.
 
+- [x] **Regla de duplicados definida por el usuario**: "si son el mismo CUIT, completa lo vacío. Si el CUIT cambia… genera una nueva línea", y el CUIT se compara solo por los números (con o sin guiones). Al crear un proveedor: mismo CUIT → "es el mismo proveedor", no deja crear otro y ofrece "Usar ese"; mismo nombre con otro CUIT → es otro proveedor y pide otro nombre (ej. "SAN ANDRES SA"), porque el nombre es lo que identifica a cada fila de la tabla.
+- [x] La imputación escrita en el nombre del archivo tolera errores de tipeo en palabras largas ("eurolmap" → EUROLAMP).
+- [x] Probados los 21 nombres de archivo reales que pasó el usuario (sin los PDF): 18 se reconocen completos (cliente / centro / sub obra, interno + rubro, imputación). Sin rubro reconocible: "hernan caminos interno" (no dice rubro) e "interno sistemas" (SISTEMAS no es un rubro de gastos internos); "FACA0000200006013" no tiene centro en el nombre. Esos quedan para elegir en la revisión.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".

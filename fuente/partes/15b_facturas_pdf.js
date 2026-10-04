@@ -352,8 +352,9 @@ function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc) {
         .split(" "),
     ),
     libres = palabras.filter((w) => w.length >= 4 && !/\d/.test(w) && !usadas.has(w)),
+    parecida = (w, l) => w === l || (w.length >= 6 && l.length >= 6 && distanciaLevenshtein(w, l) <= 1) || (w.length >= 8 && distanciaLevenshtein(w, l) <= 2),
     porPalabra = (lista) => {
-      const c = (lista || []).filter((x) => limpiar(x) !== P && limpiar(x).split(" ").some((w) => w.length >= 4 && libres.includes(w)));
+      const c = (lista || []).filter((x) => limpiar(x) !== P && limpiar(x).split(" ").some((w) => w.length >= 4 && libres.some((l) => parecida(w, l))));
       return c.length === 1 ? c[0] : "";
     };
   return porPalabra(disponibles) || porPalabra(todos);
@@ -651,13 +652,13 @@ function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar, tabla,
       React.createElement("input", { style: campo, value: v[k] || "", placeholder: ph, onChange: (e) => setV((x) => ({ ...x, [k]: e.target.value })), ...(extra || {}) }),
     cuitMal = fcSoloDigitos(v.cuit) && !cuitValido(v.cuit),
     // Para no duplicar: si ese CUIT (o ese nombre) ya está en la tabla, se ofrece usar el existente.
-    existente = (tabla || []).find(
-      (r) =>
-        r &&
-        r.proveedor &&
-        ((fcSoloDigitos(v.cuit).length === 11 && fcSoloDigitos(r.cuit) === fcSoloDigitos(v.cuit)) ||
-          (String(v.nombre || "").trim() && normalizarTexto(r.proveedor) === normalizarTexto(v.nombre))),
-    ),
+    // Regla del usuario: mismo CUIT = mismo proveedor (se usa el existente y se completa lo vacío); mismo
+    // nombre con otro CUIT = otro proveedor (necesita otro nombre). El CUIT se compara solo por los números.
+    cuitNuevo = fcSoloDigitos(v.cuit),
+    mismoCuit = cuitNuevo.length === 11 ? (tabla || []).find((r) => r && r.proveedor && fcSoloDigitos(r.cuit) === cuitNuevo) : null,
+    mismoNombre = String(v.nombre || "").trim() ? (tabla || []).find((r) => r && r.proveedor && normalizarTexto(r.proveedor) === normalizarTexto(v.nombre)) : null,
+    nombreOcupado = !mismoCuit && mismoNombre && fcSoloDigitos(mismoNombre.cuit).length === 11 && cuitNuevo.length === 11 && fcSoloDigitos(mismoNombre.cuit) !== cuitNuevo,
+    existente = mismoCuit || (!nombreOcupado && mismoNombre) || null,
     listaId = "np-imp-" + React.useMemo(() => Math.random().toString(36).slice(2, 8), []);
   return React.createElement(
     "div",
@@ -702,7 +703,7 @@ function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar, tabla,
         { style: { background: "#FFF4D6", border: "1px solid #E5C25A", borderRadius: 6, padding: "6px 8px", fontSize: 11, color: TEXT, marginBottom: 6 } },
         "Ya existe en la tabla como ",
         React.createElement("strong", null, existente.proveedor),
-        fcSoloDigitos(existente.cuit) === fcSoloDigitos(v.cuit) && fcSoloDigitos(v.cuit) ? " (mismo CUIT)" : " (mismo nombre)",
+        mismoCuit ? " (mismo CUIT): es el mismo proveedor" : " (mismo nombre)",
         ". ",
         onUsarExistente &&
           React.createElement(
@@ -714,13 +715,22 @@ function NuevoProveedorForm({ inicial, imputaciones, onCrear, onCancelar, tabla,
             "Usar ese",
           ),
       ),
+    nombreOcupado &&
+      React.createElement(
+        "div",
+        { style: { background: "#FBEAE7", border: "1px solid " + RED, borderRadius: 6, padding: "6px 8px", fontSize: 11, color: TEXT, marginBottom: 6 } },
+        "Ya hay un ",
+        React.createElement("strong", null, mismoNombre.proveedor),
+        " con otro CUIT (" + mismoNombre.cuit + "): es otro proveedor, ponele otro nombre (ej. " + String(v.nombre).trim().toUpperCase() + " SA).",
+      ),
     React.createElement(
       "div",
       { style: { display: "flex", gap: 6, marginTop: 2 } },
       React.createElement(
         "button",
         {
-          disabled: !String(v.nombre || "").trim(),
+          disabled: !String(v.nombre || "").trim() || !!mismoCuit || nombreOcupado,
+          title: mismoCuit ? "Ese CUIT ya es de " + mismoCuit.proveedor + ": usá ese" : "",
           onClick: () => onCrear({ ...v, nombre: String(v.nombre || "").trim().toUpperCase(), cuit: String(v.cuit || "").trim() }),
           style: { ...smallBtnPrimary, padding: "4px 10px", fontSize: 11 },
         },
