@@ -429,7 +429,7 @@ function fcPdfLimpiarHuerfanos(lineas) {
   const ids = new Set(lineas.map((l) => String(l.id))),
     limite = Date.now() - 7 * 24 * 3600 * 1000;
   Object.keys(FC_PDF_ST.metas)
-    .filter((id) => !ids.has(id) && (FC_PDF_ST.metas[id].subido || 0) < limite)
+    .filter((id) => !ids.has(id.split("__nc")[0]) && (FC_PDF_ST.metas[id].subido || 0) < limite)
     .forEach((id) => fcPdfBorrar(id).catch(() => {}));
 }
 
@@ -514,15 +514,17 @@ function FacturaPdfCelda({ linea: l, puedeEditar, onAdjuntar }) {
     ref = React.useRef(null),
     [ocupado, setOcupado] = React.useState(""),
     meta = st.metas[l.id],
-    abrir = async (descargar) => {
+    notas = Object.keys(st.metas).filter((k) => k.startsWith(String(l.id) + "__nc")),
+    abrir = async (descargar, id) => {
+      id = id || l.id;
       const w = descargar ? null : window.open("", "_blank");
       setOcupado(descargar ? "…" : "…");
       try {
-        const url = URL.createObjectURL(await fcPdfBlob(l.id));
+        const url = URL.createObjectURL(await fcPdfBlob(id));
         if (descargar) {
           const a = document.createElement("a");
           a.href = url;
-          a.download = meta.nombre || "factura_" + (l.factura || l.id) + ".pdf";
+          a.download = (st.metas[id] && st.metas[id].nombre) || "factura_" + (l.factura || l.id) + ".pdf";
           document.body.appendChild(a);
           a.click();
           a.remove();
@@ -554,6 +556,13 @@ function FacturaPdfCelda({ linea: l, puedeEditar, onAdjuntar }) {
     { style: { display: "inline-flex", gap: 2, alignItems: "center", whiteSpace: "nowrap" } },
     meta && React.createElement("button", { onClick: () => abrir(false), style: btn, title: "Ver la factura (" + meta.nombre + ")" }, "👁"),
     meta && React.createElement("button", { onClick: () => abrir(true), style: btn, title: "Descargar " + meta.nombre }, "⬇"),
+    notas.map((k) =>
+      React.createElement(
+        "button",
+        { key: k, onClick: () => abrir(false, k), style: { ...btn, fontSize: 10, fontWeight: 700, color: "#0969DA" }, title: "Ver la nota de crédito (" + st.metas[k].nombre + ")" },
+        "NC",
+      ),
+    ),
     puedeEditar &&
       React.createElement("input", { ref, type: "file", accept: "application/pdf", style: { display: "none" }, onChange: elegir }),
     puedeEditar &&

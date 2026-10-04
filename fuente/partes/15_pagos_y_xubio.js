@@ -736,6 +736,10 @@ function PagosView({
         filas.push({ ...fila, modo: "repetida", incluir: false, avisos: ["Es la misma factura que " + repetida.archivo + ": no se carga dos veces"] });
         continue;
       }
+      if (fc.notaCredito) {
+        filas.push({ ...fila, modo: "nc", prov, destino: "" });
+        continue;
+      }
       const m = lineaParaFactura(fc, n.filter((l) => !usadas.has(l.id)), prov, (id) => !!fcSt.metas[id]);
       if (m) {
         usadas.add(m.linea.id);
@@ -778,8 +782,31 @@ function PagosView({
         },
       });
     }
+    // Notas de crédito: por defecto se descuentan de la factura de ese proveedor de esta misma carga, o de
+    // la única línea sin pagar que tenga.
+    filas.forEach((x) => {
+      if (x.modo !== "nc") return;
+      const cands = fcCandidatasNc(x, filas),
+        enCarga = cands.filter((c) => c.key.startsWith("nueva:"));
+      x.destino = enCarga.length ? enCarga[0].key : cands.length === 1 ? cands[0].key : "";
+      cands.length || ((x.incluir = false), x.avisos.push("No hay ninguna factura de ese proveedor sin pagar para descontarla"));
+    });
     setFcProg("");
     setFcRev(filas);
+  }
+  // Facturas de las que se puede descontar una nota de crédito: las de esta carga y las líneas sin pagar
+  // del mismo proveedor (por CUIT o por nombre).
+  function fcCandidatasNc(x, filas) {
+    const c = fcSoloDigitos(x.fc.cuit),
+      pr = (x.prov || "").trim().toUpperCase(),
+      igual = (cuit, pp) => (c && fcSoloDigitos(cuit) === c) || (pr && (pp || "").trim().toUpperCase() === pr),
+      desc = (l) => [l.proveedorPago || l.razonSocial, l.factura || "(sin número)", l.subObra || l.centroCosto, l.importe ? fmt(l.importe) : ""].filter(Boolean).join(" · ");
+    return [
+      ...(filas || [])
+        .filter((y) => y.modo === "nueva" && y.incluir && igual(y.linea.cuit, y.linea.proveedorPago))
+        .map((y) => ({ key: "nueva:" + y.key, texto: desc(y.linea) + " (en esta carga)" })),
+      ...n.filter((l) => !l.fechaPagado && igual(l.cuit, l.proveedorPago)).map((l) => ({ key: "linea:" + l.id, texto: desc(l) })),
+    ];
   }
   function fcCambiarFila(key, fn) {
     setFcRev((xs) => (xs || []).map((x) => (x.key === key ? fn(x) : x)));
@@ -807,19 +834,52 @@ function PagosView({
       nuevas = [],
       subir = [],
       base = Date.now().toString(36);
+    const porFila = {},
+      cambiosNc = {},
+      cuentaNc = {};
     filas.forEach((x, i) => {
       if (x.modo === "nueva") {
         const id = base + "-fc" + i + "-" + Math.random().toString(36).slice(2, 8),
           l = { id, ...x.linea };
-        x.formaPago && (l[x.formaPago] = Number(l.importe) || 0);
-        nuevas.push(l);
+        porFila[x.key] = l;
+        nuevas.push([l, x]);
         subir.push([id, x]);
-      } else {
-        Object.keys(x.cambios || {}).length && Z(x.lineaId, x.cambios);
-        subir.push([x.lineaId, x]);
       }
     });
-    nuevas.length && ye(nuevas);
+    // Facturas que completan una línea que ya estaba (o solo le suman el PDF).
+    const completadas = {};
+    filas.forEach((x) => {
+      if (x.modo !== "misma" && x.modo !== "completa") return;
+      Object.keys(x.cambios || {}).length && (Z(x.lineaId, x.cambios), (completadas[x.lineaId] = x.cambios));
+      subir.push([x.lineaId, x]);
+    });
+    filas.forEach((x) => {
+      if (x.modo !== "nc" || !x.destino) return;
+      const monto = Math.abs(Number(x.fc.total) || 0),
+        nota = "Tiene NC " + (x.fc.factura || "") + " por " + fmt(monto);
+      let id;
+      if (x.destino.startsWith("nueva:")) {
+        const l = porFila[x.destino.slice(6)];
+        if (!l) return;
+        l.importe = (Number(l.importe) || 0) - monto;
+        l.observaciones = [l.observaciones, nota].filter(Boolean).join(" · ");
+        id = l.id;
+      } else {
+        id = x.destino.slice(6);
+        const l = n.find((y) => y.id === id);
+        if (!l) return;
+        const base = { ...l, ...(completadas[id] || {}) },
+          c = cambiosNc[id] || { importe: Number(base.importe) || 0, observaciones: base.observaciones || "" };
+        c.importe -= monto;
+        c.observaciones = [c.observaciones, nota].filter(Boolean).join(" · ");
+        cambiosNc[id] = c;
+      }
+      cuentaNc[id] = (cuentaNc[id] || 0) + 1;
+      subir.push([id + "__nc" + cuentaNc[id] + "-" + Date.now().toString(36), x]);
+    });
+    Object.entries(cambiosNc).forEach(([id, c]) => Z(id, c));
+    nuevas.forEach(([l, x]) => x.formaPago && (l[x.formaPago] = Number(l.importe) || 0));
+    nuevas.length && ye(nuevas.map(([l]) => l));
     setFcRev(null);
     const res = [];
     for (let i = 0; i < subir.length; i++) {
@@ -827,7 +887,11 @@ function PagosView({
       setFcProg("Guardando PDF " + (i + 1) + " de " + subir.length + "…");
       try {
         await fcPdfGuardar(id, x.file, x.fc);
-        res.push({ archivo: x.archivo, tipo: "ok", texto: x.modo === "nueva" ? "Línea nueva cargada" : "PDF adjuntado a la línea que ya estaba" });
+        res.push({
+          archivo: x.archivo,
+          tipo: "ok",
+          texto: x.modo === "nueva" ? "Línea nueva cargada" : x.modo === "nc" ? "Nota de crédito descontada del Importe Final de la factura" : "PDF adjuntado a la línea que ya estaba",
+        });
       } catch (e) {
         res.push({ archivo: x.archivo, tipo: "falta", texto: "No se pudo guardar el PDF: " + ((e && e.message) || e) });
       }
@@ -850,7 +914,7 @@ function PagosView({
   function renderRevisionFacturas() {
     const filas = fcRev || [],
       provs = Object.keys(G).sort(),
-      cargables = filas.filter((x) => x.incluir && x.modo !== "repetida"),
+      cargables = filas.filter((x) => x.incluir && x.modo !== "repetida" && (x.modo !== "nc" || x.destino)),
       celda = { padding: "5px 6px", borderBottom: "1px solid #EEE", verticalAlign: "top", fontSize: 12 },
       th = { ...celda, fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", background: "#FAFAF7", position: "sticky", top: 0, zIndex: 2, textAlign: "left", whiteSpace: "nowrap" },
       inp = { fontSize: 12, padding: "3px 5px", border: "1px solid #D0D0D0", borderRadius: 4, background: "#fff", color: TEXT, boxSizing: "border-box" },
@@ -946,6 +1010,43 @@ function PagosView({
                       React.createElement("div", { key: i, style: { color: /PAGADA/.test(a) ? RED : "#9A6700", fontSize: 11, fontWeight: /PAGADA/.test(a) ? 700 : 400, marginTop: 2 } }, "⚠️ " + a),
                     ),
                   );
+                if (x.modo === "nc") {
+                  const cands = fcCandidatasNc(x, filas),
+                    monto = Math.abs(Number(x.fc.total) || 0);
+                  return React.createElement(
+                    "tr",
+                    { key: x.key, style: { opacity: apagada ? 0.45 : 1, background: "#EEF4FB" } },
+                    React.createElement("td", { style: celda }, check),
+                    React.createElement("td", { style: celda }, archivo),
+                    React.createElement(
+                      "td",
+                      { style: { ...celda, color: NAVY }, colSpan: 10 },
+                      React.createElement(
+                        "strong",
+                        null,
+                        "Nota de crédito " + (x.fc.factura || "") + " por " + fmt(monto) + " — " + (x.prov || x.fc.razonSocial || x.fc.cuit || "proveedor ?") + ". ",
+                      ),
+                      cands.length
+                        ? React.createElement(
+                            React.Fragment,
+                            null,
+                            "Descontarla del Importe Final de: ",
+                            React.createElement(
+                              "select",
+                              {
+                                value: x.destino || "",
+                                onChange: (e) => fcCambiarFila(x.key, (y) => ({ ...y, destino: e.target.value })),
+                                style: { ...inp, maxWidth: 520, ...mal(x.incluir && !x.destino) },
+                              },
+                              React.createElement("option", { value: "" }, "Elegí la factura…"),
+                              cands.map((c) => React.createElement("option", { key: c.key, value: c.key }, c.texto)),
+                            ),
+                            React.createElement("div", { style: { fontSize: 11, color: MUTED, marginTop: 3 } }, 'En Observaciones queda "Tiene NC ' + (x.fc.factura || "") + " por " + fmt(monto) + '". El Importe Bruto no cambia.'),
+                          )
+                        : "No hay ninguna factura de ese proveedor sin pagar: cargá primero la factura (o descontala a mano).",
+                    ),
+                  );
+                }
                 if (x.modo !== "nueva") {
                   const e = x.existente || {},
                     desc =
