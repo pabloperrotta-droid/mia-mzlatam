@@ -881,7 +881,7 @@ function PagosView({
     Object.entries(cambiosNc).forEach(([id, c]) => Z(id, c));
     nuevas.forEach(([l, x]) =>
       x.formaPago === "mixto"
-        ? FORMAS_MIXTO.forEach(([k]) => (l[k] = Number((x.mix || {})[k]) || 0))
+        ? Object.assign(l, fcMontosMixto(l.importe, x.mix))
         : x.formaPago && (l[x.formaPago] = Number(l.importe) || 0),
     );
     nuevas.length && ye(nuevas.map(([l]) => l));
@@ -915,6 +915,20 @@ function PagosView({
   const FORMAS_MIXTO = FORMAS_PAGO.slice(1, 5);
   // Mismo orden de columnas que una línea de Pagos: Se paga, Cliente, Centro de costo, Sub obra,
   // Imputación, Proveedor, Factura, Importe Final, Importe Bruto, Forma de pago.
+  // Mixto: porcentajes por forma de pago → importes sobre el Importe Final (redondeados a centavos; la
+  // última forma con porcentaje se lleva la diferencia de redondeo si suman 100 %).
+  function fcMontosMixto(importe, mix) {
+    const total = Number(importe) || 0,
+      r = {},
+      con = FORMAS_MIXTO.filter(([k]) => Number((mix || {})[k]) > 0).map(([k]) => k),
+      pct = con.reduce((a, k) => a + Number(mix[k]), 0);
+    FORMAS_MIXTO.forEach(([k]) => (r[k] = Math.round(total * (Number((mix || {})[k]) || 0)) / 100));
+    if (con.length && Math.abs(pct - 100) < 0.01) {
+      const ultimo = con[con.length - 1];
+      r[ultimo] = Math.round((total - con.slice(0, -1).reduce((a, k) => a + r[k], 0)) * 100) / 100;
+    }
+    return r;
+  }
   const fcOrdenColumnas = (xs) => [0, 1, 11, 4, 5, 6, 7, 2, 3, 8, 9, 10].map((i) => xs[i]);
   function fcVerPdf(file) {
     const url = URL.createObjectURL(file);
@@ -1086,8 +1100,8 @@ function PagosView({
                   provOk = !!G[(l.proveedorPago || "").trim().toUpperCase()],
                   impOk = interno || (!!l.proveedor && disp.some((o) => normalizarTexto(o) === normalizarTexto(l.proveedor))),
                   mix = x.mix || {},
-                  asignado = FORMAS_MIXTO.reduce((a, [k]) => a + (Number(mix[k]) || 0), 0),
-                  faltaMix = (Number(l.importe) || 0) - asignado,
+                  pctTotal = FORMAS_MIXTO.reduce((a, [k]) => a + (Number(mix[k]) || 0), 0),
+                  montosMix = fcMontosMixto(l.importe, mix),
                   listaProv = "fc-prov-" + x.key;
                 return React.createElement(
                   "tr",
@@ -1244,21 +1258,30 @@ function PagosView({
                     x.formaPago === "mixto"
                       ? React.createElement(
                           "div",
-                          { style: { marginTop: 4, display: "grid", gridTemplateColumns: "auto 105px", gap: "3px 6px", alignItems: "center", fontSize: 11 } },
+                          { style: { marginTop: 4, display: "grid", gridTemplateColumns: "auto auto", gap: "3px 6px", alignItems: "center", fontSize: 11 } },
                           FORMAS_MIXTO.map(([k, t]) => [
                             React.createElement("span", { key: k + "t", style: { color: MUTED } }, t),
-                            React.createElement(MilesInput, {
-                              key: k,
-                              value: mix[k] || 0,
-                              onChange: (v) => fcCambiarFila(x.key, (y) => ({ ...y, mix: { ...(y.mix || {}), [k]: v } })),
-                              style: { ...inp, width: 105, textAlign: "right", fontSize: 11.5 },
-                              title: "Podés escribir cuentas, ej. =" + fmt(Number(l.importe) || 0).replace("$", "") + "/2",
-                            }),
+                            React.createElement(
+                              "span",
+                              { key: k, style: { display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" } },
+                              React.createElement("input", {
+                                value: mix[k] == null ? "" : mix[k],
+                                inputMode: "decimal",
+                                placeholder: "0",
+                                onChange: (e) => {
+                                  const v = e.target.value.replace(",", ".").replace(/[^\d.]/g, "");
+                                  fcCambiarFila(x.key, (y) => ({ ...y, mix: { ...(y.mix || {}), [k]: v } }));
+                                },
+                                style: { ...inp, width: 46, textAlign: "right", fontSize: 11.5 },
+                              }),
+                              "%",
+                              React.createElement("span", { style: { color: Number(mix[k]) ? TEXT : MUTED, minWidth: 80, textAlign: "right" } }, Number(mix[k]) ? fmt(montosMix[k]) : ""),
+                            ),
                           ]),
                           React.createElement(
                             "span",
-                            { style: { gridColumn: "1 / 3", fontWeight: 700, color: Math.abs(faltaMix) < 1 ? GREEN : RED } },
-                            Math.abs(faltaMix) < 1 ? "✓ Suma el Importe Final" : (faltaMix > 0 ? "Falta asignar " : "Sobran ") + fmt(Math.abs(faltaMix)),
+                            { style: { gridColumn: "1 / 3", fontWeight: 700, color: Math.abs(pctTotal - 100) < 0.01 ? GREEN : RED } },
+                            Math.abs(pctTotal - 100) < 0.01 ? "✓ 100 %" : (pctTotal < 100 ? "Falta " : "Sobra ") + Math.round(Math.abs(100 - pctTotal) * 100) / 100 + " %",
                           ),
                         )
                       : React.createElement(
