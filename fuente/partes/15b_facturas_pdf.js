@@ -161,6 +161,18 @@ function facturaDesdeTexto(items) {
     }
   }
   r.neto && r.total && r.neto > r.total + 1 && delete r.neto;
+  // Importe de cada renglón (el de más a la derecha de cada fila), de arriba hacia abajo: sirve para
+  // repartir una factura con varios centros de costo.
+  if (conPos) {
+    const filasNum = [];
+    lista
+      .filter((i) => fcEsImporte(i.s))
+      .forEach((i) => {
+        const f = filasNum.find((x) => Math.abs(x.y - i.y) < 3);
+        f ? i.x > f.x && ((f.x = i.x), (f.v = Math.abs(fcLeerImporte(i.s)))) : filasNum.push({ y: i.y, x: i.x, v: Math.abs(fcLeerImporte(i.s)) });
+      });
+    r.renglones = filasNum.sort((a, b) => b.y - a.y).map((x) => x.v).filter((v) => v > 0);
+  }
   r.conImpuestos = /\biva\b|otros\s+tributos|percep|impuestos/i.test(plano);
   m = plano.match(/fecha\s+de\s+emisi[oó]n:?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i) || plano.match(/\b(\d{2}[\/-]\d{2}[\/-]\d{4})\b/);
   m && (r.fecha = m[1].replace(/-/g, "/"));
@@ -214,6 +226,7 @@ function armarFactura(qr, txt, arch) {
     razonSocial: t.razonSocial || "",
     moneda: q.moneda || "PES",
     conQr: !!qr,
+    renglones: t.renglones || [],
   };
 }
 // Centro de costo / sub obra que aparezca en el nombre del archivo (sin formato fijo).
@@ -270,8 +283,16 @@ function centroDesdeNombreArchivo(nombre, obras, subObrasMap, rubros) {
           .join(" ");
       return [k, sin].filter((v, i, a) => v && v.length >= (i === 0 ? 3 : 4) && a.indexOf(v) === i);
     },
+    // Palabra igual o casi igual ("solei" ≈ SOLEIL, "eziza" ≈ EZEIZA), en palabras de 5 letras o más.
+    parecida = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && distanciaLevenshtein(a, b) <= 1),
+    contiene = (v) => {
+      if (archivo.includes(" " + v + " ")) return true;
+      const vw = v.split(" ");
+      for (let i = 0; i + vw.length <= palabras.length; i++) if (vw.every((x, j) => parecida(palabras[i + j], x))) return true;
+      return false;
+    },
     largoEn = (x, cliente) => {
-      const v = variantes(x, cliente).find((v) => archivo.includes(" " + v + " "));
+      const v = variantes(x, cliente).find(contiene);
       return v ? v.length : 0;
     },
     esta = (x) => {
@@ -826,4 +847,53 @@ function corregirTipoFacturaProveedores(tabla, tipos) {
     return { ...r, factura: letra };
   });
   return cambio ? nueva : null;
+}
+
+// ---------- Una factura con varios centros de costo (Sección 97) ----------
+// Nombre con partes numeradas: "FACA…_1_wu_solei_imak_-_2_wu_oficina_imak_-_3_wu_coto_ezeiza.pdf" →
+// ["WU SOLEI IMAK", "WU OFICINA IMAK", "WU COTO EZEIZA"]. Hace falta que estén el 1 y el 2 en orden.
+function fcPartesArchivo(nombre) {
+  const w = fcPalabrasArchivo(nombre),
+    partes = [];
+  let esperado = 1,
+    actual = null;
+  w.forEach((x) => {
+    if (x === String(esperado)) {
+      actual = [];
+      partes.push(actual);
+      esperado++;
+    } else actual && actual.push(x);
+  });
+  return partes.length >= 2 ? partes.map((p) => p.join(" ")).filter(Boolean) : [];
+}
+// Brutos de cada parte: n renglones seguidos (en el orden de la factura) que suman el subtotal; si no,
+// cualquier combinación de n renglones que lo sume. null si no se encuentra.
+function repartirFactura(fc, n) {
+  const neto = Math.abs(Number(fc.neto) || 0),
+    rs = (fc.renglones || []).filter((v) => v > 0 && v < neto + 1);
+  if (!neto || n < 2 || rs.length < n) return null;
+  const cerca = (a) => Math.abs(a - neto) < 1;
+  for (let i = 0; i + n <= rs.length; i++) {
+    const tramo = rs.slice(i, i + n);
+    if (cerca(tramo.reduce((a, b) => a + b, 0))) return tramo;
+  }
+  let hallado = null;
+  const buscar = (desde, elegidos, suma) => {
+    if (hallado) return;
+    if (elegidos.length === n) return cerca(suma) && (hallado = elegidos.slice());
+    for (let i = desde; i < rs.length && rs.length - i >= n - elegidos.length; i++)
+      suma + rs[i] <= neto + 1 && (elegidos.push(rs[i]), buscar(i + 1, elegidos, suma + rs[i]), elegidos.pop());
+  };
+  rs.length <= 40 && buscar(0, [], 0);
+  return hallado;
+}
+// Importe Final de cada parte: el total repartido en proporción al bruto (su IVA + su parte de las
+// percepciones). Los centavos de redondeo van a la última, así suman exacto el total.
+function finalesProporcionales(total, brutos) {
+  const t = Number(total) || 0,
+    suma = brutos.reduce((a, b) => a + b, 0);
+  if (!suma) return brutos.map(() => 0);
+  const r = brutos.map((b) => Math.round(((t * b) / suma) * 100) / 100);
+  r[r.length - 1] = Math.round((t - r.slice(0, -1).reduce((a, b) => a + b, 0)) * 100) / 100;
+  return r;
 }

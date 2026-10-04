@@ -690,7 +690,7 @@ function PagosView({
     const c = fcSoloDigitos(l.cuit),
       pr = (l.proveedorPago || "").trim().toUpperCase(),
       todas = [...((c && fcIndice["C" + c + "|" + num]) || []), ...((pr && fcIndice["P" + pr + "|" + num]) || [])];
-    return todas.filter((x, i) => x.id !== l.id && todas.indexOf(x) === i);
+    return todas.filter((x, i) => x.id !== l.id && todas.indexOf(x) === i && !(l.parteFactura && x.parteFactura));
   }
   function textoFacturaRepetida(otras) {
     return otras
@@ -757,16 +757,28 @@ function PagosView({
         filas.push({ ...fila, modo: m.como, lineaId: m.linea.id, existente: m.linea, cambios, avisos });
         continue;
       }
-      const cc = centroDesdeNombreArchivo(archivo, d, p, rubrosInt),
-        imp = fcImputacion(prov, cc, archivo, fc.razonSocial),
-        total = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
-        neto = fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto || 0;
-      cc.ambiguo && fila.avisos.push("El nombre del archivo coincide con más de un centro de costo: elegilo");
-      !(fc.cuit && fc.factura && fc.total) && fila.avisos.push("No se pudieron leer todos los datos del PDF: completalos");
-      fc.total && !fc.neto && fila.avisos.push("No se encontró el importe sin IVA (Importe Bruto): completalo");
-      fc.notaCredito && fila.avisos.push("Nota de crédito: entra en negativo");
+      const partes = fcPartesArchivo(archivo),
+        brutosPartes = partes.length >= 2 ? repartirFactura(fc, partes.length) : null,
+        totalFc = fc.notaCredito ? -Math.abs(fc.total) : fc.total,
+        finalesPartes = brutosPartes ? finalesProporcionales(totalFc, brutosPartes) : null;
+      (partes.length >= 2 ? partes : [null]).forEach((parte, ip) => {
+      const nombreParte = parte || archivo,
+        cc = centroDesdeNombreArchivo(nombreParte, d, p, rubrosInt),
+        imp = fcImputacion(prov, cc, nombreParte, fc.razonSocial),
+        total = parte ? (finalesPartes ? finalesPartes[ip] : 0) : totalFc,
+        neto = parte ? (brutosPartes ? brutosPartes[ip] * (fc.notaCredito ? -1 : 1) : 0) : fc.notaCredito ? -Math.abs(fc.neto || 0) : fc.neto || 0,
+        fila2 = parte ? { ...fila, key: fila.key + "-p" + ip, avisos: [] } : fila;
+      parte &&
+        fila2.avisos.push(
+          "Parte " + (ip + 1) + " de " + partes.length + " de la factura (" + fmt(Math.abs(totalFc)) + ")" +
+            (brutosPartes ? "" : ": no se encontraron los importes de cada renglón, completalos"),
+        );
+      cc.ambiguo && fila2.avisos.push("El nombre del archivo coincide con más de un centro de costo: elegilo");
+      !(fc.cuit && fc.factura && fc.total) && fila2.avisos.push("No se pudieron leer todos los datos del PDF: completalos");
+      fc.total && !fc.neto && fila2.avisos.push("No se encontró el importe sin IVA (Importe Bruto): completalo");
+      fc.notaCredito && fila2.avisos.push("Nota de crédito: entra en negativo");
       filas.push({
-        ...fila,
+        ...fila2,
         modo: "nueva",
         impDeArchivo: imp.deArchivo,
         linea: {
@@ -786,8 +798,10 @@ function PagosView({
           facturaA: fc.letra ? fc.letra === "A" : !!dp.facturaA,
           importe: total || 0,
           importeBruto: neto || 0,
-          observaciones: fc.notaCredito ? "Nota de crédito" : "",
+          observaciones: [fc.notaCredito ? "Nota de crédito" : "", parte ? "Factura repartida " + (ip + 1) + "/" + partes.length : ""].filter(Boolean).join(" · "),
+          ...(parte ? { parteFactura: ip + 1 + "/" + partes.length } : {}),
         },
+      });
       });
     }
     // Notas de crédito: por defecto se descuentan de la factura de ese proveedor de esta misma carga, o de
@@ -1274,7 +1288,7 @@ function PagosView({
                         },
                         "+ Crear " + l.proveedor + " en " + (l.subObra || l.centroCosto),
                       ),
-                    x.impDeArchivo && !interno && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
+                    x.impDeArchivo && !interno && l.proveedor && React.createElement("div", { style: { fontSize: 10.5, color: MUTED, marginTop: 2 } }, "del nombre del archivo"),
                   ),
                   React.createElement(
                     "td",

@@ -207,6 +207,24 @@ prueba("Rubros internos: se pueden crear nuevos y se reconocen en el nombre del 
   assert.ok(r.includes("SEGUROS") && r.includes("SISTEMAS") && !r.includes("X"));
   assert.deepStrictEqual(JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo("fc interno seguros.pdf", [], {}, r))), { cliente: "INTERNO", centroCosto: "SEGUROS", subObra: "" });
 });
+prueba("Factura con varios centros de costo: partes numeradas en el nombre, brutos por renglón y finales proporcionales", () => {
+  const n = "FACA0000200006013_1_wu_solei_imak_-_2_wu_oficina_imak_-_3_wu_coto_ezeiza.pdf";
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.fcPartesArchivo(n))), ["WU SOLEI IMAK", "WU OFICINA IMAK", "WU COTO EZEIZA"]);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.fcPartesArchivo("Factura A-00003-0000002716 wu palermo 2  pablo morh.pdf"))), []);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.fcPartesArchivo("27271455165_011_00001_00000215 (1) hernan caminos interno.pdf"))), []);
+  const obras = [{ cliente: "WU", obra: "WU CIVIL WORK" }];
+  const subs = { "WU|WU CIVIL WORK": ["WU SOLEIL", "WU OFICINA", "WU COTO EZEIZA"].map((x, i) => ({ id: "s" + i, nombre: x })) };
+  const sub = (t) => f.centroDesdeNombreArchivo(t, obras, subs).subObra;
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.fcPartesArchivo(n).map(sub))), ["WU SOLEIL", "WU OFICINA", "WU COTO EZEIZA"]);
+  // Renglones (importe de cada fila) + subtotal + total, con números inventados.
+  const fc = { neto: 18000, total: 22230, renglones: [1, 10000, 3000, 5000, 18000, 500, 3780, 22230] };
+  const brutos = JSON.parse(JSON.stringify(f.repartirFactura(fc, 3)));
+  assert.deepStrictEqual(brutos, [10000, 3000, 5000]);
+  const finales = JSON.parse(JSON.stringify(f.finalesProporcionales(22230, brutos)));
+  assert.deepStrictEqual(finales, [12350, 3705, 6175]);
+  assert.strictEqual(finales.reduce((a, b) => a + b, 0), 22230);
+  assert.strictEqual(f.repartirFactura({ neto: 100, renglones: [30, 30] }, 3), null);
+});
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };
   const lineas = [
