@@ -1262,7 +1262,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] **Notas de crédito** (definición del usuario: "si hay nc pongo el final y en observaciones pongo que tiene una nc"): una NC en PDF no se carga como línea aparte; en la revisión se elige de qué factura del mismo proveedor descontarla (por defecto la de esa misma carga, o la única línea sin pagar). Se resta del **Importe Final** (el Bruto no cambia), en Observaciones queda "Tiene NC 00014-00000004 por $12.100" y el PDF de la NC queda en esa línea (link "NC" al lado del número de factura). Si no hay ninguna factura de ese proveedor sin pagar, se avisa y no se carga. Probado: factura $121.000 + NC $12.100 → Importe Final $108.900.
 - [x] Pruebas nuevas: importes por posición en 4 diseños distintos (datos inventados), cuentas en los importes. Probado en el navegador con las 3 facturas reales + ficticias: revisión, crear proveedor, elegir cliente/centro/forma de pago, cargar.
 - [x] Publicado en QA.
-- [ ] Subir a Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". La integración con Xubio en Producción sigue en pausa.
 
 - [x] Ajustes pedidos por el usuario al probar la revisión: (a) **Imputación como lista desplegable** con lo que tiene ese cliente / centro de costo / sub obra (con "+ Crear nuevo proveedor", igual que en la línea de Pagos); (b) con cliente **INTERNO** el centro de costo muestra los rubros (Alquiler, Sueldos, …) y no pide imputación; (c) forma de pago **"Mixto" por porcentaje** (pedido del usuario: "cuando pongo mixto, que directamente pongo el porcentaje… y que me calcule solo sobre el importe final… si quiero modificar, lo hago una vez cargada la factura en Pagos"): se pone el % de Efectivo, Transferencia, E-Cheq y Diego Levy, se ve el importe calculado al lado y "✓ 100 %" / "Falta X %"; los centavos de redondeo van a la última forma, así la suma da exacto el Importe Final (probado: 60 % / 40 % de $454.960 → $272.976 + $181.984); (d) **mismo orden de columnas que una línea de Pagos**: Se paga, Cliente, Centro de costo, Sub obra, Imputación, Proveedor, Factura, Importe Final, Importe Bruto, Forma de pago.
 
@@ -1301,7 +1301,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Órdenes de pago en Xubio: indicado en la ventana como "en pausa hasta resolverlo con Xubio" (la integración de Producción sigue pausada; en QA sigue en modo simulación como hasta ahora).
 - [x] Probado en el navegador: 2 facturas cargadas por PDF, una completa con E-Cheq (✓ Lista) y otra sin cliente (⛔ Falta Cliente, no elegible); al cerrar, la completa quedó pagada el 04/10/2026 e imputada en Costos, y la otra quedó pendiente.
 - [x] Publicado en QA.
-- [ ] Subir a Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". La integración con Xubio en Producción sigue en pausa.
 
 ## 41. Pendientes / recomendaciones
 
