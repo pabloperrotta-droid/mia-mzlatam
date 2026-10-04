@@ -623,7 +623,8 @@ function PagosView({
     [fcRes, setFcRes] = useState(null),
     [fcArrastre, setFcArrastre] = useState(false),
     [fcRev, setFcRev] = useState(null),
-    [fcCrear, setFcCrear] = useState(null);
+    [fcCrear, setFcCrear] = useState(null),
+    [cierre, setCierre] = useState(null);
   useEffect(() => {
     ne && fcPdfLimpiarHuerfanos(n);
   }, [fcSt.cargado, n.length]);
@@ -1238,6 +1239,217 @@ function PagosView({
             "button",
             { onClick: confirmarFacturasPdf, disabled: !cargables.length, style: { ...smallBtnPrimary, opacity: cargables.length ? 1 : 0.5 } },
             "Cargar " + cargables.length + " factura" + (cargables.length === 1 ? "" : "s"),
+          ),
+        ),
+      ),
+    );
+  }
+  // ---------- Cierre del pago semanal (Sección 98) ----------
+  // Motivo por el que una línea no se puede marcar pagada (mismas reglas que el tilde de cada línea).
+  function lineaConError(l) {
+    const ce = (l.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS,
+      me = obraKey(l.cliente, l.centroCosto),
+      ge = ce ? RUBROS_GASTOS_INTERNOS : l.cliente ? Array.from(new Set(d.filter((B) => B.cliente === l.cliente).map((B) => B.obra))) : [],
+      Ke = ce ? [] : p[me] || [],
+      Y = Ke.map((B) => B.nombre),
+      se = Y.findIndex((B) => B.trim().toUpperCase() === (l.subObra || "").trim().toUpperCase()),
+      be = se >= 0 ? subCostoKey(me, Ke[se].id) : null,
+      Ue = ce ? [] : (l.subObra && be ? g[be] || [] : c[me] || []).map((B) => B.proveedor);
+    if (!(l.cliente || "").trim()) return "Falta Cliente";
+    if (!(l.centroCosto || "").trim()) return "Falta Centro de Costo";
+    if (l.cliente && !dt.includes(l.cliente)) return "Cliente no existe";
+    if (l.centroCosto && !ge.includes(l.centroCosto)) return "Centro de costo no existe";
+    if (!ce && l.subObra && !Y.includes(l.subObra)) return "Sub obra no existe";
+    if (!ce && l.proveedor && !Ue.includes(l.proveedor)) return "Imputación no está en ese centro";
+    if ((l.proveedorPago || "").trim() && !G[(l.proveedorPago || "").trim().toUpperCase()]) return "Proveedor no está en la tabla";
+    const falta = Lt(l);
+    return falta ? "Falta " + falta : null;
+  }
+  const pagoDe = (l) => ["efectivo", "transferencia", "echeq", "diegoLevy"].reduce((a, k) => a + (Number(l[k]) || 0), 0);
+  function abrirCierre() {
+    const pendientes = n.filter((l) => !l.fechaPagado && (l.sePaga || "SI") !== "NO");
+    setCierre({
+      fecha: fechaHoyArgentinaDDMMAAAA(),
+      sel: new Set(pendientes.filter((l) => !lineaConError(l) && pagoDe(l) > 0).map((l) => l.id)),
+      retenciones: true,
+      busca: "",
+    });
+  }
+  function confirmarCierre() {
+    const fecha = normalizarFecha(cierre.fecha);
+    if (!fechaEsValida(fecha)) {
+      window.alert("La fecha de pago no es válida (DD/MM/AAAA).");
+      return;
+    }
+    const lineas = n.filter((l) => cierre.sel.has(l.id) && !l.fechaPagado && !lineaConError(l));
+    if (!lineas.length) return;
+    const total = lineas.reduce((a, l) => a + (Number(l.importe) || 0), 0);
+    if (
+      !window.confirm(
+        "¿Marcar " + lineas.length + " línea(s) como pagadas el " + fecha + " por un total de " + fmt(total) + "?\n\nSe imputan en Costos" +
+          (cierre.retenciones ? " y se descarga la planilla de Retenciones" : "") + ".",
+      )
+    )
+      return;
+    lineas.forEach((l) => ee(l.id, fecha));
+    setCierre(null);
+    const res = [{ archivo: "Pago semanal", tipo: "ok", texto: lineas.length + " línea(s) marcadas pagadas el " + fecha + " por " + fmt(total) + " e imputadas en Costos" }];
+    res.titulo = "Pago semanal cerrado";
+    setFcRes(res);
+    if (cierre.retenciones)
+      try {
+        jt(lineas);
+      } catch (e) {
+        window.alert("Las líneas quedaron pagadas, pero no se pudo descargar la planilla de Retenciones: " + ((e && e.message) || e));
+      }
+  }
+  function renderCierre() {
+    const pendientes = n
+        .filter((l) => !l.fechaPagado && (l.sePaga || "SI") !== "NO")
+        .sort((a, b) => (a.proveedorPago || a.proveedor || "").localeCompare(b.proveedorPago || b.proveedor || "", "es")),
+      busca = normalizarTexto(cierre.busca),
+      visibles = busca
+        ? pendientes.filter((l) => normalizarTexto([l.proveedorPago, l.proveedor, l.cliente, l.centroCosto, l.subObra, l.factura].join(" ")).includes(busca))
+        : pendientes,
+      elegidas = pendientes.filter((l) => cierre.sel.has(l.id) && !lineaConError(l)),
+      suma = (k) => elegidas.reduce((a, l) => a + (Number(l[k]) || 0), 0),
+      celda = { padding: "5px 8px", borderBottom: "1px solid #EEE", fontSize: 12, verticalAlign: "top" },
+      th = { ...celda, fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", background: "#FAFAF7", position: "sticky", top: 0, zIndex: 2, textAlign: "left", whiteSpace: "nowrap" },
+      num = { ...celda, textAlign: "right", whiteSpace: "nowrap" },
+      marcar = (ids, si) =>
+        setCierre((x) => {
+          const sel = new Set(x.sel);
+          ids.forEach((id) => (si ? sel.add(id) : sel.delete(id)));
+          return { ...x, sel };
+        }),
+      fechaOk = fechaEsValida(normalizarFecha(cierre.fecha));
+    return React.createElement(
+      "div",
+      { style: { position: "fixed", inset: 0, background: "rgba(20,20,20,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 } },
+      React.createElement(
+        "div",
+        { style: { background: "#fff", borderRadius: 12, width: "96%", maxWidth: 1400, height: "88%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: "1px solid " + BORDER } },
+          React.createElement("div", { style: { fontWeight: 700, color: NAVY, fontSize: 14 } }, "Cerrar el pago semanal"),
+          React.createElement("button", { onClick: () => setCierre(null), style: { border: "none", background: "none", cursor: "pointer", color: MUTED } }, React.createElement(X, { size: 18 })),
+        ),
+        React.createElement(
+          "div",
+          { style: { padding: "10px 18px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid " + BORDER, fontSize: 12.5 } },
+          React.createElement(
+            "label",
+            { style: { display: "flex", gap: 6, alignItems: "center", fontWeight: 600, color: NAVY } },
+            "Fecha de pago:",
+            React.createElement("input", {
+              value: cierre.fecha,
+              onChange: (e) => setCierre((x) => ({ ...x, fecha: e.target.value })),
+              placeholder: "DD/MM/AAAA",
+              style: { ...Ve, width: 110, ...(fechaOk ? {} : { borderColor: RED, background: "#FBEAE7" }) },
+            }),
+          ),
+          React.createElement("input", {
+            value: cierre.busca,
+            onChange: (e) => setCierre((x) => ({ ...x, busca: e.target.value })),
+            placeholder: "Buscar proveedor, obra o factura…",
+            style: { ...Ve, width: 240 },
+          }),
+          React.createElement(
+            "button",
+            { onClick: () => marcar(visibles.filter((l) => !lineaConError(l)).map((l) => l.id), true), style: smallBtnGhost },
+            "Elegir todas",
+          ),
+          React.createElement("button", { onClick: () => marcar(visibles.map((l) => l.id), false), style: smallBtnGhost }, "Ninguna"),
+          React.createElement(
+            "label",
+            { style: { display: "flex", gap: 6, alignItems: "center", color: NAVY } },
+            React.createElement("input", { type: "checkbox", checked: cierre.retenciones, onChange: (e) => setCierre((x) => ({ ...x, retenciones: e.target.checked })) }),
+            "Descargar la planilla de Retenciones de estas líneas",
+          ),
+          React.createElement(
+            "span",
+            { style: { color: MUTED, fontSize: 11.5 }, title: "Cuando se resuelva el problema con Xubio, al cerrar el pago también se van a crear las órdenes de pago" },
+            "Órdenes de pago en Xubio: en pausa hasta resolverlo con Xubio",
+          ),
+        ),
+        React.createElement(
+          "div",
+          { style: { flex: 1, overflow: "auto" } },
+          React.createElement(
+            "table",
+            { style: { borderCollapse: "collapse", width: "100%" } },
+            React.createElement(
+              "thead",
+              null,
+              React.createElement(
+                "tr",
+                null,
+                ["", "Proveedor", "Factura", "Cliente / Centro de costo", "Imputación", "Importe Final", "Efectivo", "Transferencia", "E-Cheq", "Diego Levy", "Estado"].map((t, i) =>
+                  React.createElement("th", { key: i, style: i >= 5 && i <= 9 ? { ...th, textAlign: "right" } : th }, t),
+                ),
+              ),
+            ),
+            React.createElement(
+              "tbody",
+              null,
+              visibles.length === 0 &&
+                React.createElement("tr", null, React.createElement("td", { colSpan: 11, style: { ...celda, textAlign: "center", color: MUTED, padding: 20 } }, "No hay líneas pendientes de pago.")),
+              visibles.map((l) => {
+                const err = lineaConError(l),
+                  pago = pagoDe(l),
+                  dif = Math.abs(pago - (Number(l.importe) || 0)) >= 1,
+                  estado = err
+                    ? React.createElement("span", { style: { color: RED, fontWeight: 700 } }, "⛔ " + err)
+                    : !pago
+                      ? React.createElement("span", { style: { color: "#9A6700" } }, "⚠️ Sin forma de pago")
+                      : dif
+                        ? React.createElement("span", { style: { color: "#9A6700" }, title: "La suma de Efectivo + Transferencia + E-Cheq + Diego Levy no es igual al Importe Final (puede ser por la retención)" }, "⚠️ Pago ≠ Importe Final")
+                        : React.createElement("span", { style: { color: GREEN } }, "✓ Lista");
+                return React.createElement(
+                  "tr",
+                  { key: l.id, style: { opacity: err ? 0.55 : 1 } },
+                  React.createElement(
+                    "td",
+                    { style: celda },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      disabled: !!err,
+                      checked: !err && cierre.sel.has(l.id),
+                      onChange: (e) => marcar([l.id], e.target.checked),
+                      title: err ? "Corregila en Pagos antes de poder pagarla" : "",
+                    }),
+                  ),
+                  React.createElement("td", { style: celda }, l.proveedorPago || l.razonSocial || "—"),
+                  React.createElement("td", { style: celda }, l.factura || "—"),
+                  React.createElement("td", { style: celda }, [l.cliente, l.subObra || l.centroCosto].filter(Boolean).join(" / ") || "—"),
+                  React.createElement("td", { style: celda }, l.proveedor || "—"),
+                  React.createElement("td", { style: { ...num, fontWeight: 700 } }, fmt(Number(l.importe) || 0)),
+                  ["efectivo", "transferencia", "echeq", "diegoLevy"].map((k) => React.createElement("td", { key: k, style: { ...num, color: Number(l[k]) ? TEXT : MUTED } }, Number(l[k]) ? fmt(Number(l[k])) : "—")),
+                  React.createElement("td", { style: celda }, estado),
+                );
+              }),
+            ),
+          ),
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 18px", borderTop: "1px solid " + BORDER, flexWrap: "wrap" } },
+          React.createElement(
+            "div",
+            { style: { fontSize: 12.5, color: NAVY } },
+            React.createElement("strong", null, elegidas.length + " línea(s) · " + fmt(suma("importe"))),
+            "  —  Efectivo " + fmt(suma("efectivo")) + " · Transferencia " + fmt(suma("transferencia")) + " · E-Cheq " + fmt(suma("echeq")) + " · Diego Levy " + fmt(suma("diegoLevy")),
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8 } },
+            React.createElement("button", { onClick: () => setCierre(null), style: smallBtnGhost }, "Cancelar"),
+            React.createElement(
+              "button",
+              { onClick: confirmarCierre, disabled: !elegidas.length || !fechaOk, style: { ...smallBtnPrimary, opacity: elegidas.length && fechaOk ? 1 : 0.5 } },
+              "Marcar " + elegidas.length + " como pagadas",
+            ),
           ),
         ),
       ),
@@ -1999,15 +2211,16 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
       po(false);
     }
   }
-  function jt() {
-    if (fo.length === 0) {
+  function jt(lineas) {
+    const fo2 = Array.isArray(lineas) ? lineas : fo;
+    if (fo2.length === 0) {
       alert("No hay líneas para mostrar en el filtro elegido arriba.");
       return;
     }
     Eo(true);
     try {
       const l = /* @__PURE__ */ new Map();
-      fo.forEach((Y) => {
+      fo2.forEach((Y) => {
         const se = (Y.proveedorPago || Y.proveedor || "").trim() || "(Sin proveedor)";
         (l.has(se) || l.set(se, []), l.get(se).push(Y));
       });
@@ -2242,6 +2455,17 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           " ",
           qt ? "Generando PDF..." : "Pagos Semanales",
         ),
+        ne &&
+          React.createElement(
+            "button",
+            {
+              onClick: abrirCierre,
+              style: { ...smallBtnGhost, borderColor: NAVY, color: NAVY },
+              title:
+                "Arma el lote de pagos pendientes de la semana para revisarlo y, con un clic, marcarlo todo pagado: se imputa en Costos y se descarga la planilla de Retenciones de esas líneas.",
+            },
+            "✓ Cerrar pago semanal",
+          ),
         React.createElement(
           "button",
           {
@@ -2330,6 +2554,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
       ),
     ),
     fcRev && renderRevisionFacturas(),
+    cierre && renderCierre(),
     fcRes &&
       React.createElement(
         "div",
@@ -2347,7 +2572,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
         React.createElement(
           "div",
           { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
-          React.createElement("strong", { style: { color: NAVY } }, "Facturas PDF cargadas (" + fcRes.length + ")"),
+          React.createElement("strong", { style: { color: NAVY } }, fcRes.titulo || "Facturas PDF cargadas (" + fcRes.length + ")"),
           React.createElement(
             "button",
             { onClick: () => setFcRes(null), style: { border: "none", background: "none", cursor: "pointer", color: MUTED, fontSize: 14 }, title: "Cerrar" },

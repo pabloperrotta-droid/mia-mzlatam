@@ -1264,6 +1264,18 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Subir a Producción: pendiente del OK del usuario.
 
+### 98. Pagos: cerrar el pago semanal en un solo paso
+
+- Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".
+- [x] Botón **"✓ Cerrar pago semanal"** en Pagos (para quien puede editar). Abre una ventana con todas las líneas pendientes (sin Fecha Pagado y Se Paga = SI): Proveedor, Factura, Cliente / Centro de costo, Imputación, Importe Final, Efectivo, Transferencia, E-Cheq, Diego Levy y Estado.
+- [x] Estado de cada línea: ✓ Lista · ⚠️ Sin forma de pago · ⚠️ Pago ≠ Importe Final (puede ser por la retención) · ⛔ con el motivo si tiene un dato en rojo (falta cliente/centro, imputación que no está en ese centro, proveedor que no está en la tabla, etc. — mismas reglas que el tilde de cada línea). Las ⛔ no se pueden elegir.
+- [x] Por defecto quedan elegidas las listas y con forma de pago; buscador, "Elegir todas" / "Ninguna", fecha de pago (hoy por defecto, editable) y totales de lo elegido por forma de pago.
+- [x] "Marcar N como pagadas" (con confirmación): pone la Fecha Pagado a todas (igual que el tilde de cada línea: se imputa en Costos) y descarga la **planilla de Retenciones solo de esas líneas** (se puede destildar). Si la planilla fallara, las líneas igual quedan pagadas y se avisa.
+- [x] Órdenes de pago en Xubio: indicado en la ventana como "en pausa hasta resolverlo con Xubio" (la integración de Producción sigue pausada; en QA sigue en modo simulación como hasta ahora).
+- [x] Probado en el navegador: 2 facturas cargadas por PDF, una completa con E-Cheq (✓ Lista) y otra sin cliente (⛔ Falta Cliente, no elegible); al cerrar, la completa quedó pagada el 04/10/2026 e imputada en Costos, y la otra quedó pendiente.
+- [x] Publicado en QA.
+- [ ] Subir a Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
