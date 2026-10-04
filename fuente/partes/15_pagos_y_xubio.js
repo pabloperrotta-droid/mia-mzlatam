@@ -764,7 +764,8 @@ function PagosView({
         modo: "nueva",
         impDeArchivo: imp.deArchivo,
         linea: {
-          sePaga: "SI",
+          // "NO" suelto en el nombre del archivo = no se paga (ej. "… NO hernan caminos interno.pdf").
+          sePaga: fcPalabrasArchivo(archivo).includes("NO") ? "NO" : "SI",
           cliente: cc.cliente,
           centroCosto: cc.centroCosto,
           subObra: cc.subObra,

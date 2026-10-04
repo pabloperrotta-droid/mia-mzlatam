@@ -1268,6 +1268,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] Nombre del archivo, más reglas (pedido del usuario: "si en el nombre detecta interno… interno es el cliente y… el centro de costo es lo que dice ahí, luego de interno… si pongo casas, W Morón… corresponde a WU CIVIL WORK, WU MORON, imputación a casas… W Morón Pintura… imputa a pintura"): (a) "interno" → cliente INTERNO y el rubro que acompaña es el centro de costo, aceptando sinónimos o escrito parecido (marketing → MKT, finanzas → FINANCIERO, horarios → HONORARIOS, sueldos, daniel…); (b) las sub obras y obras se reconocen también sin las palabras del cliente ("w moron" / "moron" → WU MORON de WU CIVIL WORK); (c) la imputación se reconoce también por una sola palabra si coincide con un único proveedor ("casas" → ARIEL CASAS, "pintura" → PINTURA), sin contar las palabras del cliente/obra ni las del proveedor al que se paga.
 
+- [x] "NO" como palabra suelta en el nombre del archivo → **Se paga = NO** (confirmado por el usuario: "si pongo no, es que tiene que ponerse como que no se paga").
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".
