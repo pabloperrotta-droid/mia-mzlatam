@@ -211,11 +211,20 @@ function App() {
     partesEstadoRef = useRef({ main: null, ext: {}, listos: new Set(), mudando: false, desuscribir: [] }),
     deshaciendoRef = useRef(false),
     [historialDeshacer, setHistorialDeshacer] = useState([]),
+    // Sección 96: lo deshecho se puede rehacer (hasta que se haga un cambio nuevo).
+    [historialRehacer, setHistorialRehacer] = useState([]),
+    rehaciendoRef = useRef(false),
     [avisoDeshacer, setAvisoDeshacer] = useState(null);
   function deshacerUltimoCambio() {
     if (historialDeshacer.length === 0) return;
-    const e = historialDeshacer[historialDeshacer.length - 1];
+    const e = historialDeshacer[historialDeshacer.length - 1],
+      actual = estadoLocalRef.current ? JSON.parse(JSON.stringify(estadoLocalRef.current)) : null;
     ((deshaciendoRef.current = true),
+      actual &&
+        setHistorialRehacer((t) => {
+          const u = [...t, { payload: actual, ts: Date.now(), tsDeshecho: e.ts }];
+          return u.length > 15 ? u.slice(u.length - 15) : u;
+        }),
       aplicarEstadoGuardado(e.payload),
       setHistorialDeshacer((t) => t.slice(0, -1)),
       setAvisoDeshacer(
@@ -223,6 +232,15 @@ function App() {
           new Date(e.ts).toLocaleString("es-AR") +
           ". Podés seguir deshaciendo con más clics.",
       ));
+  }
+  function rehacerUltimoCambio() {
+    if (historialRehacer.length === 0) return;
+    const e = historialRehacer[historialRehacer.length - 1];
+    // Al rehacer, el guardado normal vuelve a anotar en "Deshacer" el estado anterior (se puede volver a deshacer).
+    ((rehaciendoRef.current = true),
+      aplicarEstadoGuardado(e.payload),
+      setHistorialRehacer((t) => t.slice(0, -1)),
+      setAvisoDeshacer("Se rehizo el cambio que se había deshecho." + (historialRehacer.length > 1 ? " Podés seguir rehaciendo con más clics." : "")));
   }
   // Sección 89: las órdenes de compra que empiezan con "MZ" (ej. MZ01) no tienen venta propia: es la
   // suma de lo que aportan a esa OC las sub obras que la tienen cargada. Se mantiene sola al agregar o
@@ -545,7 +563,10 @@ function App() {
       guardandoRef.current = true;
       const t = dbRef.current,
         o = setTimeout(() => {
-          const a = deshaciendoRef.current;
+          const a = deshaciendoRef.current,
+            rehecho = rehaciendoRef.current;
+          // Un cambio nuevo (que no sea deshacer ni rehacer) borra lo que había para rehacer.
+          ((rehaciendoRef.current = false), !a && !rehecho && setHistorialRehacer((t) => (t.length ? [] : t)));
           if (((deshaciendoRef.current = false), !a && baseGuardadaRef.current)) {
             const r = baseGuardadaRef.current;
             setHistorialDeshacer((i) => {

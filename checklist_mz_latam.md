@@ -1229,6 +1229,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Subida a Producción (solo con OK del usuario).
 
+### 96. Botón "Rehacer"
+
+- Pedido del usuario: "un boton de rehacer por si deshice algo mal".
+- [x] Al lado de "Deshacer" aparece **"Rehacer (n)"** cuando hay algo deshecho: vuelve a aplicar lo último que se deshizo (hasta 15 pasos). Lo rehecho se puede volver a deshacer.
+- [x] Si después de deshacer se hace un cambio nuevo, lo que había para rehacer se descarta (como en cualquier programa).
+- [x] Probado en el navegador: Deshacer (2) → deshacer → "Deshacer (1)" y "Rehacer (1)" → rehacer → "Deshacer (2)" → deshacer de nuevo → "Deshacer (1)" y "Rehacer (1)", sin errores.
+- [x] Publicado en QA (junto con la Sección 95).
+- [ ] Subida a Producción (solo con OK del usuario).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

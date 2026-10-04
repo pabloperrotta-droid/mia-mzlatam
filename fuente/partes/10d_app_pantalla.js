@@ -667,6 +667,30 @@
                   " Deshacer",
                   historialDeshacer.length > 0 ? " (" + historialDeshacer.length + ")" : "",
                 ),
+              Zn("obras") === "editar" &&
+                historialRehacer.length > 0 &&
+                React.createElement(
+                  "button",
+                  {
+                    onClick: rehacerUltimoCambio,
+                    title: "Vuelve a aplicar lo último que deshiciste (se puede mientras no hagas otro cambio)",
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.85)",
+                      padding: "5px 9px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    },
+                  },
+                  "Rehacer",
+                  " (" + historialRehacer.length + ")",
+                  React.createElement(ArrowLeft, { size: 12, style: { transform: "scaleX(-1)" } }),
+                ),
               React.createElement(
                 MenuHerramientas,
                 null,
