@@ -162,6 +162,22 @@ prueba("Factura PDF: nombre de archivo de ARCA + imputación y sub obra escritas
   assert.strictEqual(f.imputacionDesdeNombreArchivo("San Andres - Palermo.pdf", "SAN ANDRES", [], ["SAN ANDRES"]), "");
   assert.strictEqual(f.proveedorPorRazonSocial("CASA ARIEL S.R.L.", [{ proveedor: "Ariel Casa" }]), "ARIEL CASA");
 });
+prueba("Factura PDF: interno + rubro, sub obra abreviada e imputación por una palabra", () => {
+  const c = (n, o, sb) => JSON.parse(JSON.stringify(f.centroDesdeNombreArchivo(n, o || [], sb || {})));
+  assert.deepStrictEqual(c("27271455165_011_00001_00000220 hernan caminos interno sueldos.pdf"), { cliente: "INTERNO", centroCosto: "SUELDOS", subObra: "" });
+  assert.deepStrictEqual(c("fc interno marketing.pdf"), { cliente: "INTERNO", centroCosto: "MKT", subObra: "" });
+  assert.deepStrictEqual(c("interno finanzas.pdf"), { cliente: "INTERNO", centroCosto: "FINANCIERO", subObra: "" });
+  assert.deepStrictEqual(c("Daniel interno.pdf"), { cliente: "INTERNO", centroCosto: "DANIEL", subObra: "" });
+  assert.strictEqual(f.fcRubroInterno("horarios"), "HONORARIOS");
+  const obras = [{ cliente: "WU", obra: "WU CIVIL WORK" }, { cliente: "SABORES EXPRESS", obra: "LANUS" }];
+  const subs = { "WU|WU CIVIL WORK": [{ id: "s1", nombre: "WU MORON" }, { id: "s2", nombre: "WU FLORES" }] };
+  const moron = { cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORON" };
+  assert.deepStrictEqual(c("casas w moron.pdf", obras, subs), moron);
+  assert.deepStrictEqual(c("W Morón Pintura.pdf", obras, subs), moron);
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("casas w moron.pdf", "SAN ANDRES", ["ARIEL CASAS", "PINTURA"], [], moron), "ARIEL CASAS");
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("W Morón Pintura.pdf", "SAN ANDRES", ["ARIEL CASAS", "PINTURA"], [], moron), "PINTURA");
+  assert.strictEqual(f.imputacionDesdeNombreArchivo("w moron.pdf", "ARIEL CASAS", ["ARIEL CASAS", "PINTURA"], [], moron), "");
+});
 prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar nada", () => {
   const fc = { cuit: "20123456786", factura: "00014-00000002", total: 121000, neto: 100000, letra: "A" };
   const lineas = [

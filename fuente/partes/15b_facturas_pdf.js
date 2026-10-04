@@ -217,9 +217,55 @@ function armarFactura(qr, txt, arch) {
   };
 }
 // Centro de costo / sub obra que aparezca en el nombre del archivo (sin formato fijo).
+// Palabras del nombre de archivo, normalizadas (sin tildes, en mayúsculas, sin ".pdf" ni signos).
+function fcPalabrasArchivo(nombre) {
+  return normalizarTexto(String(nombre || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " "))
+    .split(" ")
+    .filter(Boolean);
+}
+// Rubro de gastos internos escrito a mano ("marketing" → MKT, "finanzas" → FINANCIERO, "horarios" →
+// HONORARIOS…): igual, sinónimo, o casi igual (hasta 2 letras de diferencia en palabras largas).
+const FC_SINONIMOS_RUBROS = {
+  MARKETING: "MKT", PUBLICIDAD: "MKT", FINANZAS: "FINANCIERO", FINANCIERA: "FINANCIERO", FINANCIEROS: "FINANCIERO", BANCO: "FINANCIERO",
+  SUELDO: "SUELDOS", HONORARIO: "HONORARIOS", CONTADOR: "CONTADORES", CONTABLE: "CONTADORES", EXPENSA: "EXPENSAS", ALQUILERES: "ALQUILER",
+};
+function fcRubroInterno(palabra) {
+  const w = normalizarTexto(palabra);
+  if (w.length < 3) return "";
+  const rubros = RUBROS_GASTOS_INTERNOS.map((r) => normalizarTexto(r)),
+    exacto = rubros.find((r) => r === w);
+  if (exacto) return exacto;
+  if (FC_SINONIMOS_RUBROS[w]) return FC_SINONIMOS_RUBROS[w];
+  if (w.length < 5) return "";
+  const cerca = rubros.filter((r) => r.length >= 5 && distanciaLevenshtein(r, w) <= (w.length >= 8 ? 2 : 1));
+  return cerca.length === 1 ? cerca[0] : "";
+}
+// Centro de costo / sub obra que aparezca en el nombre del archivo (sin formato fijo). Se acepta el nombre
+// completo o sin las palabras del cliente ("w moron" o "moron" → sub obra WU MORON de WU). Si dice
+// "interno", el cliente es INTERNO y el centro de costo es el rubro escrito (ej. "interno sueldos").
 function centroDesdeNombreArchivo(nombre, obras, subObrasMap) {
   const limpiar = (s) => normalizarTexto(String(s || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " ")),
-    archivo = " " + limpiar(nombre) + " ",
+    palabras = fcPalabrasArchivo(nombre),
+    archivo = " " + palabras.join(" ") + " ";
+  if (palabras.includes("INTERNO") || palabras.includes("INTERNOS")) {
+    const k = Math.max(palabras.indexOf("INTERNO"), palabras.indexOf("INTERNOS")),
+      orden = [...palabras.slice(k + 1), ...palabras.slice(0, k).reverse()],
+      rubro = orden.map(fcRubroInterno).find(Boolean) || "";
+    return { cliente: CLIENTE_GASTOS_INTERNOS, centroCosto: rubro, subObra: "" };
+  }
+  const variantes = (x, cliente) => {
+      const k = limpiar(x),
+        cl = limpiar(cliente).split(" ").filter(Boolean),
+        sin = k
+          .split(" ")
+          .filter((w) => !cl.includes(w))
+          .join(" ");
+      return [k, sin].filter((v, i, a) => v && v.length >= (i === 0 ? 3 : 4) && a.indexOf(v) === i);
+    },
+    largoEn = (x, cliente) => {
+      const v = variantes(x, cliente).find((v) => archivo.includes(" " + v + " "));
+      return v ? v.length : 0;
+    },
     esta = (x) => {
       const k = limpiar(x);
       return k.length >= 3 && archivo.includes(" " + k + " ");
@@ -235,19 +281,20 @@ function centroDesdeNombreArchivo(nombre, obras, subObrasMap) {
         mejores = xs.filter((x) => x.largo === largo),
         distintos = new Set(mejores.map(clave));
       if (distintos.size === 1) return mejores[0];
-      const conCliente = mejores.filter((x) => esta(x.cliente));
+      const conCliente = mejores.filter((x) => esta(x.cliente) || (limpiar(x.cliente).length <= 3 && palabras.some((w) => limpiar(x.cliente).startsWith(w))));
       return new Set(conCliente.map(clave)).size === 1 ? conCliente[0] : "ambiguo";
     },
     subs = [];
   lista.forEach((o) =>
-    ((subObrasMap || {})[obraKey(o.cliente, o.obra)] || []).forEach(
-      (s) => s.nombre && esta(s.nombre) && subs.push({ cliente: o.cliente, centroCosto: o.obra, subObra: s.nombre, largo: limpiar(s.nombre).length }),
-    ),
+    ((subObrasMap || {})[obraKey(o.cliente, o.obra)] || []).forEach((sc) => {
+      const largo = sc.nombre ? largoEn(sc.nombre, o.cliente) : 0;
+      largo && subs.push({ cliente: o.cliente, centroCosto: o.obra, subObra: sc.nombre, largo });
+    }),
   );
   const sub = unico(subs, (x) => x.cliente + "|" + x.centroCosto + "|" + x.subObra);
   if (sub && sub !== "ambiguo") return { cliente: sub.cliente, centroCosto: sub.centroCosto, subObra: sub.subObra };
   const obra = unico(
-    lista.filter((o) => esta(o.obra)).map((o) => ({ cliente: o.cliente, centroCosto: o.obra, largo: limpiar(o.obra).length })),
+    lista.map((o) => ({ cliente: o.cliente, centroCosto: o.obra, largo: largoEn(o.obra, o.cliente) })).filter((x) => x.largo),
     (x) => x.cliente + "|" + x.centroCosto,
   );
   if (obra && obra !== "ambiguo") return { cliente: obra.cliente, centroCosto: obra.centroCosto, subObra: "" };
@@ -282,9 +329,10 @@ function proveedorPorRazonSocial(razon, tabla) {
 // Imputación escrita en el nombre del archivo (ej. "... victor nunez wu moron.pdf" → VICTOR NUÑEZ).
 // Primero entre los proveedores de ese centro / sub obra, después entre todos los conocidos. No cuenta
 // si el nombre encontrado es el mismo proveedor al que se le paga.
-function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos) {
+function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos, cc) {
   const limpiar = (x) => normalizarTexto(String(x || "").replace(/\.pdf$/i, "").replace(/[_\-.,;:()\[\]+]+/g, " ")),
-    archivo = " " + limpiar(nombre) + " ",
+    palabras = fcPalabrasArchivo(nombre),
+    archivo = " " + palabras.join(" ") + " ",
     P = limpiar(prov),
     buscar = (lista) =>
       (lista || [])
@@ -292,8 +340,23 @@ function imputacionDesdeNombreArchivo(nombre, prov, disponibles, todos) {
           const k = limpiar(x);
           return k.length >= 4 && k !== P && archivo.includes(" " + k + " ");
         })
-        .sort((x, y) => limpiar(y).length - limpiar(x).length)[0] || "";
-  return buscar(disponibles) || buscar(todos);
+        .sort((x, y) => limpiar(y).length - limpiar(x).length)[0] || "",
+    completo = buscar(disponibles) || buscar(todos);
+  if (completo) return completo;
+  // Una sola palabra del nombre ("casas" → ARIEL CASAS), sin contar las del cliente / centro / sub obra,
+  // las del proveedor al que se paga, números ni "interno". Solo si coincide con un único proveedor.
+  const usadas = new Set(
+      [cc && cc.cliente, cc && cc.centroCosto, cc && cc.subObra, prov, "INTERNO NO SI FC FACTURA FAC MZ LATAM"]
+        .map(limpiar)
+        .join(" ")
+        .split(" "),
+    ),
+    libres = palabras.filter((w) => w.length >= 4 && !/\d/.test(w) && !usadas.has(w)),
+    porPalabra = (lista) => {
+      const c = (lista || []).filter((x) => limpiar(x) !== P && limpiar(x).split(" ").some((w) => w.length >= 4 && libres.includes(w)));
+      return c.length === 1 ? c[0] : "";
+    };
+  return porPalabra(disponibles) || porPalabra(todos);
 }
 // Número de factura comparable (sin ceros a la izquierda): "14-2" === "00014-00000002".
 function fcClaveNumero(s) {

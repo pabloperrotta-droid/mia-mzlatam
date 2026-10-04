@@ -702,7 +702,7 @@ function PagosView({
   // 3) el mismo proveedor de la factura.
   function fcImputacion(prov, cc, archivo) {
     const disp = fcDisponibles(cc),
-      deArchivo = archivo ? imputacionDesdeNombreArchivo(archivo, prov, disp, V) : "";
+      deArchivo = archivo && (cc.cliente || "").trim().toUpperCase() !== CLIENTE_GASTOS_INTERNOS ? imputacionDesdeNombreArchivo(archivo, prov, disp, V, cc) : "";
     if (deArchivo) return { valor: deArchivo, deArchivo: true };
     if (!prov || !cc || !cc.centroCosto || (cc.cliente || "").trim().toUpperCase() === CLIENTE_GASTOS_INTERNOS) return { valor: "", deArchivo: false };
     const base = String((G[prov] || {}).imputacion || "").trim() || prov;
@@ -1407,7 +1407,7 @@ function PagosView({
         React.createElement(
           "div",
           { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: "1px solid " + BORDER } },
-          React.createElement("div", { style: { fontWeight: 700, color: NAVY, fontSize: 14 } }, "Cerrar el pago semanal"),
+          React.createElement("div", { style: { fontWeight: 700, color: NAVY, fontSize: 14 } }, "Marcar varias como pagadas (cierre del pago semanal)"),
           React.createElement("button", { onClick: () => setCierre(null), style: { border: "none", background: "none", cursor: "pointer", color: MUTED } }, React.createElement(X, { size: 18 })),
         ),
         React.createElement(
@@ -2535,11 +2535,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
             "button",
             {
               onClick: abrirCierre,
-              style: { ...smallBtnGhost, borderColor: NAVY, color: NAVY },
+              style: { ...smallBtnGhost, background: "#C9A227", borderColor: "#C9A227", color: "#1A1A1A", fontWeight: 700 },
               title:
                 "Arma el lote de pagos pendientes de la semana para revisarlo y, con un clic, marcarlo todo pagado: se imputa en Costos y se descarga la planilla de Retenciones de esas líneas.",
             },
-            "✓ Cerrar pago semanal",
+            "✓ Marcar varias como pagadas",
           ),
         React.createElement(
           "button",
