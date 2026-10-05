@@ -1332,7 +1332,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - Pedido: "cuando hago para ir para atrás o para adelante… me va muy atrás o muy adelante. Que pueda ir por semana".
 - [x] Botones nuevos **"‹ Semana anterior"** y **"Semana siguiente ›"** (de a 1 semana), con "Hoy" en el medio; los saltos de 26 semanas quedan como « y » en los extremos.
 - [x] Publicado en QA.
-- [ ] Subir a Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (05/10/2026) con el OK del usuario ("subí lo de las semana a producción"). Solo este cambio: el arreglo del PIN quedó en QA, y la sección Verónica va en el código pero apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
