@@ -3577,6 +3577,9 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                 { style: { background: BG, fontWeight: 700 } },
                 React.createElement("td", { style: Ae, colSpan: 12 }),
                 React.createElement("td", { style: { ...Ae, textAlign: "right" } }, fmt(E)),
+                // Importe Bruto no lleva total (celda vacía para que Diego Levy, Efectivo, Transferencia y
+                // E-Cheq queden bajo su columna; se habían corrido desde que se agregó la columna Xubio).
+                React.createElement("td", { style: Ae }),
                 React.createElement("td", { style: { ...Ae, textAlign: "right" } }, fmt(de)),
                 React.createElement("td", { style: { ...Ae, textAlign: "right" } }, fmt(Bt)),
                 React.createElement("td", { style: { ...Ae, textAlign: "right" } }, fmt(Ft)),
@@ -3587,7 +3590,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
               React.createElement(
                 "tr",
                 null,
-                React.createElement("td", { style: Ae, colSpan: 13 }),
+                React.createElement("td", { style: Ae, colSpan: 14 }),
                 React.createElement(
                   "td",
                   { style: { ...Ae, textAlign: "right", color: MUTED, fontSize: 12 } },
@@ -3599,7 +3602,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
               React.createElement(
                 "tr",
                 null,
-                React.createElement("td", { style: Ae, colSpan: 13 }),
+                React.createElement("td", { style: Ae, colSpan: 14 }),
                 React.createElement(
                   "td",
                   { style: { ...Ae, textAlign: "right", color: NAVY, fontWeight: 700, fontSize: 12.5 } },
