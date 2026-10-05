@@ -1345,7 +1345,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - **MIA abierta dos veces**: si está abierta en otra pestaña del mismo navegador, aparece un aviso para usar una sola (desaparece al cerrar la otra).
 - [x] Prueba automática con el caso real (PLAZA OESTE → DOT Y ARCOS en una pantalla, cambio de estado de otra obra en otra pantalla) y con agregados/quitados en Pagos. Las pruebas viejas del guardado siguen igual.
 - [x] Publicado en QA.
-- [ ] Subir a Producción: pendiente del OK del usuario. Después de subirlo, conviene recargar MIA en todas las pantallas abiertas (las que no se recarguen siguen con el código viejo).
+- [x] **Subido a Producción** (05/10/2026) con el OK del usuario ("PASALO A PRODUCCION"), solo esta sección (el arreglo del PIN sigue en QA; Verónica apagada). GitHub tenía una falla de sus máquinas ese día y demoró la publicación. Después de publicado, hay que recargar MIA en todas las pantallas abiertas.
 
 ## 41. Pendientes / recomendaciones
 
