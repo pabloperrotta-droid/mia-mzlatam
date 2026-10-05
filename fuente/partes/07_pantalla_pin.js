@@ -41,6 +41,9 @@ function PinGateScreen({ pinInput: n, onChangePin: d, onSubmit: c, error: p }) {
       React.createElement("input", {
         type: "password",
         placeholder: "PIN",
+        autoCapitalize: "none",
+        autoCorrect: "off",
+        spellCheck: false,
         value: n,
         onChange: (g) => d(g.target.value),
         onKeyDown: (g) => {

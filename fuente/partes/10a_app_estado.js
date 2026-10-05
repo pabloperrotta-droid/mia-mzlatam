@@ -294,7 +294,10 @@ function App() {
           window.localStorage.removeItem("obras-role-custom-id"));
       } catch {}
     } else {
-      const e = roles.find((t) => t.pin === cn);
+      // Sin distinguir mayúsculas ni espacios de más (en el celular el teclado suele poner la primera
+      // letra en mayúscula: "Vero" tiene que entrar igual que "vero").
+      const pinEscrito = String(cn || "").trim().toLowerCase(),
+        e = roles.find((t) => String(t.pin || "").trim().toLowerCase() === pinEscrito);
       if (e) {
         (ko("custom"), Kn(e.id), on(""), kn(false));
         try {
