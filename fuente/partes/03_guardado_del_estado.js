@@ -145,3 +145,62 @@ function combinarEstado(local, base, remoto) {
     r
   );
 }
+
+// ---------- Aviso de cambios pisados (Sección 101) ----------
+// Después de cada guardado se anota lo que esta pantalla cambió. Si después llega de la base una versión
+// donde eso ya no está (otra pantalla lo pisó), se avisa. Las listas se miran elemento por elemento.
+const NOMBRES_CLAVES = {
+  obras: "Obras", pagosSemanales: "Pagos", proveedoresMap: "Proveedores de Costos", pagosMap: "Pagos de Costos",
+  subCostoProveedoresMap: "Proveedores de sub obras", subCostoPagosMap: "Pagos de sub obras", cfEgresosValores: "Cashflow (Egresos)",
+  cfIngresosValores: "Cashflow (Ingresos)", cfSalidasValores: "Cashflow (Salidas)", ordenesCompraMap: "Órdenes de compra",
+  costoSubobrasMap: "Sub obras", adicionalesMap: "Adicionales",
+};
+function nombreElemento(k, el) {
+  if (!el) return "";
+  if (k === "obras") return [el.cliente, el.obra].filter(Boolean).join(" – ");
+  if (k === "pagosSemanales") return [el.proveedorPago || el.proveedor, el.factura, el.centroCosto].filter(Boolean).join(" · ");
+  return el.nombre || el.proveedor || el.obra || el.id || "";
+}
+// Anota lo guardado: para listas, los elementos que cambiaron; para el resto, el valor de cada ruta.
+function anotarGuardado(anotados, cambios, baseAntes, ahora) {
+  const t = (x) => JSON.stringify(x),
+    lista = (anotados || []).filter((a) => ahora - a.ts < 15 * 60 * 1000);
+  const valorEn = (obj, ruta) => (ruta.length === 1 ? (obj || {})[ruta[0]] : ((obj || {})[ruta[0]] || {})[ruta[1]]);
+  (cambios || []).forEach(([ruta, v]) => {
+    const k = ruta[0],
+      clave = ruta.join("\u0001"),
+      B = valorEn(baseAntes, ruta);
+    if (esListaDeObjetos(v) && esListaDeObjetos(B)) {
+      const enB = new Set(B.map(t)),
+        enV = new Set(v.map(t)),
+        cambiados = v.filter((x) => !enB.has(t(x))),
+        viejos = B.filter((x) => !enV.has(t(x))),
+        ids = new Set([...cambiados, ...viejos].map(idDeElemento).filter(Boolean));
+      // Lo anotado antes de esos mismos elementos queda reemplazado por esto nuevo.
+      for (let i = lista.length - 1; i >= 0; i--) lista[i].clave === clave && lista[i].el && ids.has(idDeElemento(lista[i].el)) && lista.splice(i, 1);
+      cambiados.forEach((el) => lista.push({ ts: ahora, k, clave, ruta, el }));
+    } else {
+      for (let i = lista.length - 1; i >= 0; i--) lista[i].clave === clave && lista.splice(i, 1);
+      lista.push({ ts: ahora, k, clave, ruta, valor: v === BORRAR_CAMPO ? void 0 : v });
+    }
+  });
+  return lista;
+}
+// Devuelve { pisados: [textos], quedan: anotados que siguen vigentes }.
+function cambiosPisados(anotados, remoto) {
+  const t = (x) => JSON.stringify(x),
+    pisados = [],
+    quedan = [];
+  (anotados || []).forEach((a) => {
+    let ok = true;
+    if (a.el) {
+      const R = a.ruta.length === 1 ? (remoto || {})[a.ruta[0]] : ((remoto || {})[a.ruta[0]] || {})[a.ruta[1]];
+      ok = !Array.isArray(R) || R.some((x) => t(x) === t(a.el));
+    } else {
+      const R = a.ruta.length === 1 ? (remoto || {})[a.ruta[0]] : ((remoto || {})[a.ruta[0]] || {})[a.ruta[1]];
+      ok = t(R) === t(a.valor);
+    }
+    ok ? quedan.push(a) : pisados.push((NOMBRES_CLAVES[a.k] || a.k) + (a.el ? ": " + nombreElemento(a.k, a.el) : ""));
+  });
+  return { pisados: [...new Set(pisados)], quedan };
+}

@@ -71,6 +71,27 @@ prueba("Guardado: una lista cambiada en otra pantalla no pisa un cambio de nombr
   const m2 = JSON.parse(JSON.stringify(f.combinarEstado(l2, b2, r2)));
   assert.deepStrictEqual(m2.pagosSemanales, [{ id: "b", v: 2 }, { id: "c", v: 1 }, { id: "d", v: 1 }]);
 });
+prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
+  const o = (obra, status) => ({ cliente: "B+D", obra, status });
+  const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };
+  const guardado = [[["obras"], [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "EN PROCESO")]], [["cf", "a"], 5]];
+  const an = f.anotarGuardado([], guardado, base, Date.now());
+  // Otra pantalla cambió otra obra: no hay aviso.
+  const ok = f.cambiosPisados(an, { obras: [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "FINALIZADA")], cf: { a: 5 } });
+  assert.strictEqual(ok.pisados.length, 0);
+  // Otra pantalla volvió a poner PLAZA OESTE y cambió la celda: aviso de las dos cosas.
+  const mal = f.cambiosPisados(an, { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 9 } });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(mal.pisados)), ["Obras: B+D – DOT Y ARCOS", "cf"]);
+  // Si después esta misma pantalla le cambia el nombre otra vez, lo anotado antes se reemplaza (no hay falsa alarma).
+  const base2 = { obras: [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] };
+  const an2 = f.anotarGuardado(an, [[["obras"], [o("DOT", "EN PROCESO"), o("ALCORTA", "EN PROCESO")]]], base2, Date.now());
+  assert.strictEqual(f.cambiosPisados(an2.filter((x) => x.el), { obras: [o("DOT", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] }).pisados.length, 0);
+  // Listas dentro de un mapa (pagos de una obra): si otro usuario agrega un pago, no es un cambio pisado.
+  const b3 = { pagosMap: { "B+D|DOT": [{ proveedor: "X", monto: 1 }] } };
+  const an3 = f.anotarGuardado([], [[["pagosMap", "B+D|DOT"], [{ proveedor: "X", monto: 1 }, { proveedor: "Y", monto: 2 }]]], b3, Date.now());
+  assert.strictEqual(f.cambiosPisados(an3, { pagosMap: { "B+D|DOT": [{ proveedor: "X", monto: 1 }, { proveedor: "Y", monto: 2 }, { proveedor: "Z", monto: 3 }] } }).pisados.length, 0);
+  assert.strictEqual(f.cambiosPisados(an3, { pagosMap: { "B+D|DOT": [{ proveedor: "X", monto: 1 }] } }).pisados.length, 1);
+});
 prueba("Datos repartidos: las 8 claves pesadas van a documentos propios", () => {
   assert.strictEqual(f.ESTADO_EXTERNO.length, 8);
   assert.ok(f.ESTADO_EXTERNO.includes("pagosSemanales") && f.ESTADO_EXTERNO.includes("cfSalidasValores"));

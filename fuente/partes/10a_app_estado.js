@@ -211,6 +211,9 @@ function App() {
     [reintentoGuardado, setReintentoGuardado] = useState(0),
     [fallasGuardado, setFallasGuardado] = useState([]),
     baseGuardadaRef = useRef(null),
+    misGuardadosRef = useRef([]),
+    [avisoPisado, setAvisoPisado] = useState(null),
+    [otraPestana, setOtraPestana] = useState(false),
     estadoLocalRef = useRef(null),
     partesEstadoRef = useRef({ main: null, ext: {}, listos: new Set(), mudando: false, desuscribir: [] }),
     deshaciendoRef = useRef(false),
@@ -282,6 +285,42 @@ function App() {
         t && (ko("custom"), Kn(t));
       }
     } catch {}
+  }, []);
+  // Sección 101: si se cierra la página con cambios sin guardar (o con un guardado fallado), el navegador
+  // pregunta antes de cerrar.
+  useEffect(() => {
+    const alCerrar = (ev) => {
+      let pendiente = guardandoRef.current;
+      try {
+        const loc = estadoLocalRef.current,
+          base = baseGuardadaRef.current;
+        pendiente = pendiente || (!!loc && !!base && cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base).length > 0);
+      } catch {}
+      if (pendiente) {
+        ev.preventDefault();
+        ev.returnValue = "Hay cambios que todavía no se guardaron.";
+        return ev.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", alCerrar);
+    return () => window.removeEventListener("beforeunload", alCerrar);
+  }, []);
+  // Sección 101: aviso si MIA está abierta en otra pestaña de este mismo navegador.
+  useEffect(() => {
+    if (typeof BroadcastChannel !== "function") return;
+    const yo = Math.random().toString(36).slice(2),
+      canal = new BroadcastChannel("mia-" + (window.__APP_ENV__ || "qa"));
+    canal.onmessage = (m) => {
+      const d = m.data || {};
+      if (d.de === yo) return;
+      d.tipo === "hola" && canal.postMessage({ tipo: "aca", de: yo });
+      (d.tipo === "hola" || d.tipo === "aca") && setOtraPestana(true);
+      d.tipo === "chau" && setOtraPestana(false);
+    };
+    canal.postMessage({ tipo: "hola", de: yo });
+    const chau = () => canal.postMessage({ tipo: "chau", de: yo });
+    window.addEventListener("pagehide", chau);
+    return () => (chau(), window.removeEventListener("pagehide", chau), canal.close());
   }, []);
   function rr() {
     if (cn === ADMIN_PIN) {
@@ -435,6 +474,12 @@ function App() {
               ESTADO_EXTERNO.forEach((k) => {
                 partes.ext[k] !== void 0 && (u[k] = partes.ext[k]);
               });
+              // Sección 101: ¿otra pantalla pisó algo que esta guardó hace poco?
+              if (misGuardadosRef.current.length) {
+                const rev = cambiosPisados(misGuardadosRef.current, u);
+                misGuardadosRef.current = rev.quedan;
+                rev.pisados.length && setAvisoPisado((x) => [...new Set([...(x || []), ...rev.pisados])]);
+              }
               const loc = estadoLocalRef.current,
                 base = baseGuardadaRef.current,
                 pendientes = loc && base ? cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base) : [];
@@ -632,7 +677,8 @@ function App() {
             .then(() => {
               ((guardandoRef.current = false),
                 cambios
-                  ? baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios))
+                  ? ((misGuardadosRef.current = anotarGuardado(misGuardadosRef.current, cambios, baseAntes, Date.now())),
+                    baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios)))
                   : (baseGuardadaRef.current = JSON.parse(JSON.stringify(e))),
                 setAvisoGuardado(null));
             })

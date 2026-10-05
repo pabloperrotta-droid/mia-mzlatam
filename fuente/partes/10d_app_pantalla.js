@@ -84,6 +84,31 @@
               ),
             ),
           ),
+        avisoPisado &&
+          avisoPisado.length > 0 &&
+          React.createElement(
+            "div",
+            { role: "alert", style: { background: "#7A1F1F", color: "#fff", fontSize: 13, padding: "10px 20px", display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap" } },
+            React.createElement(
+              "div",
+              { style: { maxWidth: 900 } },
+              React.createElement("strong", null, "⚠ Otra pantalla cambió cosas que vos habías guardado recién: "),
+              avisoPisado.slice(0, 6).join(" · "),
+              avisoPisado.length > 6 ? " y " + (avisoPisado.length - 6) + " más" : "",
+              ". Revisalas y, si hace falta, volvé a cargarlas. Fijate en Herramientas → Historial quién hizo el cambio.",
+            ),
+            React.createElement(
+              "button",
+              { onClick: () => setAvisoPisado(null), style: { ...smallBtnGhost, background: "#fff", color: "#7A1F1F", padding: "3px 10px" } },
+              "Entendido",
+            ),
+          ),
+        otraPestana &&
+          React.createElement(
+            "div",
+            { style: { background: "#4A3B12", color: "#F5E9C8", fontSize: 12.5, padding: "8px 20px", textAlign: "center" } },
+            "MIA está abierta en otra pestaña de este navegador. Usá una sola, así los cambios de una no pisan los de la otra.",
+          ),
         (estadoConexion === "unavailable" || estadoConexion === "error" || avisoGuardado) &&
           React.createElement(
             "div",
