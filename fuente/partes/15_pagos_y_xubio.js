@@ -110,6 +110,7 @@ const XUBIO_TEXTOS = {
   importe_no_coincide: "Importe no coincide",
   rechazada: "Xubio rechazó el cambio: poner el centro a mano en Xubio",
   repartida: "Factura repartida en varias líneas con distintos centros",
+  en_otra_linea: "Factura repartida: en Xubio va el centro de costo de la parte más grande",
 };
 const XUBIO_LENTOS = ["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"];
 function xubioCuando(t) {
@@ -126,7 +127,7 @@ function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
       : !String(l.factura || "").trim()
         ? "Falta el número de factura"
         : "",
-    yaBien = !!e && (e.estado === "ok" || e.estado === "ya_estaba"),
+    yaBien = !!e && (e.estado === "ok" || e.estado === "ya_estaba" || e.estado === "en_otra_linea"),
     vigente = !!e && (yaBien || e.firma === xubioFirma(l)),
     bien = vigente && yaBien && !e.forzar,
     espera = !falta && (!vigente || e.forzar),

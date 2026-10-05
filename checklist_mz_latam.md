@@ -1297,6 +1297,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] **Totales de Pagos alineados** (aviso del usuario: "los totales están corridos… Importe Bruto no tiene la sumatoria… Levy, Efectivo, Transferencia y E-Cheq se corrieron"): desde que se agregó la columna Xubio, la fila de totales tenía una celda menos y los totales de Diego Levy / Efectivo / Transferencia / E-Cheq caían una columna a la izquierda. Ahora Importe Bruto queda sin total y cada total va bajo su columna; "TOTALES EFVO+TRA" y "TOTALES" quedan bajo Diego Levy con el importe bajo Efectivo. **Subido a Producción** (04/10/2026) con el OK del usuario ("SUBILO").
 
+- [x] **Xubio: factura repartida → centro de la parte más grande** (pedido del usuario: "para dejar preparado para Xubio, cuando una factura tiene varios centros de costos, como Imak, en Xubio poner el centro de costo de la imputación más grande"): antes, una factura en varias líneas con distintos centros quedaba "repartida" y no se tocaba. Ahora la línea con mayor Importe Bruto se manda a Xubio con su centro de costo (ej. Imak → WU SOLEIL, $9.963.000) y las otras quedan ✅ "Factura repartida: en Xubio va el centro de costo de la parte más grande (…)". Si después cambian los importes y cambia cuál es la mayor, se vuelve a procesar. La integración en Producción sigue en pausa; en QA corre en modo simulación.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".

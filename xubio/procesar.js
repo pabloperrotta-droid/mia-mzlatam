@@ -37,7 +37,7 @@ const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
 const TRABADO_MS = 15 * 60 * 1000;
-const BIEN = new Set(["ok", "ya_estaba", "simulacion"]);
+const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
 const LENTOS = new Set(["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 
@@ -92,8 +92,10 @@ async function procesarLineas(amb) {
   const previos = {};
   (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
 
-  // Una misma factura cargada en varias líneas de Pagos con distintos centros de costo no se toca:
-  // Xubio tiene un centro por renglón y no se sabe cómo repartirla.
+  // Una misma factura cargada en varias líneas de Pagos con distintos centros de costo (ej. Imak repartida
+  // en 3 sub obras de WU): en Xubio se le pone el centro de costo de la parte con mayor Importe Bruto
+  // (definición del usuario: "en Xubio poner el centro de costo de la imputación más grande"). Las demás
+  // líneas quedan como "en_otra_linea".
   const validas = lineas.filter((l) => l && l.id && soloDigitos(l.cuit) && t(l.factura));
   const objetivo = (l) =>
     normalizar(
@@ -110,16 +112,17 @@ async function procesarLineas(amb) {
   const importePorFactura = {};
   for (const l of validas) importePorFactura[claveFactura(l)] = (importePorFactura[claveFactura(l)] || 0) + (Number(l.importe) || 0);
   const repartida = {};
+  const nombreCentro = (l) => t(l.centroCostoXubio) || (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto));
   for (const g of Object.values(grupos)) {
     const destinos = [...new Set(g.map(objetivo))];
     if (g.length > 1 && destinos.length > 1) {
-      const nombres = [
-        ...new Set(g.map((l) => t(l.centroCostoXubio) || (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto)))),
-      ];
+      const principal = g
+        .slice()
+        .sort((a, b) => (Number(b.importeBruto) || 0) - (Number(a.importeBruto) || 0) || (Number(b.importe) || 0) - (Number(a.importe) || 0))[0];
       for (const l of g)
-        repartida[l.id] =
-          "Esta factura está en " + g.length + " líneas de Pagos con distintos centros de costo (" + nombres.join(", ") +
-          "). Como en Xubio se reparte por renglón, no se tocó: hay que ponerle los centros a mano en Xubio.";
+        l.id !== principal.id &&
+          (repartida[l.id] =
+            "Factura repartida en " + g.length + " líneas: en Xubio va el centro de costo de la parte más grande (" + nombreCentro(principal) + ").");
     }
   }
 
@@ -131,6 +134,9 @@ async function procesarLineas(amb) {
     let prioridad = null;
     // Una vez en verde no se vuelve a mandar nunca (pedido del usuario), salvo "Reintentar ahora".
     if (e && e.forzar) prioridad = -1;
+    // Factura repartida: si cambió cuál es la parte más grande, se vuelve a procesar.
+    else if (e && e.estado === "en_otra_linea" && !repartida[l.id]) prioridad = 0;
+    else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
     else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
@@ -144,7 +150,7 @@ async function procesarLineas(amb) {
     let r;
     try {
       r = repartida[l.id]
-        ? { estado: "repartida", mensaje: repartida[l.id] }
+        ? { estado: "en_otra_linea", mensaje: repartida[l.id] }
         : await asignarCentroCosto({ ...camposLinea(l, importePorFactura[claveFactura(l)]), centroAnterior: (e && e.centro) || "", simular: !!amb.simular });
     } catch (err) {
       r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
