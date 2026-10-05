@@ -1074,10 +1074,17 @@ function CashflowView({
       React.createElement(
         "div",
         { style: { display: "flex", gap: 8, alignItems: "center" } },
+        // Sección 100: de a una semana (pedido del usuario: "que pueda ir por semana"); los saltos de
+        // 26 semanas quedan en los extremos.
         React.createElement(
           "button",
-          { onClick: () => Eo(moverSemanas(oo, -26)), style: smallBtnGhost },
-          "« Semanas anteriores",
+          { onClick: () => Eo(moverSemanas(oo, -26)), style: smallBtnGhost, title: "26 semanas para atrás" },
+          "«",
+        ),
+        React.createElement(
+          "button",
+          { onClick: () => Eo(moverSemanas(oo, -1)), style: smallBtnGhost, title: "Una semana para atrás" },
+          "‹ Semana anterior",
         ),
         React.createElement(
           "button",
@@ -1086,8 +1093,13 @@ function CashflowView({
         ),
         React.createElement(
           "button",
-          { onClick: () => Eo(moverSemanas(oo, 26)), style: smallBtnGhost },
-          "Semanas siguientes »",
+          { onClick: () => Eo(moverSemanas(oo, 1)), style: smallBtnGhost, title: "Una semana para adelante" },
+          "Semana siguiente ›",
+        ),
+        React.createElement(
+          "button",
+          { onClick: () => Eo(moverSemanas(oo, 26)), style: smallBtnGhost, title: "26 semanas para adelante" },
+          "»",
         ),
       ),
     ),

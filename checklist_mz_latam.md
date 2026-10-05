@@ -1325,6 +1325,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Subir a Producción: pendiente del OK del usuario.
 
+### 100. Cashflow: moverse de a una semana
+
+- Consulta del usuario sobre Egresos: si no se borra un importe de una semana pasada, ¿se arrastra y se suma a la semana actual? Revisado en el código: **no** — cada celda de Egresos es de su semana; la semana pasada deja de verse (la primera columna es la semana actual) pero queda guardada y no se suma. El usuario decidió dejarlo así ("que no se arrastre. Así yo puedo ir para atrás y veo la deuda que tengo").
+- Pedido: "cuando hago para ir para atrás o para adelante… me va muy atrás o muy adelante. Que pueda ir por semana".
+- [x] Botones nuevos **"‹ Semana anterior"** y **"Semana siguiente ›"** (de a 1 semana), con "Hoy" en el medio; los saltos de 26 semanas quedan como « y » en los extremos.
+- [x] Publicado en QA.
+- [ ] Subir a Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
