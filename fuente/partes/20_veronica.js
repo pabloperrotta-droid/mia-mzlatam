@@ -4,6 +4,11 @@
 // en la base (colección `veronicaSolicitudes`, `qa_` en QA; solo los datos, no el PDF), se marcan como
 // "Realizado" (como en Pagos) y se descargan en Excel. Solo la ve el rol que tenga la sección habilitada
 // (y Admin).
+// INSTRUCCIÓN DEL USUARIO (05/10/2026): "veronica nunca lo subas a produccion al menos que te lo diga
+// directamente así". Por eso la sección queda APAGADA en Producción con este interruptor (el código de
+// Producción es el mismo que QA). Solo se cambia a true con un pedido explícito del usuario.
+const VERONICA_EN_PRODUCCION = false;
+const VERONICA_HABILITADA = (typeof window < "u" && window.__APP_ENV__ !== "prd") || VERONICA_EN_PRODUCCION;
 const VERO_ST = { filas: {}, subs: new Set(), iniciado: false, cargado: false };
 function veroDb() {
   try {

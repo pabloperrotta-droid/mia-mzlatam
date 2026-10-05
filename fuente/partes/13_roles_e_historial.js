@@ -22,7 +22,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         w
       );
     }, [c]),
-    f = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", "veronica"];
+    f = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", ...(VERONICA_HABILITADA ? ["veronica"] : [])];
   function F(w) {
     return w === "obras"
       ? "Obras"

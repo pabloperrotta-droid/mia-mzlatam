@@ -175,7 +175,7 @@ function App() {
   function In(e) {
     return fn ? true : ct === "custom" && !!so && !!(so.herramientasAdmin && so.herramientasAdmin[e]);
   }
-  const Jn =
+  const Jn0 =
     ct === "custom" && so && so.secciones
       ? so.secciones
       : {
@@ -188,7 +188,9 @@ function App() {
           operaciones: true,
           // Sección "Verónica": solo Admin (de los roles fijos); en los roles creados, si se la habilita.
           veronica: fn,
-        };
+        },
+    // En Producción la sección Verónica está apagada (ver VERONICA_EN_PRODUCCION en 20_veronica.js).
+    Jn = VERONICA_HABILITADA ? Jn0 : { ...Jn0, veronica: false };
   (useEffect(() => {
     if (!Jn[vista]) {
       const e = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", "veronica"].find((t) => Jn[t]);
