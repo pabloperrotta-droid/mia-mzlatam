@@ -51,6 +51,77 @@ function aplicarCambios(base, cambios) {
     r
   );
 }
+// Listas de objetos (obras, líneas de Pagos…): se aplican sobre la versión de la base SOLO los
+// elementos que cambiaron en esta pantalla, en vez de pisar la lista entera. Así, si otra pantalla
+// cambió otro elemento (ej. renombró un centro de costo), ese cambio no se pierde.
+// Identidad de un elemento: su "id" si tiene; si no, cliente + obra.
+function idDeElemento(x) {
+  return x && x.id != null && x.id !== "" ? "id:" + x.id : x && x.cliente != null && x.obra != null ? "co:" + x.cliente + "|" + x.obra : null;
+}
+function esListaDeObjetos(v) {
+  return Array.isArray(v) && v.every(esObjetoPlano);
+}
+function combinarLista(L, B, R) {
+  const texto = (x) => JSON.stringify(x),
+    resultado = R.slice(),
+    usados = new Set(),
+    buscarEnR = (b) => {
+      const t = texto(b);
+      let i = resultado.findIndex((x, j) => !usados.has(j) && texto(x) === t);
+      if (i < 0) {
+        const id = idDeElemento(b);
+        id && (i = resultado.findIndex((x, j) => !usados.has(j) && idDeElemento(x) === id));
+      }
+      return i;
+    };
+  const idsL = new Set(L.map(idDeElemento)),
+    idsB = new Set(B.map(idDeElemento)),
+    // Misma cantidad y cada posición cambiada es el mismo elemento (mismo id) o un cambio de nombre
+    // en el lugar (el id nuevo no estaba antes y el viejo ya no está).
+    enElLugar =
+      L.length === B.length &&
+      L.every((l, i) => {
+        const a = idDeElemento(l),
+          b = idDeElemento(B[i]);
+        return texto(l) === texto(B[i]) || a === b || (!idsB.has(a) && !idsL.has(b));
+      });
+  if (enElLugar) {
+    // Se compara posición por posición (cambios de datos o de nombre).
+    L.forEach((l, i) => {
+      if (texto(l) === texto(B[i])) return;
+      const j = buscarEnR(B[i]);
+      j >= 0 ? ((resultado[j] = l), usados.add(j)) : idDeElemento(l) && !resultado.some((x) => idDeElemento(x) === idDeElemento(l)) && resultado.push(l);
+    });
+    return resultado;
+  }
+  // Se agregaron o quitaron elementos: se sacan los quitados y se suman los nuevos.
+  const cuenta = (xs) => {
+      const m = new Map();
+      xs.forEach((x) => m.set(texto(x), (m.get(texto(x)) || 0) + 1));
+      return m;
+    },
+    enL = cuenta(L),
+    enB = cuenta(B),
+    quitados = [],
+    agregados = [];
+  enB.forEach((n, t) => {
+    for (let i = 0; i < n - (enL.get(t) || 0); i++) quitados.push(JSON.parse(t));
+  });
+  enL.forEach((n, t) => {
+    for (let i = 0; i < n - (enB.get(t) || 0); i++) agregados.push(JSON.parse(t));
+  });
+  quitados.forEach((q) => {
+    const j = buscarEnR(q);
+    j >= 0 && usados.add(j);
+  });
+  const sinQuitados = resultado.filter((_, j) => !usados.has(j));
+  agregados.forEach((a) => {
+    const id = idDeElemento(a),
+      j = id ? sinQuitados.findIndex((x) => idDeElemento(x) === id) : -1;
+    j >= 0 ? (sinQuitados[j] = a) : sinQuitados.push(a);
+  });
+  return sinQuitados;
+}
 function combinarEstado(local, base, remoto) {
   const r = { ...remoto };
   return (
@@ -59,6 +130,10 @@ function combinarEstado(local, base, remoto) {
         B = base ? base[k] : void 0,
         R = remoto[k];
       if (jsonIgual(L, B)) return;
+      if (esListaDeObjetos(L) && esListaDeObjetos(B) && esListaDeObjetos(R)) {
+        r[k] = combinarLista(L, B, R);
+        return;
+      }
       if (esObjetoPlano(L) && esObjetoPlano(B) && esObjetoPlano(R)) {
         const m = { ...R };
         (new Set([...Object.keys(L), ...Object.keys(B)]).forEach((sub) => {

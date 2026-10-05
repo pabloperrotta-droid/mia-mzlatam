@@ -55,6 +55,22 @@ prueba("Guardado: combinar no pisa lo que cambió otro usuario", () => {
   const r = f.combinarEstado({ a: 2, b: { x: 1, y: 5 } }, { a: 1, b: { x: 1, y: 2 } }, { a: 1, b: { x: 7, y: 2 }, c: 3 });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(r)), { a: 2, b: { x: 7, y: 5 }, c: 3 });
 });
+prueba("Guardado: una lista cambiada en otra pantalla no pisa un cambio de nombre (ej. PLAZA OESTE → DOT Y ARCOS)", () => {
+  const o = (obra, status) => ({ cliente: "B+D", obra, status });
+  const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] };
+  // En la base ya quedó el cambio de nombre hecho en otra pantalla…
+  const remoto = { obras: [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] };
+  // …y esta pantalla (todavía con el nombre viejo) cambió el estado de otra obra.
+  const local = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "FINALIZADA")] };
+  const r = JSON.parse(JSON.stringify(f.combinarEstado(local, base, remoto)));
+  assert.deepStrictEqual(r.obras, [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "FINALIZADA")]);
+  // Agregar y quitar elementos (con id), sin perder lo que agregó la otra pantalla.
+  const b2 = { pagosSemanales: [{ id: "a", v: 1 }, { id: "b", v: 1 }] };
+  const r2 = { pagosSemanales: [{ id: "a", v: 1 }, { id: "b", v: 2 }, { id: "c", v: 1 }] };
+  const l2 = { pagosSemanales: [{ id: "b", v: 1 }, { id: "d", v: 1 }] };
+  const m2 = JSON.parse(JSON.stringify(f.combinarEstado(l2, b2, r2)));
+  assert.deepStrictEqual(m2.pagosSemanales, [{ id: "b", v: 2 }, { id: "c", v: 1 }, { id: "d", v: 1 }]);
+});
 prueba("Datos repartidos: las 8 claves pesadas van a documentos propios", () => {
   assert.strictEqual(f.ESTADO_EXTERNO.length, 8);
   assert.ok(f.ESTADO_EXTERNO.includes("pagosSemanales") && f.ESTADO_EXTERNO.includes("cfSalidasValores"));

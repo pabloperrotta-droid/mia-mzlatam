@@ -1334,6 +1334,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (05/10/2026) con el OK del usuario ("subí lo de las semana a producción"). Solo este cambio: el arreglo del PIN quedó en QA, y la sección Verónica va en el código pero apagada en Producción.
 
+### 101. Un cambio de nombre de centro de costo volvía al nombre viejo
+
+- Aviso del usuario: "le cambié el nombre al centro de costo de B+D, el que dice Plaza Oeste, se lo cambié a Dot y Arcos… y solo volvió a ser Plaza Oeste".
+- [x] Revisado: el cambio de nombre actualiza bien todo (obras, costos, pagos, facturas, cashflow). La causa probable es **otra pantalla de MIA abierta al mismo tiempo** (otra pestaña, computadora o celular) con un cambio propio sin guardar en la lista de obras: al combinar con la base, esa pantalla se quedaba con **su lista entera** (con el nombre viejo) y al guardar pisaba el cambio de nombre.
+- [x] Arreglo: al combinar los cambios de una pantalla con los que llegaron de otra, las **listas** (obras, líneas de Pagos, etc.) se combinan **elemento por elemento**: solo se aplican los elementos que cambió esa pantalla (por id, o por cliente + obra; un cambio de nombre en el lugar también se reconoce), y se respetan los que cambió la otra. Antes la lista entera de una pantalla ganaba.
+- [x] Prueba automática con el caso real (PLAZA OESTE → DOT Y ARCOS en una pantalla, cambio de estado de otra obra en otra pantalla) y con agregados/quitados en Pagos. Las pruebas viejas del guardado siguen igual.
+- [x] Publicado en QA.
+- [ ] Subir a Producción: pendiente del OK del usuario. Después de subirlo, conviene recargar MIA en todas las pantallas abiertas (las que no se recarguen siguen con el código viejo).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
