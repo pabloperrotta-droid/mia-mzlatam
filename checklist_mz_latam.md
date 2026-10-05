@@ -1324,7 +1324,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] ⚠️ **Instrucción del usuario: "veronica nunca lo subas a produccion al menos que te lo diga directamente así".** La sección queda apagada en Producción con el interruptor `VERONICA_EN_PRODUCCION = false` (20_veronica.js): en Producción no aparece la pestaña ni la casilla en Roles, aunque el código de Producción sea el mismo que el de QA. Solo se cambia con un pedido explícito del usuario.
 - [x] PIN de los roles creados: se compara **sin distinguir mayúsculas ni espacios de más** (el usuario no podía entrar con el PIN nuevo; en el celular el teclado pone la primera letra en mayúscula) y el campo del PIN ya no corrige ni pone mayúsculas solo. El PIN lo carga el usuario en Herramientas → Roles (no se escribe en el código porque el repositorio es público).
 - [x] Publicado en QA.
-- [ ] Producción: NO, salvo pedido explícito del usuario (la sección queda apagada en Producción; el arreglo del PIN sí puede subir).
+- [ ] Producción de la sección Verónica: NO, salvo pedido explícito del usuario (queda apagada en Producción). El usuario lo reiteró el 05/10/2026: "pin OK, veronica no".
+- [x] **Arreglo del PIN subido a Producción** (05/10/2026) con el OK del usuario ("pin OK, veronica no"). Verónica sigue apagada en Producción (`VERONICA_EN_PRODUCCION = false`).
 
 ### 100. Cashflow: moverse de a una semana
 
