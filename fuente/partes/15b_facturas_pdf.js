@@ -551,14 +551,16 @@ async function fcPdfBorrar(lineaId) {
   for (const p of (await ref.collection("partes").get()).docs) await p.ref.delete();
   await ref.delete();
 }
-// Los PDF de líneas borradas se eliminan pasada una semana (así "Deshacer" los recupera mientras tanto).
-function fcPdfLimpiarHuerfanos(lineas) {
-  if (FC_PDF_ST.limpiado || !FC_PDF_ST.cargado || !lineas || !lineas.length) return;
+// Los PDF de facturas se guardan 15 días desde que se cargaron (definición del usuario: "estas facturas
+// cada 15 días se podrían eliminar perfectamente") y después se borran solos para no ocupar espacio. Los
+// PDF de las órdenes de compra (pdfsOC) no se tocan: quedan guardados siempre.
+const FC_PDF_DIAS = 15;
+function fcPdfLimpiarHuerfanos() {
+  if (FC_PDF_ST.limpiado || !FC_PDF_ST.cargado) return;
   FC_PDF_ST.limpiado = true;
-  const ids = new Set(lineas.map((l) => String(l.id))),
-    limite = Date.now() - 7 * 24 * 3600 * 1000;
+  const limite = Date.now() - FC_PDF_DIAS * 24 * 3600 * 1000;
   Object.keys(FC_PDF_ST.metas)
-    .filter((id) => !ids.has(id.split("__nc")[0]) && (FC_PDF_ST.metas[id].subido || 0) < limite)
+    .filter((id) => (FC_PDF_ST.metas[id].subido || 0) < limite)
     .forEach((id) => fcPdfBorrar(id).catch(() => {}));
 }
 

@@ -2672,7 +2672,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
             {
               style: { ...smallBtnGhost, ...(fcProg ? { opacity: 0.7, cursor: "wait" } : {}) },
               title:
-                "Cargar una o varias facturas de proveedores en PDF (también podés arrastrarlas sobre la tabla). Se lee el CUIT, número, tipo y total; el proveedor sale de la tabla de Proveedores por CUIT (con tu nombre, no la razón social) y el centro de costo / sub obra del nombre del archivo (ej. 'San Andres - Palermo.pdf'). Si ya tenías la línea tipeada sin factura, se completa esa en vez de crear otra. El PDF queda guardado en la línea (👁 / ⬇).",
+                "Cargar una o varias facturas de proveedores en PDF (también podés arrastrarlas sobre la tabla). Se lee el CUIT, número, tipo y total; el proveedor sale de la tabla de Proveedores por CUIT (con tu nombre, no la razón social) y el centro de costo / sub obra del nombre del archivo (ej. 'San Andres - Palermo.pdf'). Si ya tenías la línea tipeada sin factura, se completa esa en vez de crear otra. El PDF queda guardado en la línea (👁 / ⬇) durante 15 días.",
             },
             React.createElement(Upload, { size: 13, style: { verticalAlign: "-2px" } }),
             " " + (fcProg || "Facturas PDF"),

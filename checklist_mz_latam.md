@@ -1293,6 +1293,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] **Espacio de los PDF** (consulta del usuario: "las facturas que importo… quedan guardadas en algún lugar?… por el lugar que ocuparían"): quedan guardados en la base (colección `pdfsFacturasPago`), uno por línea, para verlos con 👁. Al revisar el espacio se detectó que el **respaldo diario** copiaba también los PDF (de facturas y de órdenes de compra) todos los días durante 15 días: se excluyeron `pdfsOC` y `pdfsFacturasPago` del respaldo (los PDF no cambian y el usuario tiene los originales).
 
+- [x] **PDF de facturas: 15 días** (definición del usuario: "lo que más me interesa es que queden almacenadas las órdenes de compra de WU. Estas facturas cada 15 días se podrían eliminar perfectamente"): los PDF de facturas de proveedores (y de notas de crédito) se borran solos 15 días después de cargados (al abrir Pagos alguien que puede editar); la línea de Pagos queda igual, solo deja de mostrar 👁 / ⬇. Los PDF de las órdenes de compra no se borran nunca.
+
 ### 98. Pagos: cerrar el pago semanal en un solo paso
 
 - Pedido del usuario (recomendación 3 aceptada): "Cerrar el pago semanal en un solo paso… armar el lote de la semana, revisarlo, y con un clic marcar todo pagado: se imputa en Costos, se descarga la planilla de retenciones y, cuando Xubio lo permita, se crean las órdenes de pago… Lo de Xubio quedaría a media hasta resolver".
