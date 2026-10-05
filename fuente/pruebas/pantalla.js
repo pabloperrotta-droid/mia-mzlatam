@@ -23,7 +23,7 @@ const html = head.slice(0, i) + "<script>" + simulada + "</script>\n" + head.sli
 const archivo = path.join(os.tmpdir(), "mia_prueba_pantalla.html");
 fs.writeFileSync(archivo, html);
 
-const PESTANAS = ["Obras", "Facturación", "Proveedores", "Cashflow", "Pagos", "EERR", "Operaciones"];
+const PESTANAS = ["Obras", "Facturación", "Proveedores", "Cashflow", "Pagos", "EERR", "Operaciones", "Verónica"];
 const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
 
 (async () => {

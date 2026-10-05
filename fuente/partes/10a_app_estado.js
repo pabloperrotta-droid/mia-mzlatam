@@ -186,10 +186,12 @@ function App() {
           pagos: true,
           eerr: true,
           operaciones: true,
+          // Sección "Verónica": solo Admin (de los roles fijos); en los roles creados, si se la habilita.
+          veronica: fn,
         };
   (useEffect(() => {
     if (!Jn[vista]) {
-      const e = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones"].find((t) => Jn[t]);
+      const e = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", "veronica"].find((t) => Jn[t]);
       e && setVista(e);
     }
   }, [ct, so && so.id]),

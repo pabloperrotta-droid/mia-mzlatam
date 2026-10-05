@@ -1311,6 +1311,19 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (04/10/2026), con el OK explícito del usuario ("subilo a produccion"). `MIA.prd.html` = mismo código que QA con `window.__APP_ENV__` = "prd". La integración con Xubio en Producción sigue en pausa.
 
+### 99. Sección "Verónica": solicitudes de Nota de Crédito (PDF) → Excel
+
+- Pedido del usuario: "generar… una sección que se llame Verónica… el rol… del PIN Verónica… solamente Verónica va a ver esto"; con los PDF de "SOLICITUD NOTA DE CREDITO" de Cencosud: "que me pase a un excel: Descripción (del producto que más cantidad tenga) - Sucursal - Comprobante Asociado y Subtotal… la relación… es el N° de solicitud… voy a subir todos los PDFs… poder descargar los Excel… al igual que pagos, una opción de realizado, entonces me desaparece… puedo importar más PDFs y descargar nueva información".
+- [x] Pestaña nueva **"Verónica"**. La ven: Admin y los roles creados que tengan la sección habilitada (en Herramientas → Roles aparece la casilla "Verónica" con lectura/edición). Los roles fijos Comercial/Operaciones no la ven. El rol "Verónica" y su PIN los crea el usuario en Herramientas → Roles (el PIN no pasa por el chat).
+- [x] "Cargar PDF" (o arrastrar) uno o muchos PDF. De cada uno: **N° de solicitud** (ej. 9999-03964306, es la clave: si se vuelve a cargar, se actualiza y no se duplica), **Fecha**, **Tipo** (POR AJUSTE DE FACTURA / DEVOLUCION…), **Descripción del producto con más cantidad**, **Sucursal**, **Comprobante asociado** y **Subtotal**. La tabla del PDF se lee por posición (columnas Descripción / Sucursal / Cantidad), en todas las páginas.
+- [x] Se guardan solo los datos (colección `veronicaSolicitudes`, `qa_` en QA), no el PDF.
+- [x] **Realizado** (como en Pagos): al tildarla desaparece de "Pendientes"; filtros Pendientes / Realizados / Todos, buscador, "Marcar todas como realizadas" (las que se ven) y borrar fila.
+- [x] **Descargar Excel** de lo que se ve (según filtro y buscador): N° de solicitud, Fecha, Tipo, Descripción, Sucursal, Comprobante asociado, Subtotal (número).
+- [x] Probado con los 2 PDF reales del usuario (no se suben al repositorio): 9999-03960547 → "Merc Fact no Rec/Dif Descuento y/o preci", Supermercados, 0036A00002946, $676.090,19; 9999-03964306 → "Base de yogur vain 190g LAS TRES NIÑAS" (87 u.), Jumbo Puertos, 611R00001948, $187.722,91. Prueba automática con datos inventados y la pestaña agregada a la prueba de pantalla.
+- [ ] Pendiente: el Excel de ejemplo del usuario llegó vacío (0 bytes); cuando lo reenvíe se ajustan las columnas a ese formato.
+- [x] Publicado en QA.
+- [ ] Subir a Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

@@ -267,6 +267,31 @@ prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.ok(f.esCuenta("=5") && f.esCuenta("13.000/4") && f.esCuenta("100-20") && !f.esCuenta("-1000") && !f.esCuenta("13.000"));
 });
 
+// Sección 99 (Verónica): solicitud de Nota de Crédito con el diseño de Cencosud (datos inventados).
+prueba("Verónica: N° de solicitud, descripción del producto con más cantidad, sucursal, comprobante y subtotal", () => {
+  const it = (s, x, y, w = 30) => ({ s, x, y, w, h: 8 });
+  const pag = [
+    it("SOLICITUD NOTA DE CREDITO", 366, 789, 153), it("POR AJUSTE DEVOLUCION", 402, 778, 94), it("CENCOSUD S.A.", 97, 767, 82),
+    it("Nº", 421, 763, 8), it("9999", 431, 763, 17), it("-", 451, 763, 3), it("01234567", 455, 763, 34),
+    it("Fecha:", 339, 745, 24), it("10-09-2026", 433, 745, 44),
+    it("Comprobante Asoc:", 324, 612, 59), it("0001A00000001 10.09.2026", 388, 612, 86),
+    it("Codigo", 30, 564, 21), it("Descripcion", 140, 564, 34), it("Sec", 249, 564, 11), it("Sucursal", 277, 564, 25),
+    it("Referencia", 330, 564, 30), it("Cantidad", 395, 564, 28), it("UM", 440, 564, 10), it("P. Unitario", 470, 564, 30), it("Importe", 544, 564, 22),
+    it("7790000000001", 14, 553, 37), it("Producto A 500g", 67, 552, 110), it("Sucursal Uno", 264, 552, 38), it("000000003.00", 390, 552, 38), it("100,00", 470, 552, 23), it("0.00", 554, 552, 12),
+    it("7790000000002", 14, 545, 37), it("Producto B 190g", 67, 545, 110), it("Sucursal Uno", 264, 545, 38), it("000000087.00", 390, 545, 38), it("50,00", 470, 545, 23), it("0.00", 554, 545, 12),
+    it("SON PESOS: MIL", 20, 300, 120), it("Sub-Total", 400, 300, 40), it("$ 4.650,00", 500, 300, 50), it("Total", 420, 270, 20), it("$ 5.626,50", 500, 270, 50),
+  ];
+  const r = JSON.parse(JSON.stringify(f.leerSolicitudNC([pag])));
+  assert.strictEqual(r.numero, "9999-01234567");
+  assert.strictEqual(r.tipo, "POR AJUSTE DEVOLUCION");
+  assert.strictEqual(r.fecha, "10/09/2026");
+  assert.strictEqual(r.comprobante, "0001A00000001");
+  assert.strictEqual(r.descripcion, "Producto B 190g");
+  assert.strictEqual(r.cantidad, 87);
+  assert.strictEqual(r.sucursal, "Sucursal Uno");
+  assert.strictEqual(r.subtotal, 4650);
+});
+
 console.log("Foto del comportamiento actual (" + Object.keys(casos).length + " funciones):");
 const actual = {};
 for (const [nombre, lista] of Object.entries(casos)) {

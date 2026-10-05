@@ -548,7 +548,7 @@
                   role: "tablist",
                   style: { display: "flex", gap: 2, flexWrap: "wrap" },
                 },
-                ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones"]
+                ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", "veronica"]
                   .filter((e) => Jn[e])
                   .map((e) =>
                     React.createElement(
@@ -586,7 +586,9 @@
                                 ? "Pagos"
                                 : e === "eerr"
                                   ? "EERR"
-                                  : "Operaciones",
+                                  : e === "veronica"
+                                    ? "Verónica"
+                                    : "Operaciones",
                     ),
                   ),
               ),
@@ -2046,6 +2048,8 @@
                   })
                 : vista === "eerr"
                   ? React.createElement(EerrView, { eerrMensual: eerrMensual, setEerrMensual: setEerrMensual, canEdit: Rt })
+                  : vista === "veronica"
+                    ? React.createElement(VeronicaView, { canEdit: Rt })
                   : vista === "operaciones"
                     ? React.createElement(OperacionesView, {
                         obras: co,
