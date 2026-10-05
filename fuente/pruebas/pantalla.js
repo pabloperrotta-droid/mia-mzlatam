@@ -76,6 +76,29 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^Cargar 1 factura$/.test(b.textContent.trim())).click());
     await pagina.waitForFunction(() => document.body.innerText.includes("Facturas PDF cargadas"), null, { timeout: 30000 });
   });
+  // Sección 99: el Excel de Verónica sale con las 20 columnas de su planilla, fechas como fecha.
+  await control("Verónica → Descargar Excel (20 columnas, fechas)", async () => {
+    await pagina.evaluate(() => {
+      VERO_ST.iniciado = true;
+      VERO_ST.cargado = true;
+      VERO_ST.filas = {
+        p1: { id: "p1", snc: "WC X999901234567", fecha: "10/09/2026", recepcion: "05/10/2026", cliente: "CENCOSUD SA", comprobante: "0001A00000001", descripcion: "Producto", sucursal: "Sucursal", subtotal: 100.5, total: 121.6, cargado: 1 },
+      };
+      VERO_ST.subs.forEach((f) => f());
+    });
+    await clic("Verónica");
+    const espera = pagina.waitForEvent("download", { timeout: 15000 });
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Descargar Excel/.test(b.textContent)).click());
+    const archivo = await (await espera).path();
+    const r = await pagina.evaluate((b64) => {
+      const wb = XLSX.read(b64, { type: "base64" }),
+        ws = wb.Sheets[wb.SheetNames[0]],
+        filas = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      return { columnas: filas[0].length, snc: filas[1][3], fecha: ws.C2 && ws.C2.w, subtotal: filas[1][7] };
+    }, fs.readFileSync(archivo).toString("base64"));
+    if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
+      throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
+  });
   await navegador.close();
   console.log(fallas ? "\n" + fallas + " control(es) de pantalla fallaron" : "\nTodas las pantallas abren sin errores");
   process.exit(fallas ? 1 : 0);

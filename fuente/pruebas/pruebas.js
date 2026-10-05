@@ -290,6 +290,11 @@ prueba("Verónica: N° de solicitud, descripción del producto con más cantidad
   assert.strictEqual(r.cantidad, 87);
   assert.strictEqual(r.sucursal, "Sucursal Uno");
   assert.strictEqual(r.subtotal, 4650);
+  assert.strictEqual(r.total, 5626.5);
+  assert.strictEqual(r.cliente, "CENCOSUD SA");
+  assert.strictEqual(r.snc, "X999901234567");
+  const conInterno = JSON.parse(JSON.stringify(f.leerSolicitudNC([[...pag, it("WC-0195549447", 433, 702, 62)]])));
+  assert.strictEqual(conInterno.snc, "WC X999901234567");
 });
 
 console.log("Foto del comportamiento actual (" + Object.keys(casos).length + " funciones):");

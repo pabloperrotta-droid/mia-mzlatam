@@ -57,7 +57,17 @@ function leerSolicitudNC(paginas) {
     cantidad: 0,
     sucursal: "",
     subtotal: 0,
+    total: 0,
+    cliente: "",
+    snc: "",
   };
+  // Cliente: el emisor (ej. "CENCOSUD S.A." → "CENCOSUD SA"), el primer nombre de empresa de la hoja.
+  const emp = todos.find((i) => /\bS\.?\s?A\.?$|S\.?R\.?L\.?$/i.test(i.s) && /[a-z]{3}/i.test(i.s) && fcSoloDigitos(i.s).length < 4);
+  emp && (r.cliente = emp.s.replace(/\./g, "").replace(/\s+/g, " ").trim().toUpperCase());
+  // SNC con el formato de la planilla: letras del "Nº de Interno" (ej. WC-0195549447 → WC) + " X" + punto de
+  // venta + número (ej. "WC X999903964306").
+  const interno = todos.find((i) => /^[A-Z]{1,3}-\d{6,}$/.test(i.s));
+  r.snc = (interno ? interno.s.split("-")[0] + " " : "") + "X" + m[1] + m[2].padStart(8, "0");
   // Fecha: la que está a la derecha de "Fecha:" en el mismo renglón (o pegada al texto).
   for (const items of paginas) {
     const et = items.find((i) => /^fecha:?/i.test(i.s) && !/emisi/i.test(i.s));
@@ -77,6 +87,11 @@ function leerSolicitudNC(paginas) {
   for (let p = paginas.length - 1; p >= 0 && !r.subtotal; p--) {
     const v = fcValorJunto(paginas[p], /^\s*sub\s*-?\s*total\b/i);
     v && (r.subtotal = Math.abs(v));
+  }
+  // Total (Monto Final).
+  for (let p = paginas.length - 1; p >= 0 && !r.total; p--) {
+    const v = fcValorJunto(paginas[p], /^\s*total\b/i, true);
+    v && (r.total = Math.abs(v));
   }
   // Renglones: debajo de los títulos de la tabla (Codigo / Descripcion / Sec / Sucursal / Cantidad…).
   const renglones = [];
@@ -146,15 +161,45 @@ async function leerSolicitudNCPdf(file) {
   }
   return leerSolicitudNC(paginas);
 }
+// Columnas de la planilla de seguimiento del usuario (Excel de ejemplo), en el mismo orden. Las que no
+// salen del PDF quedan vacías para completarlas a mano.
+const VERO_PLANILLA = [
+  ["recepcion", "Fecha de Recepcion "],
+  ["cliente", "Cliente"],
+  ["fecha", "FechaSNC"],
+  ["snc", "SNC"],
+  ["comprobante", "N° Comp, Asoc"],
+  ["", "Concepto de SNC "],
+  ["descripcion", "Descripcion"],
+  ["subtotal", "Subtotal"],
+  ["total", "Monto Final"],
+  ["sucursal", "Sucursal"],
+  ["", "Estado "],
+  ["", "OP"],
+  ["", "Lote"],
+  ["", "ND Interna"],
+  ["", "Fecha NC"],
+  ["", "Nro, NC Emitida"],
+  ["", "Monto Neto"],
+  ["", "Monto Final"],
+  ["", "Observaciones"],
+  ["", "Cargada en BI"],
+];
+// Columnas que se ven en pantalla.
 const VERO_COLUMNAS = [
-  ["numero", "N° de solicitud"],
-  ["fecha", "Fecha"],
-  ["tipo", "Tipo"],
+  ["snc", "SNC"],
+  ["fecha", "FechaSNC"],
   ["descripcion", "Descripción"],
   ["sucursal", "Sucursal"],
-  ["comprobante", "Comprobante asociado"],
+  ["comprobante", "N° Comp. Asoc."],
   ["subtotal", "Subtotal"],
+  ["total", "Monto Final"],
 ];
+// "10/09/2026" → número de fecha de Excel (días desde 30/12/1899), para que la celda sea una fecha.
+function veroFecha(t) {
+  const m = String(t || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? Math.round((Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) - Date.UTC(1899, 11, 30)) / 86400000) : t || "";
+}
 function VeronicaView({ canEdit: puede }) {
   const st = useVeronica(),
     [filtro, setFiltro] = React.useState("pendientes"),
@@ -167,7 +212,8 @@ function VeronicaView({ canEdit: puede }) {
     visibles = todas
       .filter((f) => (filtro === "pendientes" ? !f.realizado : filtro === "realizados" ? !!f.realizado : true))
       .filter((f) => !q || normalizarTexto(VERO_COLUMNAS.map(([k]) => f[k]).join(" ")).includes(q)),
-    total = visibles.reduce((a, f) => a + (Number(f.subtotal) || 0), 0);
+    total = visibles.reduce((a, f) => a + (Number(f.subtotal) || 0), 0),
+    totalFinal = visibles.reduce((a, f) => a + (Number(f.total) || 0), 0);
   async function importar(lista) {
     const archivos = Array.from(lista || []).filter((x) => /\.pdf$/i.test(x.name || "") || x.type === "application/pdf");
     if (!archivos.length) return window.alert("Elegí archivos PDF.");
@@ -188,7 +234,16 @@ function VeronicaView({ canEdit: puede }) {
         await db
           .collection("veronicaSolicitudes")
           .doc(id)
-          .set({ ...d, archivo: f.name || "", cargado: (previa && previa.cargado) || Date.now(), actualizado: Date.now() }, { merge: true });
+          .set(
+            {
+              ...d,
+              archivo: f.name || "",
+              recepcion: (previa && previa.recepcion) || fechaHoyArgentinaDDMMAAAA().replace(/-/g, "/"),
+              cargado: (previa && previa.cargado) || Date.now(),
+              actualizado: Date.now(),
+            },
+            { merge: true },
+          );
         previa ? r.actualizadas++ : r.nuevas++;
         !d.subtotal && r.errores.push(f.name + ": no se encontró el Subtotal (revisalo)");
         !d.descripcion && r.errores.push(f.name + ": no se encontró la descripción (revisala)");
@@ -212,15 +267,30 @@ function VeronicaView({ canEdit: puede }) {
   }
   function borrar(f) {
     const db = veroDb();
-    db && window.confirm("¿Borrar la solicitud " + f.numero + "?") && db.collection("veronicaSolicitudes").doc(f.id).delete().catch(() => {});
+    db && window.confirm("¿Borrar la solicitud " + (f.snc || f.numero) + "?") && db.collection("veronicaSolicitudes").doc(f.id).delete().catch(() => {});
   }
   function descargar() {
     if (!visibles.length) return window.alert("No hay filas para descargar.");
-    const hoja = XLSX.utils.aoa_to_sheet([
-        VERO_COLUMNAS.map(([, t]) => t),
-        ...visibles.map((f) => VERO_COLUMNAS.map(([k]) => (k === "subtotal" ? Number(f.subtotal) || 0 : f[k] || ""))),
-      ]),
+    const hoja = XLSX.utils.aoa_to_sheet(
+        [
+          VERO_PLANILLA.map(([, t]) => t),
+          ...visibles.map((f) =>
+            VERO_PLANILLA.map(([k]) =>
+              !k ? "" : k === "subtotal" || k === "total" ? Number(f[k]) || 0 : k === "fecha" || k === "recepcion" ? veroFecha(f[k]) : f[k] || "",
+            ),
+          ),
+        ],
+      ),
       libro = XLSX.utils.book_new();
+    // Formatos como en la planilla: fechas dd/mm/aaaa e importes con 2 decimales.
+    VERO_PLANILLA.forEach(([k], col) => {
+      const z = k === "fecha" || k === "recepcion" ? "dd/mm/yyyy" : k === "subtotal" || k === "total" ? "#,##0.00" : null;
+      if (!z) return;
+      for (let fila = 1; fila <= visibles.length; fila++) {
+        const c = hoja[XLSX.utils.encode_cell({ r: fila, c: col })];
+        c && c.t === "n" && (c.z = z);
+      }
+    });
     XLSX.utils.book_append_sheet(libro, hoja, "Solicitudes");
     descargarLibroXlsx(libro, "solicitudes_nc_" + filtro + "_" + new Date().toISOString().slice(0, 10) + ".xlsx");
   }
@@ -281,7 +351,7 @@ function VeronicaView({ canEdit: puede }) {
       React.createElement("input", {
         value: busca,
         onChange: (e) => setBusca(e.target.value),
-        placeholder: "Buscar n°, sucursal, descripción…",
+        placeholder: "Buscar SNC, sucursal, descripción…",
         style: { ...inputStyle, width: 230 },
       }),
       puede &&
@@ -331,7 +401,7 @@ function VeronicaView({ canEdit: puede }) {
             "tr",
             null,
             React.createElement("th", { style: { ...th, width: 30 } }, "Realizado"),
-            VERO_COLUMNAS.map(([k, t]) => React.createElement("th", { key: k, style: k === "subtotal" ? { ...th, textAlign: "right" } : th }, t)),
+            VERO_COLUMNAS.map(([k, t]) => React.createElement("th", { key: k, style: k === "subtotal" || k === "total" ? { ...th, textAlign: "right" } : th }, t)),
             puede && React.createElement("th", { style: th }),
           ),
         ),
@@ -360,8 +430,8 @@ function VeronicaView({ canEdit: puede }) {
               VERO_COLUMNAS.map(([k]) =>
                 React.createElement(
                   "td",
-                  { key: k, style: k === "subtotal" ? { ...td, textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" } : k === "numero" ? { ...td, whiteSpace: "nowrap" } : td, title: k === "descripcion" && f.cantidad ? "Cantidad: " + f.cantidad : k === "numero" ? f.archivo || "" : "" },
-                  k === "subtotal" ? "$ " + (Number(f.subtotal) || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : f[k] || React.createElement("span", { style: { color: RED } }, "—"),
+                  { key: k, style: k === "subtotal" || k === "total" ? { ...td, textAlign: "right", fontWeight: k === "subtotal" ? 700 : 400, whiteSpace: "nowrap" } : k === "snc" ? { ...td, whiteSpace: "nowrap" } : td, title: k === "descripcion" && f.cantidad ? "Cantidad: " + f.cantidad : k === "snc" ? (f.archivo || "") + (f.tipo ? " · " + f.tipo : "") : "" },
+                  k === "subtotal" || k === "total" ? "$ " + (Number(f[k]) || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : f[k] || React.createElement("span", { style: { color: RED } }, "—"),
                 ),
               ),
               puede &&
@@ -376,8 +446,9 @@ function VeronicaView({ canEdit: puede }) {
             React.createElement(
               "tr",
               { style: { background: BG, fontWeight: 700 } },
-              React.createElement("td", { style: td, colSpan: VERO_COLUMNAS.length }, visibles.length + " solicitud(es)"),
+              React.createElement("td", { style: td, colSpan: VERO_COLUMNAS.length - 1 }, visibles.length + " solicitud(es)"),
               React.createElement("td", { style: { ...td, textAlign: "right", whiteSpace: "nowrap" } }, "$ " + total.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })),
+              React.createElement("td", { style: { ...td, textAlign: "right", whiteSpace: "nowrap" } }, "$ " + totalFinal.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })),
               puede && React.createElement("td", { style: td }),
             ),
         ),
