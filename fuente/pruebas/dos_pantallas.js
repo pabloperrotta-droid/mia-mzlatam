@@ -25,7 +25,14 @@ const simulada = `(function () {
   const avisar = {};
   let n = 0;
   const snap = (existe, data) => ({ exists: existe, data: () => (data === undefined ? undefined : JSON.parse(JSON.stringify(data))), get: (k) => (data || {})[k] });
-  window.__entregar = (id, existe, data) => { const f = avisar[id]; f && f(snap(existe, data)); };
+  // Con __retener, las novedades quedan guardadas en la página y se entregan todas juntas con __soltar()
+  // (sirve para que lleguen en el mismo instante en que el usuario hace un cambio).
+  const retenidas = [];
+  window.__entregar = (id, existe, data) => {
+    if (window.__retener) return void retenidas.push([id, existe, data]);
+    const f = avisar[id]; f && f(snap(existe, data));
+  };
+  window.__soltar = () => { window.__retener = false; retenidas.splice(0).forEach(([id, e, d]) => window.__entregar(id, e, d)); };
   function FieldPath(...a) { this.partes = a; }
   const BORRAR = { __borrar__: true };
   const pares = (a) => {
@@ -310,6 +317,26 @@ async function fs_(fuente, op, a, b) {
     if (avisos.length) throw new Error("Apareció un aviso: " + avisos.join(" || "));
     const fallas = agregados.filter((x) => /erroresGuardado/.test(x.col) && !/Aviso interno/.test(x.data.motivo));
     if (fallas.length) throw new Error("Fallas: " + fallas.map((x) => x.data.motivo).join(" | "));
+  });
+  await cerrarAvisos();
+  await control("Llegan datos de la base justo cuando el usuario hace un cambio: el cambio se guarda igual", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const antes = (estado().pagosSemanales || []).length;
+      await B.evaluate(() => (window.__retener = true));
+      await clic(A, "Agregar línea", true);
+      await esperarGuardado(A);
+      // En el mismo instante: llega la novedad de A y B agrega una línea.
+      await B.evaluate(() => {
+        window.__soltar();
+        [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Agregar línea")).click();
+      });
+      await esperarGuardado(B);
+      const total = (estado().pagosSemanales || []).length;
+      if (total !== antes + 2) throw new Error("Vuelta " + (vuelta + 1) + ": en la base quedaron " + total + " líneas; se esperaban " + (antes + 2));
+      const r = await B.evaluate(() => window.__miaPendientes());
+      if (r.guardando || r.claves.length) throw new Error("B quedó con cambios sin guardar: " + JSON.stringify(r));
+    }
+    await sinAvisos(A, B);
   });
   await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {

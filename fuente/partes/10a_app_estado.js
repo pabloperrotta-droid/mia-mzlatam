@@ -696,13 +696,10 @@ function App() {
           registros: registros,
           cambiosFinancieros: cambiosFinancieros,
         };
-      if (((estadoLocalRef.current = e), ignorarProximoGuardadoRef.current)) {
-        ignorarProximoGuardadoRef.current = false;
-        // Sección 106: si un guardado anterior quedó cancelado por este cambio, la marca de "guardando" no
-        // debe quedar prendida (si no, al cerrar avisaba de cambios sin guardar aunque no los hubiera).
-        guardandoRef.current = !!guardadoEnCursoRef.current;
-        return;
-      }
+      // Sección 108: antes, al recibir datos de la base se salteaba el próximo guardado; si justo en ese
+      // momento el usuario hacía un cambio (se dibujan juntos), su cambio no se guardaba. Ahora siempre se
+      // compara contra la base: si no hay diferencias no se guarda nada, y si las hay se guardan.
+      ((estadoLocalRef.current = e), (ignorarProximoGuardadoRef.current = false));
       guardandoRef.current = true;
       const t = dbRef.current,
         o = setTimeout(() => {
@@ -710,6 +707,12 @@ function App() {
           // vuelve a calcular contra lo ya guardado), así no chocan entre sí.
           if (guardadoEnCursoRef.current) {
             guardadoEnCursoRef.current.finally(() => setReintentoGuardado((n) => n + 1));
+            return;
+          }
+          const baseAntes = baseGuardadaRef.current,
+            cambios = baseAntes ? cambiosParaGuardar(JSON.parse(JSON.stringify(e)), baseAntes) : null;
+          if (cambios && cambios.length === 0) {
+            guardandoRef.current = false;
             return;
           }
           const a = deshaciendoRef.current,
@@ -723,12 +726,6 @@ function App() {
               const u = [...i, { payload: r, ts: Date.now() }];
               return u.length > 15 ? u.slice(u.length - 15) : u;
             });
-          }
-          const baseAntes = baseGuardadaRef.current,
-            cambios = baseAntes ? cambiosParaGuardar(JSON.parse(JSON.stringify(e)), baseAntes) : null;
-          if (cambios && cambios.length === 0) {
-            guardandoRef.current = false;
-            return;
           }
           // Se reparten los cambios entre app/state y los documentos propios de las claves pesadas
           // (todo en un solo lote: se guarda todo o nada).
