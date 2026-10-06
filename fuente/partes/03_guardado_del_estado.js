@@ -18,8 +18,16 @@ const docEstadoExterno = (k) => "app/st_" + k;
 function esObjetoPlano(v) {
   return v !== null && typeof v == "object" && !Array.isArray(v);
 }
+// Sección 106: texto de un valor con las claves ordenadas. La base devuelve los campos de cada objeto en
+// otro orden que la pantalla; comparando con el orden, un mismo proveedor (sin id) parecía otro y su cambio
+// se descartaba. Así se compara por contenido, sin importar el orden de los campos.
+function textoEstable(x) {
+  return JSON.stringify(x, (k, v) =>
+    v && typeof v == "object" && !Array.isArray(v) ? Object.keys(v).sort().reduce((o, c) => ((o[c] = v[c]), o), {}) : v,
+  );
+}
 function jsonIgual(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return textoEstable(a) === textoEstable(b);
 }
 function subclavesSeguras(a, b) {
   return [...Object.keys(a || {}), ...Object.keys(b || {})].every((k) => k !== "");
@@ -64,7 +72,7 @@ function esListaDeObjetos(v) {
   return Array.isArray(v) && v.every(esObjetoPlano);
 }
 function combinarLista(L, B, R, descartados) {
-  const texto = (x) => JSON.stringify(x),
+  const texto = (x) => textoEstable(x),
     resultado = R.slice(),
     usados = new Set(),
     buscarEnR = (b) => {
@@ -193,7 +201,7 @@ function nombreElemento(k, el) {
 }
 // Anota lo guardado: para listas, los elementos que cambiaron; para el resto, el valor de cada ruta.
 function anotarGuardado(anotados, cambios, baseAntes, ahora) {
-  const t = (x) => JSON.stringify(x),
+  const t = (x) => textoEstable(x),
     lista = (anotados || []).filter((a) => ahora - a.ts < 15 * 60 * 1000);
   const valorEn = (obj, ruta) => (ruta.length === 1 ? (obj || {})[ruta[0]] : ((obj || {})[ruta[0]] || {})[ruta[1]]);
   (cambios || []).forEach(([ruta, v]) => {
@@ -220,7 +228,7 @@ function anotarGuardado(anotados, cambios, baseAntes, ahora) {
 }
 // Devuelve { pisados: [textos], quedan: anotados que siguen vigentes }.
 function cambiosPisados(anotados, remoto) {
-  const t = (x) => JSON.stringify(x),
+  const t = (x) => textoEstable(x),
     pisados = [],
     quedan = [];
   (anotados || []).forEach((a) => {

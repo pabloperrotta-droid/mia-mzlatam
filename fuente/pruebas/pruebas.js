@@ -103,6 +103,21 @@ prueba("Eco atrasado de un guardado propio: se ignora; lo de otra pantalla no", 
   assert.strictEqual(f.selloAtrasado(undefined, "abc", 5), false);
   assert.strictEqual(f.selloAtrasado("abc:1", "abc", undefined), false);
 });
+prueba("Proveedores sin id con los campos en otro orden (como los devuelve la base): el cambio de presupuesto se guarda", () => {
+  // Caso real: presupuesto de LUCIO en NATURA CABILDO de 19 a 20 millones.
+  const base = { proveedoresMap: { "NAT|CABILDO": [{ proveedor: "LUCIO", presupuesto: 19500000, tc: 1450 }, { proveedor: "RUBEN", presupuesto: 500000, tc: 1450 }] } };
+  const local = [{ proveedor: "LUCIO", presupuesto: 20500000, tc: 1450 }, { proveedor: "RUBEN", presupuesto: 500000, tc: 1450 }];
+  const enBase = { proveedoresMap: { "NAT|CABILDO": [{ presupuesto: 19500000, proveedor: "LUCIO", tc: 1450 }, { presupuesto: 500000, proveedor: "RUBEN", tc: 1450 }] } };
+  const desc = [];
+  const fin = JSON.parse(JSON.stringify(f.combinarCambiosConRemoto([[["proveedoresMap", "NAT|CABILDO"], local]], base, (r) => f.valorEnRuta(enBase, r), desc)));
+  assert.strictEqual(fin[0][1].length, 2);
+  assert.strictEqual(fin[0][1].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
+  assert.strictEqual(desc.length, 0);
+  // Al recibir de la base con el cambio pendiente, tampoco se pierde.
+  const m = JSON.parse(JSON.stringify(f.combinarEstado({ proveedoresMap: { "NAT|CABILDO": local } }, base, enBase)));
+  assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
+  assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
+});
 prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
   const o = (obra, status) => ({ cliente: "B+D", obra, status });
   const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };

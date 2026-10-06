@@ -95,6 +95,9 @@ const oyentes = []; // { pagina, id, ruta, cadena, pausada }
 const pausadas = new Set();
 const pendientesDePausa = new Map(); // pagina → Set(oyente)
 const copia = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+// Como la base real: devuelve los campos de cada objeto ordenados por nombre (no en el orden en que se guardaron).
+const ordenada = (x) =>
+  x === undefined ? undefined : JSON.parse(JSON.stringify(x, (k, v) => (v && typeof v == "object" && !Array.isArray(v) ? Object.keys(v).sort().reduce((o, c) => ((o[c] = v[c]), o), {}) : v)));
 const esBorrar = (v) => v && v.__borrar__ === true;
 function aplicarEscritura(w) {
   const actual = base.get(w.path);
@@ -122,7 +125,7 @@ function entregar(o) {
   o.cadena = o.cadena.then(async () => {
     await espera(5 + Math.random() * 120);
     const d = base.get(o.ruta);
-    await o.pagina.evaluate(([id, e, x]) => window.__entregar(id, e, x), [o.id, !!(d && d.data !== undefined), d ? d.data : undefined]).catch(() => {});
+    await o.pagina.evaluate(([id, e, x]) => window.__entregar(id, e, x), [o.id, !!(d && d.data !== undefined), d ? ordenada(d.data) : undefined]).catch(() => {});
   });
 }
 async function fs_(fuente, op, a, b) {
@@ -135,7 +138,7 @@ async function fs_(fuente, op, a, b) {
   }
   if (op === "leer") {
     const d = base.get(a);
-    return { existe: !!(d && d.data !== undefined), data: d ? d.data : undefined, ver: d ? d.ver : 0 };
+    return { existe: !!(d && d.data !== undefined), data: d ? ordenada(d.data) : undefined, ver: d ? d.ver : 0 };
   }
   if (op === "agregar") return agregados.push({ col: a, data: b }), null;
   if (op === "guardar") {

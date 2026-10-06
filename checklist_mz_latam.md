@@ -1387,6 +1387,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("sí, pásalo a producción"), después de que la prueba de dos pantallas pasó dos veces seguidas. Verónica sigue apagada en Producción.
 
+### 106. El presupuesto de LUCIO en NATURA CABILDO no quedó guardado
+
+- Aviso del usuario (06/10/2026): "no me cambió el presupuesto de Lucio que yo cambié en Natura Cabildo… estaba en 19 palos y pico y lo puse en 20 palos y pico" (lo cambió hoy a las 11, con la versión 104).
+- [x] Causa encontrada: los proveedores de una obra (y otras listas) no tienen un id propio, así que al combinar listas (Secciones 101/102) se reconocían comparando su contenido como texto. La base devuelve los campos de cada objeto en otro orden que la pantalla, entonces el mismo proveedor "parecía otro": al recibir datos de la base con un cambio pendiente, el cambio se descartaba sin aviso (y al guardar podía descartarse con el aviso rojo).
+- [x] Arreglo: todas las comparaciones del guardado (combinar listas, cambios para guardar, avisos de cambios pisados) comparan el contenido **sin importar el orden de los campos**.
+- [x] Prueba automática con el caso real (LUCIO de 19.500.000 a 20.500.000 con los campos en otro orden): con la comparación anterior la prueba falla, con la nueva pasa. La base simulada de la prueba de dos pantallas ahora devuelve los campos ordenados como la real.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario. El usuario tiene que volver a cargar el presupuesto de LUCIO.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
