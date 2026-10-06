@@ -214,8 +214,6 @@ function App() {
     misGuardadosRef = useRef([]),
     reintentandoRef = useRef(false),
     contadorSellosRef = useRef(0),
-    guardadoEnCursoRef = useRef(null),
-    choquesRef = useRef(0),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
     [avisoPisado, setAvisoPisado] = useState(null),
@@ -676,12 +674,6 @@ function App() {
       guardandoRef.current = true;
       const t = dbRef.current,
         o = setTimeout(() => {
-          // Sección 105: los guardados de esta pantalla van de a uno (si hay uno en curso, se espera y se
-          // vuelve a calcular contra lo ya guardado), así no chocan entre sí.
-          if (guardadoEnCursoRef.current) {
-            guardadoEnCursoRef.current.finally(() => setReintentoGuardado((n) => n + 1));
-            return;
-          }
           const a = deshaciendoRef.current,
             rehecho = rehaciendoRef.current;
           // Un cambio nuevo (que no sea deshacer ni rehacer) borra lo que había para rehacer.
@@ -689,7 +681,6 @@ function App() {
           if (((deshaciendoRef.current = false), !a && baseGuardadaRef.current)) {
             const r = baseGuardadaRef.current;
             setHistorialDeshacer((i) => {
-              if (i.length && i[i.length - 1].payload === r) return i; // reintento del mismo guardado
               const u = [...i, { payload: r, ts: Date.now() }];
               return u.length > 15 ? u.slice(u.length - 15) : u;
             });
@@ -747,7 +738,6 @@ function App() {
               mostrarErrorGuardado(idGuardado, "La base de datos rechazó los datos (" + ((err && err.message) || "error") + ")."));
             return;
           }
-          guardadoEnCursoRef.current = promesa.catch(() => {}).finally(() => (guardadoEnCursoRef.current = null));
           const avisoLento = setTimeout(
             () =>
               mostrarErrorGuardado(idGuardado, "La base de datos no confirmó el guardado en 20 segundos (conexión lenta o cortada)."),
@@ -765,7 +755,6 @@ function App() {
                     baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios)))
                   : (baseGuardadaRef.current = JSON.parse(JSON.stringify(e))),
                 (reintentandoRef.current = false),
-                (choquesRef.current = 0),
                 cambios &&
                   [...new Set(cambios.map(([ruta]) => docDe(ruta)))].forEach((d) => {
                     sellosConfirmadosRef.current[d] = Math.max(sellosConfirmadosRef.current[d] || 0, numSello);
@@ -774,12 +763,6 @@ function App() {
                 setAvisoGuardado(null));
             })
             .catch((r) => {
-              // Sección 105: si la base estaba ocupada con otro guardado (choque), se reintenta enseguida sin avisar.
-              if (r && (r.code === "failed-precondition" || r.code === "aborted") && (choquesRef.current = choquesRef.current + 1) <= 5) {
-                (setErrorGuardado((x) => (x && x.id === idGuardado ? null : x)), setTimeout(() => setReintentoGuardado((n) => n + 1), 300 + Math.random() * 700));
-                return;
-              }
-              choquesRef.current = 0;
               ((guardandoRef.current = false),
                 r && r.code === "invalid_argument"
                   ? setAvisoGuardado(
