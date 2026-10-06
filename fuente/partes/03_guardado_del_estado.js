@@ -168,6 +168,14 @@ function combinarCambiosConRemoto(cambios, base, remotoEn, descartados) {
   });
 }
 
+// Sección 103: cada guardado deja en el documento un "sello" (pantalla:número). Si llega de la base una
+// versión con un sello de ESTA pantalla más viejo que el último que ya se confirmó, es un eco atrasado de
+// un guardado propio anterior (no otra pantalla): se ignora, así no vuelve un valor viejo ni da falsa alarma.
+function selloAtrasado(sello, miPantalla, ultimoConfirmado) {
+  const m = /^(.*):(\d+)$/.exec(String(sello || ""));
+  return !!m && m[1] === miPantalla && Number(m[2]) < (Number(ultimoConfirmado) || 0);
+}
+
 // ---------- Aviso de cambios pisados (Sección 101) ----------
 // Después de cada guardado se anota lo que esta pantalla cambió. Si después llega de la base una versión
 // donde eso ya no está (otra pantalla lo pisó), se avisa. Las listas se miran elemento por elemento.

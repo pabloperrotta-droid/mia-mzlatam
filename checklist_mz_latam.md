@@ -1368,6 +1368,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("ok producción"). Verónica sigue apagada en Producción.
 
+### 104. Falsa alarma roja "Otra pantalla cambió cosas…" sin nadie más conectado
+
+- Aviso del usuario (06/10/2026, con captura): "⚠ Otra pantalla cambió cosas que vos habías guardado recién: Pagos: · Pagos: IGUAZU… nadie está cambiando eso, solo yo estoy conectado".
+- [x] Causa: desde la Sección 102 cada guardado se hace leyendo la base en el momento; en ese modo la base confirma el guardado y después manda la versión nueva, y a veces la versión de un guardado anterior propio llega **después** de que ya se confirmó el siguiente (al cargar o cambiar una línea dos veces seguidas). MIA la tomaba como si otra pantalla hubiera vuelto atrás el cambio (falsa alarma) y por un momento podía mostrar el valor anterior hasta que llegaba el último.
+- [x] Arreglo: cada guardado deja un sello (pantalla + número) en el documento; si llega una versión con un sello de esa misma pantalla más viejo que el último confirmado, se ignora (es un eco atrasado propio). Lo que guarda otra pantalla se sigue recibiendo y avisando igual.
+- [x] Prueba automática del sello.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

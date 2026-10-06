@@ -96,6 +96,13 @@ prueba("Guardado combinado: si la pantalla vieja cambió la MISMA obra que otra 
   assert.deepStrictEqual(fin[0][1], enBase.obras);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(desc)), ["Obras: B+D – PLAZA OESTE"]);
 });
+prueba("Eco atrasado de un guardado propio: se ignora; lo de otra pantalla no", () => {
+  assert.strictEqual(f.selloAtrasado("abc:3", "abc", 5), true);
+  assert.strictEqual(f.selloAtrasado("abc:5", "abc", 5), false);
+  assert.strictEqual(f.selloAtrasado("xyz:1", "abc", 5), false);
+  assert.strictEqual(f.selloAtrasado(undefined, "abc", 5), false);
+  assert.strictEqual(f.selloAtrasado("abc:1", "abc", undefined), false);
+});
 prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
   const o = (obra, status) => ({ cliente: "B+D", obra, status });
   const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };

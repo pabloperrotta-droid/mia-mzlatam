@@ -213,6 +213,9 @@ function App() {
     baseGuardadaRef = useRef(null),
     misGuardadosRef = useRef([]),
     reintentandoRef = useRef(false),
+    contadorSellosRef = useRef(0),
+    miPantallaRef = useRef(Math.random().toString(36).slice(2)),
+    sellosConfirmadosRef = useRef({}),
     [avisoPisado, setAvisoPisado] = useState(null),
     [otraPestana, setOtraPestana] = useState(false),
     [versionNueva, setVersionNueva] = useState(false),
@@ -340,8 +343,7 @@ function App() {
   }, [datosCargados, estadoConexion]);
   // Sección 102: "Recargar MIA en todas las pantallas" (Herramientas, Admin). Cada pantalla abierta se
   // recarga sola cuando no tiene cambios pendientes de guardar (si tiene, espera a que se guarden).
-  const miPantallaRef = useRef(Math.random().toString(36).slice(2)),
-    abiertaDesdeRef = useRef(Date.now());
+  const abiertaDesdeRef = useRef(Date.now());
   function pendienteDeGuardar() {
     try {
       const loc = estadoLocalRef.current,
@@ -569,7 +571,11 @@ function App() {
             };
           ((e = r.doc("app/state").onSnapshot(
             (i) => {
-              i.exists && ((partes.main = JSON.parse(JSON.stringify(i.data()))), partes.listos.add("__main__"), aplicarRemoto());
+              if (!i.exists) return;
+              const datos = JSON.parse(JSON.stringify(i.data()));
+              if (selloAtrasado(datos.__sello, miPantallaRef.current, sellosConfirmadosRef.current["app/state"])) return;
+              delete datos.__sello;
+              ((partes.main = datos), partes.listos.add("__main__"), aplicarRemoto());
             },
             () => {
               (setEstadoConexion("error"), setDatosCargados(true));
@@ -578,6 +584,7 @@ function App() {
             (partes.desuscribir = ESTADO_EXTERNO.map((k) =>
               r.doc(docEstadoExterno(k)).onSnapshot(
                 (i) => {
+                  if (i.exists && selloAtrasado((i.data() || {}).__sello, miPantallaRef.current, sellosConfirmadosRef.current[docEstadoExterno(k)])) return;
                   ((partes.ext[k] = i.exists ? JSON.parse(JSON.stringify((i.data() || {}).v ?? null)) : void 0),
                     partes.listos.add(k),
                     aplicarRemoto());
@@ -691,7 +698,9 @@ function App() {
             docDe = (ruta) => (esExterno(ruta[0]) ? docEstadoExterno(ruta[0]) : "app/state"),
             rutaEnDoc = (ruta) => (esExterno(ruta[0]) ? ["v", ...ruta.slice(1)] : ruta);
           const idGuardado = Date.now() + Math.random(),
-            descartados = [];
+            descartados = [],
+            numSello = ++contadorSellosRef.current,
+            sello = miPantallaRef.current + ":" + numSello;
           let promesa;
           try {
             if (cambios)
@@ -713,7 +722,7 @@ function App() {
                     v === BORRAR_CAMPO ? firebase.firestore.FieldValue.delete() : v,
                   );
                 });
-                Object.entries(grupos).forEach(([d, args]) => tx.update(t.doc(d), ...args));
+                Object.entries(grupos).forEach(([d, args]) => tx.update(t.doc(d), ...args, "__sello", sello));
               });
             else {
               const lote = firebase.firestore().batch();
@@ -746,6 +755,10 @@ function App() {
                     baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios)))
                   : (baseGuardadaRef.current = JSON.parse(JSON.stringify(e))),
                 (reintentandoRef.current = false),
+                cambios &&
+                  [...new Set(cambios.map(([ruta]) => docDe(ruta)))].forEach((d) => {
+                    sellosConfirmadosRef.current[d] = Math.max(sellosConfirmadosRef.current[d] || 0, numSello);
+                  }),
                 descartados.length && setAvisoDescartado((x) => [...new Set([...(x || []), ...descartados])]),
                 setAvisoGuardado(null));
             })
