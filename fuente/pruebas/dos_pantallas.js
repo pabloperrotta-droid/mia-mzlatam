@@ -108,8 +108,10 @@ fs.writeFileSync(archivo, html);
 const base = new Map(); // ruta → { data, ver }
 const agregados = []; // documentos agregados a colecciones (ej. erroresGuardado)
 const oyentes = []; // { pagina, id, ruta, cadena, pausada }
+let A, B;
 const pausadas = new Set();
-const escriturasDeEstado = new Map(); // pagina → cantidad de escrituras al estado de MIA
+const escriturasDeEstado = new Map();
+const bitacora = []; // pagina → cantidad de escrituras al estado de MIA
 const pendientesDePausa = new Map(); // pagina → Set(oyente)
 const copia = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 // Como la base real: devuelve los campos de cada objeto ordenados por nombre (no en el orden en que se guardaron).
@@ -160,6 +162,10 @@ async function fs_(fuente, op, a, b) {
   if (op === "agregar") return agregados.push({ col: a, data: b }), null;
   if (op === "guardar") {
     for (const w of a.escrituras) /app\/(state|st_)/.test(w.path) && escriturasDeEstado.set(pagina, (escriturasDeEstado.get(pagina) || 0) + 1);
+    const quien = pagina === A ? "A" : pagina === B ? "B" : "C";
+    for (const w of a.escrituras)
+      /app\/(state|st_)/.test(w.path) &&
+        bitacora.push(quien + (a.lecturas ? "tx" : "lote") + ":" + w.path.replace(/^.*app\//, "") + "[" + (w.pares || []).map((p) => p[0].join(".")).filter((k) => k !== "__sello").slice(0, 4).join(";") + "]");
     for (const [ruta, ver] of Object.entries(a.lecturas || {})) if (((base.get(ruta) || {}).ver || 0) !== ver) return { err: "aborted" };
     const tocados = new Set();
     for (const w of a.escrituras) {
@@ -233,11 +239,15 @@ async function fs_(fuente, op, a, b) {
         .filter((x) => t.includes(x))
         .map((x) => t.slice(t.indexOf(x), t.indexOf(x) + 300).replace(/\s+/g, " "));
     });
-  let A, B;
   const sinAvisos = async (...ps) => {
     for (const p of ps) {
       const a = await avisosRojos(p);
-      if (a.length) throw new Error("Apareció un aviso en " + (p === A ? "A" : "B") + ": " + a.join(" || "));
+      if (a.length)
+        throw new Error(
+          "Apareció un aviso en " + (p === A ? "A" : "B") + ": " + a.join(" || ").slice(0, 200) +
+            " ## NOTAS: " + agregados.filter((x) => /erroresGuardado/.test(x.col)).map((x) => x.data.rol + ": " + x.data.motivo).join(" | ").slice(0, 900) +
+            " ## ESCRITURAS: " + bitacora.slice(-25).join(", "),
+        );
     }
     const fallasGuardado = agregados.filter((x) => /erroresGuardado/.test(x.col));
     if (fallasGuardado.length) throw new Error("Se registraron fallas de guardado: " + fallasGuardado.map((x) => x.data.motivo).join(" | "));
@@ -249,7 +259,16 @@ async function fs_(fuente, op, a, b) {
   };
 
   A = await abrir("Pantalla A");
-  for (let k = 0; k < 50 && !(estado().obras || []).length; k++) await espera(200);
+  // Como en la base real: antes de abrir las otras pantallas, A termina la carga inicial (mudanza de las claves
+  // pesadas a sus documentos y arreglos de una sola vez), y no le queda nada sin guardar.
+  for (let k = 0; k < 150; k++) {
+    const listo =
+      ["pagosSemanales", "proveedoresMap", "pagosMap"].every((c) => base.has(P + "app/st_" + c)) &&
+      !Object.keys((base.get(P + "app/state") || {}).data || {}).some((c) => ["pagosSemanales", "proveedoresMap", "pagosMap"].includes(c)) &&
+      (await A.evaluate(() => { const r = window.__miaPendientes && window.__miaPendientes(); return !!r && !r.guardando && !r.claves.length; }));
+    if (listo && k > 10) break;
+    await espera(200);
+  }
   B = await abrir("Pantalla B");
   // C: pantalla de solo lectura (rol Operaciones). Nunca tiene que escribir en el estado de MIA.
   const C = await abrir("Pantalla C (solo lectura)", "#lectura");
