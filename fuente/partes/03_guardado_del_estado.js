@@ -180,6 +180,15 @@ function combinarCambiosConRemoto(cambios, base, remotoEn, descartados) {
 // Sección 103: cada guardado deja en el documento un "sello" (pantalla:número). Si llega de la base una
 // versión con un sello de ESTA pantalla más viejo que el último que ya se confirmó, es un eco atrasado de
 // un guardado propio anterior (no otra pantalla): se ignora, así no vuelve un valor viejo ni da falsa alarma.
+// Sección 109: número del sello si es de esta pantalla (si es de otra, o no tiene, devuelve null).
+function numeroDeMiSello(sello, miPantalla) {
+  const m = /^(.*):(\d+)$/.exec(String(sello || ""));
+  return m && m[1] === miPantalla ? Number(m[2]) : null;
+}
+// ¿Ya llegaron de la base todas las partes que esta pantalla guardó? (si falta alguna, la vista estaría a medias)
+function partesAlDia(confirmados, recibidos) {
+  return Object.entries(confirmados || {}).every(([d, n]) => ((recibidos || {})[d] || 0) >= n);
+}
 function selloAtrasado(sello, miPantalla, ultimoConfirmado) {
   const m = /^(.*):(\d+)$/.exec(String(sello || ""));
   return !!m && m[1] === miPantalla && Number(m[2]) < (Number(ultimoConfirmado) || 0);

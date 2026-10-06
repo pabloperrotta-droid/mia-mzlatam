@@ -229,6 +229,7 @@ function App() {
     clavesSinGuardarRef = useRef(() => []),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
+    sellosRecibidosRef = useRef({}),
     [avisoPisado, setAvisoPisado] = useState(null),
     [otraPestana, setOtraPestana] = useState(false),
     [versionNueva, setVersionNueva] = useState(false),
@@ -562,8 +563,18 @@ function App() {
           }
           dbRef.current = r;
           const partes = partesEstadoRef.current,
+            // Sección 109: lo último recibido de cada documento (en números de sello de esta pantalla).
+            anotarRecibido = (d, sello) => {
+              const n = numeroDeMiSello(sello, miPantallaRef.current),
+                rec = sellosRecibidosRef.current;
+              // Si lo último lo escribió otra pantalla (o no tiene sello), ya incluye lo que esta pantalla guardó antes.
+              rec[d] = Math.max(rec[d] || 0, n != null ? n : sellosConfirmadosRef.current[d] || 0);
+            },
             aplicarRemoto = () => {
               if (!partes.main || partes.listos.size < ESTADO_EXTERNO.length + 1) return;
+              // Si todavía no llegaron todas las partes que esta pantalla guardó, se espera (si no, por un momento
+              // se vería una parte vieja: falsa alarma de "Otra pantalla cambió" y valores que vuelven atrás).
+              if (!partesAlDia(sellosConfirmadosRef.current, sellosRecibidosRef.current)) return;
               const u = { ...partes.main };
               ESTADO_EXTERNO.forEach((k) => {
                 partes.ext[k] !== void 0 && (u[k] = partes.ext[k]);
@@ -616,6 +627,7 @@ function App() {
               if (!i.exists) return;
               const datos = JSON.parse(JSON.stringify(i.data()));
               if (selloAtrasado(datos.__sello, miPantallaRef.current, sellosConfirmadosRef.current["app/state"])) return;
+              anotarRecibido("app/state", datos.__sello);
               delete datos.__sello;
               ((partes.main = datos), partes.listos.add("__main__"), aplicarRemoto());
             },
@@ -627,6 +639,7 @@ function App() {
               r.doc(docEstadoExterno(k)).onSnapshot(
                 (i) => {
                   if (i.exists && selloAtrasado((i.data() || {}).__sello, miPantallaRef.current, sellosConfirmadosRef.current[docEstadoExterno(k)])) return;
+                  anotarRecibido(docEstadoExterno(k), i.exists ? (i.data() || {}).__sello : void 0);
                   ((partes.ext[k] = i.exists ? JSON.parse(JSON.stringify((i.data() || {}).v ?? null)) : void 0),
                     partes.listos.add(k),
                     aplicarRemoto());
