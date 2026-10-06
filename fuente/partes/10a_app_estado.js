@@ -672,6 +672,9 @@ function App() {
         };
       if (((estadoLocalRef.current = e), ignorarProximoGuardadoRef.current)) {
         ignorarProximoGuardadoRef.current = false;
+        // Sección 106: si un guardado anterior quedó cancelado por este cambio, la marca de "guardando" no
+        // debe quedar prendida (si no, al cerrar avisaba de cambios sin guardar aunque no los hubiera).
+        guardandoRef.current = !!guardadoEnCursoRef.current;
         return;
       }
       guardandoRef.current = true;

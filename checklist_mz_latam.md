@@ -1393,8 +1393,11 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Causa encontrada: los proveedores de una obra (y otras listas) no tienen un id propio, así que al combinar listas (Secciones 101/102) se reconocían comparando su contenido como texto. La base devuelve los campos de cada objeto en otro orden que la pantalla, entonces el mismo proveedor "parecía otro": al recibir datos de la base con un cambio pendiente, el cambio se descartaba sin aviso (y al guardar podía descartarse con el aviso rojo).
 - [x] Arreglo: todas las comparaciones del guardado (combinar listas, cambios para guardar, avisos de cambios pisados) comparan el contenido **sin importar el orden de los campos**.
 - [x] Prueba automática con el caso real (LUCIO de 19.500.000 a 20.500.000 con los campos en otro orden): con la comparación anterior la prueba falla, con la nueva pasa. La base simulada de la prueba de dos pantallas ahora devuelve los campos ordenados como la real.
+- [x] Se repitió a las 11:48 (con la versión 105) y al cerrar apareció "¿Deseas abandonar el sitio?". En Registros quedaron "Editó proveedor en NATURA|NATURA CABILDO: LUCIO" (10:51 rol Pablo, 11:48 Admin) y **no hubo fallas de guardado** nuevas: el guardado entró (los registros sí quedaron) pero el cambio del proveedor se descartó al combinar. Explicación: la pantalla recibe los datos por la conexión en vivo y, al guardar, los lee aparte; por las dos vías los campos de cada proveedor pueden venir en distinto orden, y como los proveedores no tienen id, el mismo proveedor "parecía otro". Lo resuelve la comparación sin importar el orden.
+- [x] Si el guardado choca 3 veces seguidas con la base, se guarda igual combinando contra la última versión recibida (no se pierde el cambio). El detalle del choque queda anotado una vez en Fallas de guardado como "Aviso interno". Las fallas ahora anotan también el mensaje de la base, no solo el código. Prueba de dos pantallas con una base que rechaza siempre: el cambio queda guardado.
+- [x] El aviso al cerrar ("hay cambios sin guardar") podía quedar prendido sin cambios pendientes; corregido.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario. El usuario tiene que volver a cargar el presupuesto de LUCIO.
+- [ ] Producción: pendiente del OK del usuario. El usuario tiene que volver a cargar el presupuesto de LUCIO (y lo de MARCELO LAVITOLA).
 
 ## 41. Pendientes / recomendaciones
 
