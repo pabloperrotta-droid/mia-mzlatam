@@ -206,12 +206,15 @@ async function fs_(fuente, op, a, b) {
   const avisosRojos = (p) =>
     p.evaluate(() => {
       const t = document.body.innerText;
-      return ["Otra pantalla cambió", "No se guardó tu cambio", "Sin conexión", "Fallas de guardado"].filter((x) => t.includes(x));
+      return ["Otra pantalla cambió", "No se guardó tu cambio", "Sin conexión", "Fallas de guardado"]
+        .filter((x) => t.includes(x))
+        .map((x) => t.slice(t.indexOf(x), t.indexOf(x) + 300).replace(/\s+/g, " "));
     });
+  let A, B;
   const sinAvisos = async (...ps) => {
     for (const p of ps) {
       const a = await avisosRojos(p);
-      if (a.length) throw new Error("Apareció un aviso: " + a.join(", "));
+      if (a.length) throw new Error("Apareció un aviso en " + (p === A ? "A" : "B") + ": " + a.join(" || "));
     }
     const fallasGuardado = agregados.filter((x) => /erroresGuardado/.test(x.col));
     if (fallasGuardado.length) throw new Error("Se registraron fallas de guardado: " + fallasGuardado.map((x) => x.data.motivo).join(" | "));
@@ -222,9 +225,9 @@ async function fs_(fuente, op, a, b) {
     await espera(1500);
   };
 
-  const A = await abrir("Pantalla A");
+  A = await abrir("Pantalla A");
   for (let k = 0; k < 50 && !(estado().obras || []).length; k++) await espera(200);
-  const B = await abrir("Pantalla B");
+  B = await abrir("Pantalla B");
   await clic(A, "Pagos");
   await clic(B, "Pagos");
   await esperarGuardado(A);
@@ -250,6 +253,12 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A, B);
   });
 
+  const cerrarAvisos = async () => {
+    for (const p of [A, B]) await p.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Entendido").forEach((b) => b.click()));
+    agregados.length = 0;
+    await espera(300);
+  };
+  await cerrarAvisos();
   await control("Guardados seguidos de una misma pantalla: sin falsa alarma ni choques", async () => {
     const antes = (estado().pagosSemanales || []).length;
     for (let k = 0; k < 6; k++) {
@@ -263,6 +272,7 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A, B);
   });
 
+  await cerrarAvisos();
   await control("Las dos pantallas guardan al mismo tiempo: no se pierde nada ni sale error", async () => {
     const antes = (estado().pagosSemanales || []).length;
     await Promise.all([clic(A, "Agregar línea", true), clic(B, "Agregar línea", true)]);
@@ -274,11 +284,14 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A, B);
   });
 
+  await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {
     let recargas = 0;
     B.on("load", () => recargas++);
     await clic(A, "Herramientas", true);
     await espera(300);
+    const botones = await A.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((t) => /Recargar|Herramientas|backup|Registros/i.test(t)));
+    if (!botones.includes("Recargar MIA en todas las pantallas")) throw new Error("Botones visibles: " + botones.join(" | "));
     for (let k = 0; k < 3; k++) await clic(A, "Recargar MIA en todas las pantallas");
     await esperarGuardado(A);
     await espera(2000);
