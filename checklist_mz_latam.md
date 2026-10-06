@@ -1366,7 +1366,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] En Herramientas (solo Admin), botón **"Recargar MIA en todas las pantallas"**: pide confirmación y anota el pedido en la base; cada pantalla abierta (de todos los usuarios) se recarga sola, y si tiene cambios guardándose espera a que terminen. La pantalla que lo pidió no se recarga. Queda en Registros "Pidió recargar MIA en todas las pantallas".
 - [x] Funciona en las pantallas que ya tengan esta versión o una posterior (las versiones anteriores no saben escuchar el pedido).
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("ok producción"). Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
