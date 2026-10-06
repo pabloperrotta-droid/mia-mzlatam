@@ -61,6 +61,8 @@ const simulada = `(function () {
       };
     },
     runTransaction: async (fn) => {
+      // Para probar choques que no se resuelven (la base rechaza siempre la operación que lee y escribe).
+      if (window.__txSiempreFalla) { const e = new Error("failed-precondition simulado"); e.code = "failed-precondition"; throw e; }
       for (let intento = 0; intento < 5; intento++) {
         const lecturas = {}, esc = [];
         const tx = {
@@ -287,6 +289,21 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A, B);
   });
 
+  await cerrarAvisos();
+  await control("Si la base rechaza siempre el guardado con choque, el cambio se guarda igual (sin perderse)", async () => {
+    const antes = (estado().pagosSemanales || []).length;
+    await A.evaluate(() => (window.__txSiempreFalla = true));
+    await clic(A, "Agregar línea", true);
+    await espera(6000);
+    await esperarGuardado(A);
+    await A.evaluate(() => (window.__txSiempreFalla = false));
+    const total = (estado().pagosSemanales || []).length;
+    if (total !== antes + 1) throw new Error("En la base quedaron " + total + " líneas; se esperaban " + (antes + 1));
+    const avisos = await avisosRojos(A);
+    if (avisos.length) throw new Error("Apareció un aviso: " + avisos.join(" || "));
+    const fallas = agregados.filter((x) => /erroresGuardado/.test(x.col) && !/Aviso interno/.test(x.data.motivo));
+    if (fallas.length) throw new Error("Fallas: " + fallas.map((x) => x.data.motivo).join(" | "));
+  });
   await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {
     let recargas = 0;

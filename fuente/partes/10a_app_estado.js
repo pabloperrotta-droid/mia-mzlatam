@@ -216,6 +216,7 @@ function App() {
     contadorSellosRef = useRef(0),
     guardadoEnCursoRef = useRef(null),
     choquesRef = useRef(0),
+    detalleChoqueRef = useRef(false),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
     [avisoPisado, setAvisoPisado] = useState(null),
@@ -711,29 +712,43 @@ function App() {
             numSello = ++contadorSellosRef.current,
             sello = miPantallaRef.current + ":" + numSello;
           let promesa;
+          const armarGrupos = (remotoEn) => {
+            descartados.length = 0;
+            const finales = combinarCambiosConRemoto(cambios, baseAntes, remotoEn, descartados),
+              grupos = {};
+            finales.forEach(([ruta, v]) => {
+              (grupos[docDe(ruta)] = grupos[docDe(ruta)] || []).push(
+                new firebase.firestore.FieldPath(...rutaEnDoc(ruta)),
+                v === BORRAR_CAMPO ? firebase.firestore.FieldValue.delete() : v,
+              );
+            });
+            return grupos;
+          };
+          // Sección 106: si la operación que lee y escribe choca varias veces seguidas, se guarda igual
+          // combinando contra la última versión que llegó de la base (como antes), para no perder el cambio.
+          const usarLote = cambios && choquesRef.current >= 3;
           try {
-            if (cambios)
+            if (cambios && !usarLote)
               // Sección 102: se lee lo que hay ahora en la base y, en las listas, se aplican solo los
               // elementos que cambió esta pantalla (todo en una misma operación: se guarda todo o nada).
               promesa = firebase.firestore().runTransaction(async (tx) => {
-                descartados.length = 0;
                 const docs = [...new Set(cambios.map(([ruta]) => docDe(ruta)))],
                   actuales = {};
                 for (const d of docs) {
                   const s = await tx.get(t.doc(d));
                   actuales[d] = s.exists ? s.data() || {} : {};
                 }
-                const finales = combinarCambiosConRemoto(cambios, baseAntes, (ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta)), descartados),
-                  grupos = {};
-                finales.forEach(([ruta, v]) => {
-                  (grupos[docDe(ruta)] = grupos[docDe(ruta)] || []).push(
-                    new firebase.firestore.FieldPath(...rutaEnDoc(ruta)),
-                    v === BORRAR_CAMPO ? firebase.firestore.FieldValue.delete() : v,
-                  );
-                });
+                const grupos = armarGrupos((ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta)));
                 Object.entries(grupos).forEach(([d, args]) => tx.update(t.doc(d), ...args, "__sello", sello));
               });
-            else {
+            else if (usarLote) {
+              const ultimo = { ...(partes.main || {}) };
+              ESTADO_EXTERNO.forEach((k) => partes.ext[k] !== void 0 && (ultimo[k] = partes.ext[k]));
+              const grupos = armarGrupos((ruta) => valorEnRuta(ultimo, ruta)),
+                lote = firebase.firestore().batch();
+              Object.entries(grupos).forEach(([d, args]) => lote.update(t.doc(d), ...args, "__sello", sello));
+              promesa = lote.commit();
+            } else {
               const lote = firebase.firestore().batch();
               const principal = { ...e };
               ESTADO_EXTERNO.forEach((k) => {
@@ -775,6 +790,12 @@ function App() {
             })
             .catch((r) => {
               // Sección 105: si la base estaba ocupada con otro guardado (choque), se reintenta enseguida sin avisar.
+              // Se anota el detalle (una vez por pantalla) para poder ver la causa en Fallas de guardado.
+              r &&
+                (r.code === "failed-precondition" || r.code === "aborted") &&
+                !detalleChoqueRef.current &&
+                ((detalleChoqueRef.current = true),
+                mostrarErrorGuardado(idGuardado, "Aviso interno (se reintenta solo): " + String(r.code) + " — " + String(r.message || "").slice(0, 300)));
               if (r && (r.code === "failed-precondition" || r.code === "aborted") && (choquesRef.current = choquesRef.current + 1) <= 5) {
                 (setErrorGuardado((x) => (x && x.id === idGuardado ? null : x)), setTimeout(() => setReintentoGuardado((n) => n + 1), 300 + Math.random() * 700));
                 return;
@@ -790,7 +811,7 @@ function App() {
                     : setAvisoGuardado("Sin conexión: los últimos cambios todavía no se guardaron. MIA reintenta sola; no cierres la página."),
                 // Sección 102: el aviso se registra una vez y se reintenta solo (contra lo último de la base).
                 reintentandoRef.current ||
-                  mostrarErrorGuardado(idGuardado, "La base de datos rechazó el guardado (" + ((r && (r.code || r.message)) || "error desconocido") + ")."),
+                  mostrarErrorGuardado(idGuardado, "La base de datos rechazó el guardado (" + ((r && [r.code, r.message].filter(Boolean).join(" — ").slice(0, 300)) || "error desconocido") + ")."),
                 r && (r.code === "invalid_argument" || r.code === "invalid-argument" || r.code === "quota_exceeded" || r.code === "resource-exhausted")
                   ? void 0
                   : ((reintentandoRef.current = true), setTimeout(() => setReintentoGuardado((n) => n + 1), 1e4)));
