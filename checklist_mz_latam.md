@@ -1385,7 +1385,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Aviso de cambios pisados: una lista que se guarda por primera vez se anota elemento por elemento (antes, como lista entera, daba falsa alarma si otra pantalla agregaba algo).
 - [x] **Prueba automática nueva con dos pantallas a la vez** (`fuente/pruebas/dos_pantallas.js`, corre en GitHub Actions en cada cambio): base simulada compartida que, como la real, confirma el guardado antes de mandar la versión nueva (con demoras al azar) y rechaza operaciones que chocan. Casos: pantalla "dormida" que guarda con datos viejos mientras la otra también guarda (quedan todas las líneas, sin repetidas ni avisos); guardados seguidos de una misma pantalla (sin falsa alarma); las dos pantallas guardando al mismo tiempo; tres toques seguidos de "Recargar MIA en todas las pantallas" (la otra pantalla se recarga, quedan los tres registros y no hay fallas). Corrida contra la versión anterior (104) la prueba **falla** con falsas alarmas; con esta versión pasa. Las fallas de las pruebas quedan además como anotaciones en GitHub Actions.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("sí, pásalo a producción"), después de que la prueba de dos pantallas pasó dos veces seguidas. Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
