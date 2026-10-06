@@ -45,6 +45,8 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     } catch (e) {
       fallas++;
       console.log("  ✗ " + nombre + ": " + String(e.message).slice(0, 500));
+      // En GitHub Actions, la falla también queda como anotación (se ve sin abrir el registro completo).
+      process.env.GITHUB_ACTIONS && console.log("::error::" + nombre + ": " + String(e.message).slice(0, 900).replace(/\n/g, " "));
     }
   };
   const clic = async (texto) => {
@@ -103,6 +105,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
   console.log(fallas ? "\n" + fallas + " control(es) de pantalla fallaron" : "\nTodas las pantallas abren sin errores");
   process.exit(fallas ? 1 : 0);
 })().catch((e) => {
+  process.env.GITHUB_ACTIONS && console.log("::error::" + String((e && e.stack) || e).slice(0, 900).replace(/\n/g, " "));
   console.error(e);
   process.exit(1);
 });

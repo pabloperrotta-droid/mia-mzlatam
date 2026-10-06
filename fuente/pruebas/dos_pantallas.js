@@ -183,6 +183,8 @@ async function fs_(fuente, op, a, b) {
     } catch (e) {
       fallas++;
       console.log("  ✗ " + nombre + ": " + String(e.message).slice(0, 600));
+      // En GitHub Actions, la falla también queda como anotación (se ve sin abrir el registro completo).
+      process.env.GITHUB_ACTIONS && console.log("::error::" + nombre + ": " + String(e.message).slice(0, 900).replace(/\n/g, " "));
     }
   };
   const clic = (p, texto, contiene) =>
@@ -291,6 +293,7 @@ async function fs_(fuente, op, a, b) {
   console.log(fallas ? "\n" + fallas + " prueba(s) de dos pantallas fallaron" : "\nPruebas de dos pantallas OK");
   process.exit(fallas ? 1 : 0);
 })().catch((e) => {
+  process.env.GITHUB_ACTIONS && console.log("::error::" + String((e && e.stack) || e).slice(0, 900).replace(/\n/g, " "));
   console.error(e);
   process.exit(1);
 });
