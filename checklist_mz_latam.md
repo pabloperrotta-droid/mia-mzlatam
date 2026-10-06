@@ -1375,7 +1375,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Arreglo: cada guardado deja un sello (pantalla + número) en el documento; si llega una versión con un sello de esa misma pantalla más viejo que el último confirmado, se ignora (es un eco atrasado propio). Lo que guarda otra pantalla se sigue recibiendo y avisando igual.
 - [x] Prueba automática del sello.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("producción"). Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
