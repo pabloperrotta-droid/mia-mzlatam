@@ -330,7 +330,8 @@ async function fs_(fuente, op, a, b) {
         window.__soltar();
         [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Agregar línea")).click();
       });
-      await esperarGuardado(B);
+      // Se mira a los 5 segundos (antes de que el control de cambios sin guardar, a los 15 s, lo arregle solo).
+      await espera(5000);
       const total = (estado().pagosSemanales || []).length;
       if (total !== antes + 2) throw new Error("Vuelta " + (vuelta + 1) + ": en la base quedaron " + total + " líneas; se esperaban " + (antes + 2));
       const r = await B.evaluate(() => window.__miaPendientes());
