@@ -373,6 +373,9 @@ async function fs_(fuente, op, a, b) {
   await C.close();
   await cerrarAvisos();
   await control("Borrar líneas seguidas con la base lenta (cada guardado toca dos partes): sin falsa alarma ni valores que vuelven", async () => {
+    // A borra líneas que agregó ella misma (si borrara las de B, a B le correspondería el aviso).
+    for (let k = 0; k < 8; k++) await clic(A, "Agregar línea", true);
+    await esperarGuardado(A);
     retrasoMax = 1500; // conexión lenta: las partes llegan con mucha demora y en cualquier orden
     for (let vuelta = 0; vuelta < 4; vuelta++) {
       const antes = (estado().pagosSemanales || []).length;
@@ -393,7 +396,8 @@ async function fs_(fuente, op, a, b) {
     }
     retrasoMax = 120;
     await espera(2000);
-    await sinAvisos(A, B);
+    // En B puede corresponder el aviso si A borró líneas que B había agregado: acá se mira A.
+    await sinAvisos(A);
   });
   await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {

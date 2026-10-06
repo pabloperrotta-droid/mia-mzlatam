@@ -214,7 +214,16 @@ function anotarGuardado(anotados, cambios, baseAntes, ahora) {
   const t = (x) => textoEstable(x),
     lista = (anotados || []).filter((a) => ahora - a.ts < 15 * 60 * 1000);
   const valorEn = (obj, ruta) => (ruta.length === 1 ? (obj || {})[ruta[0]] : ((obj || {})[ruta[0]] || {})[ruta[1]]);
+  // Sección 109: si se guardó una clave entera que es un objeto (ej. el primer guardado), se anota parte por
+  // parte (como los guardados siguientes), así un cambio posterior de otra parte no da falsa alarma.
+  const expandidos = [];
   (cambios || []).forEach(([ruta, v]) => {
+    const B = valorEn(baseAntes, ruta);
+    ruta.length === 1 && esObjetoPlano(v) && (B == null || esObjetoPlano(B))
+      ? Object.keys(v).forEach((sub) => textoEstable(v[sub]) === textoEstable((B || {})[sub]) || expandidos.push([[ruta[0], sub], v[sub]]))
+      : expandidos.push([ruta, v]);
+  });
+  expandidos.forEach(([ruta, v]) => {
     const k = ruta[0],
       clave = ruta.join("\u0001"),
       B0 = valorEn(baseAntes, ruta),
