@@ -1377,6 +1377,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("producción"). Verónica sigue apagada en Producción.
 
+### 105. "La base de datos rechazó el guardado (failed-precondition)" al tocar varias veces seguidas
+
+- Aviso del usuario (06/10/2026 10:49, con captura de Fallas de guardado): tocó tres veces "Recargar MIA en todas las pantallas"; cada toque anota un registro y los tres guardados salieron a la vez.
+- [x] Causa: desde la Sección 102 cada guardado lee la base y escribe en una misma operación; si dos guardados de la misma pantalla salen al mismo tiempo, chocan y la base rechaza uno (no se perdía nada: se reintentaba a los 10 segundos, pero quedaba la falla registrada y el aviso de "Sin conexión").
+- [x] Arreglo: los guardados de una misma pantalla van **de a uno** (si hay uno en curso, el siguiente espera y se calcula contra lo ya guardado). Si igual hay un choque (por ejemplo con otra pantalla), se reintenta enseguida sin avisar ni registrar falla (hasta 5 veces seguidas; después sí avisa). El "Deshacer" no suma pasos repetidos por los reintentos.
+- [x] Aviso de cambios pisados: una lista que se guarda por primera vez se anota elemento por elemento (antes, como lista entera, daba falsa alarma si otra pantalla agregaba algo).
+- [x] **Prueba automática nueva con dos pantallas a la vez** (`fuente/pruebas/dos_pantallas.js`, corre en GitHub Actions en cada cambio): base simulada compartida que, como la real, confirma el guardado antes de mandar la versión nueva (con demoras al azar) y rechaza operaciones que chocan. Casos: pantalla "dormida" que guarda con datos viejos mientras la otra también guarda (quedan todas las líneas, sin repetidas ni avisos); guardados seguidos de una misma pantalla (sin falsa alarma); las dos pantallas guardando al mismo tiempo; tres toques seguidos de "Recargar MIA en todas las pantallas" (la otra pantalla se recarga, quedan los tres registros y no hay fallas). Corrida contra la versión anterior (104) la prueba **falla** con falsas alarmas; con esta versión pasa. Las fallas de las pruebas quedan además como anotaciones en GitHub Actions.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
