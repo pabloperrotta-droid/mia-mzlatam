@@ -259,7 +259,16 @@ async function fs_(fuente, op, a, b) {
   };
 
   A = await abrir("Pantalla A");
-  for (let k = 0; k < 50 && !(estado().obras || []).length; k++) await espera(200);
+  // Como en la base real: antes de abrir las otras pantallas, A termina la carga inicial (mudanza de las claves
+  // pesadas a sus documentos y arreglos de una sola vez), y no le queda nada sin guardar.
+  for (let k = 0; k < 150; k++) {
+    const listo =
+      ["pagosSemanales", "proveedoresMap", "pagosMap"].every((c) => base.has(P + "app/st_" + c)) &&
+      !Object.keys((base.get(P + "app/state") || {}).data || {}).some((c) => ["pagosSemanales", "proveedoresMap", "pagosMap"].includes(c)) &&
+      (await A.evaluate(() => { const r = window.__miaPendientes && window.__miaPendientes(); return !!r && !r.guardando && !r.claves.length; }));
+    if (listo && k > 10) break;
+    await espera(200);
+  }
   B = await abrir("Pantalla B");
   // C: pantalla de solo lectura (rol Operaciones). Nunca tiene que escribir en el estado de MIA.
   const C = await abrir("Pantalla C (solo lectura)", "#lectura");

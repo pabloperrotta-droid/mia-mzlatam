@@ -225,6 +225,7 @@ function App() {
     choquesRef = useRef(0),
     detalleChoqueRef = useRef(false),
     puedeGuardarRef = useRef(false),
+    rolActualRef = useRef("—"),
     clavesSinGuardarRef = useRef(() => []),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
@@ -241,6 +242,8 @@ function App() {
     rehaciendoRef = useRef(false),
     [avisoDeshacer, setAvisoDeshacer] = useState(null);
   puedeGuardarRef.current = puedeGuardar;
+  // Rol actual para las notas de Fallas de guardado (las funciones que quedan de la primera carga veían el rol viejo).
+  rolActualRef.current = ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—";
   function deshacerUltimoCambio() {
     if (historialDeshacer.length === 0) return;
     const e = historialDeshacer[historialDeshacer.length - 1],

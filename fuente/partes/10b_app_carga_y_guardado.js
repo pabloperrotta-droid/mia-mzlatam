@@ -116,7 +116,7 @@
           .collection("erroresGuardado")
           .add({
             fecha: Date.now(),
-            rol: ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—",
+            rol: rolActualRef.current,
             motivo: "Aviso interno: " + String(motivo || "").slice(0, 900),
             ambiente: APP_ENV,
             navegador: String((typeof navigator < "u" && navigator.userAgent) || "").slice(0, 160),
@@ -132,7 +132,7 @@
           .collection("erroresGuardado")
           .add({
             fecha: Date.now(),
-            rol: ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—",
+            rol: rolActualRef.current,
             motivo: String(motivo || ""),
             ambiente: APP_ENV,
             navegador: String((typeof navigator < "u" && navigator.userAgent) || "").slice(0, 160),
