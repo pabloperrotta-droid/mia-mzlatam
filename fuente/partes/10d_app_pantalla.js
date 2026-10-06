@@ -828,6 +828,25 @@
                   },
                   "Ver backup como texto",
                 ),
+              ct === "admin" &&
+                estadoConexion !== "unavailable" &&
+                React.createElement(
+                  "button",
+                  {
+                    onClick: recargarTodasLasPantallas,
+                    title: "Recarga MIA en todas las pantallas abiertas (de todos los usuarios), para que todas usen la última versión",
+                    style: {
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.8)",
+                      padding: "5px 9px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    },
+                  },
+                  "Recargar MIA en todas las pantallas",
+                ),
               In("registros") &&
                 React.createElement(
                   "button",

@@ -338,6 +338,42 @@ function App() {
       () => {},
     );
   }, [datosCargados, estadoConexion]);
+  // Sección 102: "Recargar MIA en todas las pantallas" (Herramientas, Admin). Cada pantalla abierta se
+  // recarga sola cuando no tiene cambios pendientes de guardar (si tiene, espera a que se guarden).
+  const miPantallaRef = useRef(Math.random().toString(36).slice(2)),
+    abiertaDesdeRef = useRef(Date.now());
+  function pendienteDeGuardar() {
+    try {
+      const loc = estadoLocalRef.current,
+        base = baseGuardadaRef.current;
+      return guardandoRef.current || (!!loc && !!base && cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base).length > 0);
+    } catch {
+      return false;
+    }
+  }
+  function recargarTodasLasPantallas() {
+    if (!dbRef.current) return;
+    window.confirm("¿Recargar MIA en todas las pantallas abiertas (de todos los usuarios)? Cada una se recarga cuando termina de guardar sus cambios.") &&
+      dbRef.current
+        .doc("app/recargarTodas")
+        .set({ ts: Date.now(), de: miPantallaRef.current, por: lr() })
+        .then(() => _t("Pidió recargar MIA en todas las pantallas"))
+        .catch(() => alert("No se pudo enviar el pedido. Verificá la conexión."));
+  }
+  useEffect(() => {
+    if (!datosCargados || !dbRef.current || estadoConexion === "unavailable") return;
+    let espera = null;
+    const quitar = dbRef.current.doc("app/recargarTodas").onSnapshot(
+      (s) => {
+        const d = (s.exists && s.data()) || {};
+        if (!(Number(d.ts) > abiertaDesdeRef.current) || d.de === miPantallaRef.current || espera) return;
+        const intentar = () => (pendienteDeGuardar() ? (espera = setTimeout(intentar, 2e3)) : window.location.reload());
+        intentar();
+      },
+      () => {},
+    );
+    return () => (quitar(), espera && clearTimeout(espera));
+  }, [datosCargados, estadoConexion]);
   function rr() {
     if (cn === ADMIN_PIN) {
       (ko("admin"), on(""), kn(false));

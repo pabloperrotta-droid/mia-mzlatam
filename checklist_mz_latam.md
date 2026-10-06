@@ -1360,6 +1360,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pásalo a producción"). Verónica sigue apagada en Producción. Después de publicado, todos tienen que cerrar y volver a abrir MIA una vez.
 
+### 103. Botón "Recargar MIA en todas las pantallas"
+
+- Pedido del usuario: "¿no puedo cerrarlas yo masivamente?… sí, agregá el botón" (las pantallas abiertas o dormidas con una versión vieja no se pueden ver en Actividad ni cerrar a distancia).
+- [x] En Herramientas (solo Admin), botón **"Recargar MIA en todas las pantallas"**: pide confirmación y anota el pedido en la base; cada pantalla abierta (de todos los usuarios) se recarga sola, y si tiene cambios guardándose espera a que terminen. La pantalla que lo pidió no se recarga. Queda en Registros "Pidió recargar MIA en todas las pantallas".
+- [x] Funciona en las pantallas que ya tengan esta versión o una posterior (las versiones anteriores no saben escuchar el pedido).
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
