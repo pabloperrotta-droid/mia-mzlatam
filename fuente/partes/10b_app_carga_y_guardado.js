@@ -108,6 +108,22 @@
       const o = setInterval(t, 6e4);
       return () => clearInterval(o);
     }, [datosCargados, ct, Sn, tcFecha]));
+  // Sección 107: nota interna en Fallas de guardado (sin mostrar error en pantalla), para poder diagnosticar.
+  function registrarInterno(motivo) {
+    try {
+      dbRef.current &&
+        dbRef.current
+          .collection("erroresGuardado")
+          .add({
+            fecha: Date.now(),
+            rol: ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—",
+            motivo: "Aviso interno: " + String(motivo || "").slice(0, 900),
+            ambiente: APP_ENV,
+            navegador: String((typeof navigator < "u" && navigator.userAgent) || "").slice(0, 160),
+          })
+          .catch(() => {});
+    } catch {}
+  }
   function mostrarErrorGuardado(id, motivo) {
     setErrorGuardado({ id, motivo });
     try {

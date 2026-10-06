@@ -27,7 +27,8 @@ function textoEstable(x) {
   );
 }
 function jsonIgual(a, b) {
-  return textoEstable(a) === textoEstable(b);
+  // Sección 107: "no está" (undefined) y null se consideran iguales (la base no guarda undefined).
+  return (textoEstable(a) ?? "null") === (textoEstable(b) ?? "null");
 }
 function subclavesSeguras(a, b) {
   return [...Object.keys(a || {}), ...Object.keys(b || {})].every((k) => k !== "");
@@ -230,7 +231,8 @@ function anotarGuardado(anotados, cambios, baseAntes, ahora) {
 function cambiosPisados(anotados, remoto) {
   const t = (x) => textoEstable(x),
     pisados = [],
-    quedan = [];
+    quedan = [],
+    detalle = [];
   (anotados || []).forEach((a) => {
     // Si en la versión que llegó no está esa clave entera (ej. todavía no llegó su documento), se sigue esperando.
     if ((remoto || {})[a.ruta[0]] === undefined) return void quedan.push(a);
@@ -242,7 +244,13 @@ function cambiosPisados(anotados, remoto) {
       const R = a.ruta.length === 1 ? (remoto || {})[a.ruta[0]] : ((remoto || {})[a.ruta[0]] || {})[a.ruta[1]];
       ok = t(R) === t(a.valor);
     }
-    ok ? quedan.push(a) : pisados.push((NOMBRES_CLAVES[a.k] || a.k) + (a.el ? ": " + nombreElemento(a.k, a.el) : ""));
+    ok
+      ? quedan.push(a)
+      : (pisados.push((NOMBRES_CLAVES[a.k] || a.k) + (a.el ? ": " + nombreElemento(a.k, a.el) : "")),
+        detalle.push(
+          "guardado " + String(t(a.el !== void 0 ? a.el : a.valor)).slice(0, 160) + " / en la base " +
+            String(t(a.el !== void 0 ? [].concat(valorEnRuta(remoto, a.ruta) || []).find((x) => nombreElemento(a.k, x) === nombreElemento(a.k, a.el)) : valorEnRuta(remoto, a.ruta))).slice(0, 160),
+        ));
   });
-  return { pisados: [...new Set(pisados)], quedan };
+  return { pisados: [...new Set(pisados)], quedan, detalle };
 }

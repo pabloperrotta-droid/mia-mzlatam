@@ -326,6 +326,16 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A);
   });
 
+  await control("Al final no queda nada sin guardar en ninguna pantalla (no saldría el aviso al cerrar)", async () => {
+    await espera(3000);
+    for (const [n, p] of [["A", A], ["B", B]]) {
+      const r = await p.evaluate(() => (window.__miaPendientes ? window.__miaPendientes() : null));
+      if (!r) throw new Error("No está __miaPendientes en " + n);
+      if (r.guardando || r.claves.length) throw new Error("Pantalla " + n + " con cambios sin guardar: " + JSON.stringify(r));
+    }
+    const internas = agregados.filter((x) => /erroresGuardado/.test(x.col) && /cambios sin guardar/.test(x.data.motivo));
+    if (internas.length) throw new Error(internas.map((x) => x.data.motivo).join(" | "));
+  });
   await navegador.close();
   console.log(fallas ? "\n" + fallas + " prueba(s) de dos pantallas fallaron" : "\nPruebas de dos pantallas OK");
   process.exit(fallas ? 1 : 0);

@@ -217,6 +217,7 @@ function App() {
     guardadoEnCursoRef = useRef(null),
     choquesRef = useRef(0),
     detalleChoqueRef = useRef(false),
+    clavesSinGuardarRef = useRef(() => []),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
     [avisoPisado, setAvisoPisado] = useState(null),
@@ -299,11 +300,10 @@ function App() {
   // pregunta antes de cerrar.
   useEffect(() => {
     const alCerrar = (ev) => {
-      let pendiente = guardandoRef.current;
+      let pendiente = false;
       try {
-        const loc = estadoLocalRef.current,
-          base = baseGuardadaRef.current;
-        pendiente = pendiente || (!!loc && !!base && cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base).length > 0);
+        // Sección 107: solo avisa si hay un guardado en curso o cambios que de verdad no están en la base.
+        pendiente = !!guardadoEnCursoRef.current || clavesSinGuardarRef.current().length > 0;
       } catch {}
       if (pendiente) {
         ev.preventDefault();
@@ -347,15 +347,39 @@ function App() {
   // Sección 102: "Recargar MIA en todas las pantallas" (Herramientas, Admin). Cada pantalla abierta se
   // recarga sola cuando no tiene cambios pendientes de guardar (si tiene, espera a que se guarden).
   const abiertaDesdeRef = useRef(Date.now());
-  function pendienteDeGuardar() {
+  function clavesSinGuardar() {
     try {
       const loc = estadoLocalRef.current,
         base = baseGuardadaRef.current;
-      return guardandoRef.current || (!!loc && !!base && cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base).length > 0);
+      return !!loc && !!base ? [...new Set(cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base).map(([r]) => r.join(" › ")))] : [];
     } catch {
-      return false;
+      return [];
     }
   }
+  clavesSinGuardarRef.current = clavesSinGuardar;
+  function pendienteDeGuardar() {
+    return guardandoRef.current || clavesSinGuardar().length > 0;
+  }
+  // Sección 107: control de cambios que quedan sin guardar. Si hay diferencias con la base durante más de
+  // 15 segundos sin ningún guardado en curso, se anota (una vez) qué claves son en Fallas de guardado como
+  // "Aviso interno" y se vuelve a intentar guardar. También queda window.__miaPendientes() para revisar.
+  useEffect(() => {
+    if (!datosCargados || !dbRef.current || estadoConexion === "unavailable") return;
+    let desde = 0,
+      anotado = "";
+    typeof window < "u" && (window.__miaPendientes = () => ({ guardando: !!guardadoEnCursoRef.current, claves: clavesSinGuardar() }));
+    const h = setInterval(() => {
+      const claves = guardadoEnCursoRef.current || reintentandoRef.current ? [] : clavesSinGuardar();
+      if (!claves.length) return void (desde = 0);
+      desde || (desde = Date.now());
+      if (Date.now() - desde < 15e3) return;
+      const txt = claves.slice(0, 8).join(", ");
+      txt !== anotado && ((anotado = txt), registrarInterno("cambios sin guardar hace 15 s: " + txt));
+      desde = Date.now();
+      setReintentoGuardado((n) => n + 1);
+    }, 5e3);
+    return () => clearInterval(h);
+  }, [datosCargados, estadoConexion]);
   function recargarTodasLasPantallas() {
     if (!dbRef.current) return;
     window.confirm("¿Recargar MIA en todas las pantallas abiertas (de todos los usuarios)? Cada una se recarga cuando termina de guardar sus cambios.") &&
@@ -535,7 +559,9 @@ function App() {
               if (misGuardadosRef.current.length) {
                 const rev = cambiosPisados(misGuardadosRef.current, u);
                 misGuardadosRef.current = rev.quedan;
-                rev.pisados.length && setAvisoPisado((x) => [...new Set([...(x || []), ...rev.pisados])]);
+                rev.pisados.length &&
+                  (setAvisoPisado((x) => [...new Set([...(x || []), ...rev.pisados])]),
+                  registrarInterno("se mostró 'Otra pantalla cambió': " + rev.pisados.slice(0, 6).join(" · ") + " — " + rev.detalle.slice(0, 2).join(" | ")));
               }
               const loc = estadoLocalRef.current,
                 base = baseGuardadaRef.current,
@@ -788,7 +814,9 @@ function App() {
                   [...new Set(cambios.map(([ruta]) => docDe(ruta)))].forEach((d) => {
                     sellosConfirmadosRef.current[d] = Math.max(sellosConfirmadosRef.current[d] || 0, numSello);
                   }),
-                descartados.length && setAvisoDescartado((x) => [...new Set([...(x || []), ...descartados])]),
+                descartados.length &&
+                  (setAvisoDescartado((x) => [...new Set([...(x || []), ...descartados])]),
+                  registrarInterno("se mostró 'No se guardó tu cambio': " + descartados.slice(0, 6).join(" · "))),
                 setAvisoGuardado(null));
             })
             .catch((r) => {
