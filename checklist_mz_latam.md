@@ -1358,7 +1358,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Pregunta del usuario: "si yo cambio algo… otra persona tiene la pantalla dormida… y después hace un cambio, ¿me lo pisa o se guarda lo mío y lo de esa persona?". Se guardan **los dos** si cambiaron cosas distintas (otra obra, otro campo, otra línea de Pagos). Si la pantalla vieja cambió **la misma obra** que la otra renombró o borró, ese cambio viejo **no se guarda** (antes volvía el nombre viejo o quedaba la obra repetida) y a esa persona le aparece en rojo "No se guardó tu cambio en: Obras: B+D – PLAZA OESTE… Revisalo y volvé a hacer el cambio". Si las dos cambiaron la misma obra sin renombrarla, queda el último guardado (y al primero le sale el aviso rojo de cambios pisados si tiene MIA abierta).
 - [x] Prueba automática con el caso de Romina (lista vieja + cambio de otra obra contra la base con DOT Y ARCOS y una obra nueva → queda DOT Y ARCOS, el cambio de Romina y la obra nueva), también en listas dentro de mapas.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pásalo a producción"). Verónica sigue apagada en Producción. Después de publicado, todos tienen que cerrar y volver a abrir MIA una vez.
 
 ## 41. Pendientes / recomendaciones
 
