@@ -1418,7 +1418,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Las notas internas anotaban el rol de la pantalla al abrirse (antes del PIN, "operaciones"); ahora anotan el rol real. La nota "operaciones" de las 13:00 era la pantalla de Admin.
 - [x] Prueba de dos pantallas: se suma una pantalla de solo lectura (no debe escribir nada), un caso de datos que llegan en el mismo instante en que se hace un cambio, y la prueba arranca con la base ya acomodada como la real. Con esta versión pasa; con la 107 falla.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (06/10/2026) junto con la Sección 109, con el OK del usuario ("pasarlo a producción, pero chequearlo que ande todo bien"). Verónica sigue apagada en Producción.
 
 ### 109. Falsa alarma con dos cambios seguidos en una sola pantalla (conexión lenta)
 
@@ -1428,7 +1428,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Las claves guardadas enteras (por ejemplo, en el primer guardado) se anotan parte por parte para el aviso de cambios pisados, así un cambio posterior de otra parte no da falsa alarma.
 - [x] Prueba de dos pantallas nueva: base lenta (hasta 1,5 s, partes en cualquier orden) y borrado de líneas seguidas (cada guardado toca dos partes). Con la versión 108 da la falsa alarma; con esta pasa (corrida dos veces).
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario (junto con la Sección 108).
+- [x] **Subido a Producción** (06/10/2026) junto con la Sección 108, con el OK del usuario. Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
