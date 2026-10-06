@@ -90,7 +90,7 @@ const simulada = `(function () {
   firestore.FieldPath = FieldPath;
   firestore.FieldValue = { delete: () => BORRAR };
   window.firebase = { apps: [], initializeApp() { this.apps.push({}); return {}; }, auth: () => ({ currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }), firestore };
-  try { localStorage.setItem("obras-role", "admin"); } catch {}
+  try { localStorage.setItem("obras-role", location.hash === "#lectura" ? "operaciones" : "admin"); } catch {}
 })();`;
 // Con MIA_AMBIENTE=prd la prueba corre la app como Producción (sin el prefijo qa_ en la base).
 const PRD = process.env.MIA_AMBIENTE === "prd",
@@ -109,6 +109,7 @@ const base = new Map(); // ruta → { data, ver }
 const agregados = []; // documentos agregados a colecciones (ej. erroresGuardado)
 const oyentes = []; // { pagina, id, ruta, cadena, pausada }
 const pausadas = new Set();
+const escriturasDeEstado = new Map(); // pagina → cantidad de escrituras al estado de MIA
 const pendientesDePausa = new Map(); // pagina → Set(oyente)
 const copia = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 // Como la base real: devuelve los campos de cada objeto ordenados por nombre (no en el orden en que se guardaron).
@@ -158,6 +159,7 @@ async function fs_(fuente, op, a, b) {
   }
   if (op === "agregar") return agregados.push({ col: a, data: b }), null;
   if (op === "guardar") {
+    for (const w of a.escrituras) /app\/(state|st_)/.test(w.path) && escriturasDeEstado.set(pagina, (escriturasDeEstado.get(pagina) || 0) + 1);
     for (const [ruta, ver] of Object.entries(a.lecturas || {})) if (((base.get(ruta) || {}).ver || 0) !== ver) return { err: "aborted" };
     const tocados = new Set();
     for (const w of a.escrituras) {
@@ -178,7 +180,7 @@ async function fs_(fuente, op, a, b) {
   base.set(P + "app/state", { data: {}, ver: 1 });
   const errores = [];
   let fallas = 0;
-  const abrir = async (nombre) => {
+  const abrir = async (nombre, hash) => {
     const p = await ctx.newPage();
     p.on("pageerror", (e) => errores.push(nombre + ": " + e.message));
     p.on("console", (m) => m.type() === "error" && !/favicon|ERR_|net::/.test(m.text()) && errores.push(nombre + " consola: " + m.text()));
@@ -188,7 +190,7 @@ async function fs_(fuente, op, a, b) {
       if (f !== p.mainFrame()) return;
       for (let k = oyentes.length - 1; k >= 0; k--) oyentes[k].pagina === p && oyentes.splice(k, 1);
     });
-    await p.goto("file://" + archivo);
+    await p.goto("file://" + archivo + (hash || ""));
     await p.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
     return p;
   };
@@ -247,6 +249,9 @@ async function fs_(fuente, op, a, b) {
   A = await abrir("Pantalla A");
   for (let k = 0; k < 50 && !(estado().obras || []).length; k++) await espera(200);
   B = await abrir("Pantalla B");
+  // C: pantalla de solo lectura (rol Operaciones). Nunca tiene que escribir en el estado de MIA.
+  const C = await abrir("Pantalla C (solo lectura)", "#lectura");
+  await C.evaluate(() => localStorage.setItem("obras-role", "admin")); // las otras pantallas siguen como Admin
   await clic(A, "Pagos");
   await clic(B, "Pagos");
   await esperarGuardado(A);
@@ -339,6 +344,11 @@ async function fs_(fuente, op, a, b) {
     }
     await sinAvisos(A, B);
   });
+  await control("La pantalla de solo lectura (Operaciones) nunca escribió en la base", async () => {
+    const n = escriturasDeEstado.get(C) || 0;
+    if (n) throw new Error("La pantalla de solo lectura hizo " + n + " escritura(s)");
+  });
+  await C.close();
   await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {
     let recargas = 0;
