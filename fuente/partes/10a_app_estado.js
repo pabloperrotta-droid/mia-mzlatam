@@ -168,6 +168,13 @@ function App() {
       ? "editar"
       : (ct === "custom" && so && ((so.permisosPorSeccion || {})[e] || so.permiso)) || "lectura";
   }
+  // Sección 108: solo guardan en la base las pantallas con algún permiso de edición. Una pantalla de solo
+  // lectura (Operaciones, roles con todo en "lectura", o la que todavía no ingresó el PIN) nunca escribe:
+  // antes podía guardar los datos que tenía (aunque fueran viejos) y pisar cambios de otros.
+  const puedeGuardar =
+    ct === "admin" ||
+    ct === "comercial" ||
+    (ct === "custom" && !!so && (so.permiso === "editar" || Object.values(so.permisosPorSeccion || {}).includes("editar")));
   const Rt = Zn(vista) === "editar",
     Sn = ct === "admin" || ct === "comercial" || (ct === "custom" && !!so && !!so.puedeFijarTipoCambio),
     verRegaliasPresentacion =
@@ -217,6 +224,7 @@ function App() {
     guardadoEnCursoRef = useRef(null),
     choquesRef = useRef(0),
     detalleChoqueRef = useRef(false),
+    puedeGuardarRef = useRef(false),
     clavesSinGuardarRef = useRef(() => []),
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
@@ -232,6 +240,7 @@ function App() {
     [historialRehacer, setHistorialRehacer] = useState([]),
     rehaciendoRef = useRef(false),
     [avisoDeshacer, setAvisoDeshacer] = useState(null);
+  puedeGuardarRef.current = puedeGuardar;
   function deshacerUltimoCambio() {
     if (historialDeshacer.length === 0) return;
     const e = historialDeshacer[historialDeshacer.length - 1],
@@ -348,6 +357,7 @@ function App() {
   // recarga sola cuando no tiene cambios pendientes de guardar (si tiene, espera a que se guarden).
   const abiertaDesdeRef = useRef(Date.now());
   function clavesSinGuardar() {
+    if (!puedeGuardarRef.current) return [];
     try {
       const loc = estadoLocalRef.current,
         base = baseGuardadaRef.current;
@@ -700,6 +710,10 @@ function App() {
       // momento el usuario hacía un cambio (se dibujan juntos), su cambio no se guardaba. Ahora siempre se
       // compara contra la base: si no hay diferencias no se guarda nada, y si las hay se guardan.
       ((estadoLocalRef.current = e), (ignorarProximoGuardadoRef.current = false));
+      if (!puedeGuardar) {
+        guardandoRef.current = false;
+        return;
+      }
       guardandoRef.current = true;
       const t = dbRef.current,
         o = setTimeout(() => {
@@ -884,5 +898,6 @@ function App() {
       datosCargados,
       estadoConexion,
       reintentoGuardado,
+      puedeGuardar,
     ]));
   const Da = useRef(false);
