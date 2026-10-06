@@ -224,6 +224,8 @@ function cambiosPisados(anotados, remoto) {
     pisados = [],
     quedan = [];
   (anotados || []).forEach((a) => {
+    // Si en la versión que llegó no está esa clave entera (ej. todavía no llegó su documento), se sigue esperando.
+    if ((remoto || {})[a.ruta[0]] === undefined) return void quedan.push(a);
     let ok = true;
     if (a.el) {
       const R = a.ruta.length === 1 ? (remoto || {})[a.ruta[0]] : ((remoto || {})[a.ruta[0]] || {})[a.ruta[1]];
