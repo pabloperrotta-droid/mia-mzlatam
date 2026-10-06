@@ -35,3 +35,9 @@ jobs:
         env:
           PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright
         run: node fuente/pruebas/dos_pantallas.js
+      - name: Prueba de guardado con dos pantallas a la vez (como Producción)
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright
+          MIA_AMBIENTE: prd
+        run: node fuente/pruebas/dos_pantallas.js

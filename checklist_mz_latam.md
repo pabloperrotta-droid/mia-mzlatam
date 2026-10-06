@@ -1399,6 +1399,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pasalo a producción"). Verónica sigue apagada en Producción. El usuario tiene que volver a cargar el presupuesto de LUCIO (y lo de MARCELO LAVITOLA).
 
+### 107. Cartel "¿Deseas abandonar el sitio?" sin cambios pendientes, y rastro de cualquier falla de guardado
+
+- Aviso del usuario (06/10/2026 12:33): al cerrar apareció otra vez "¿Deseas abandonar el sitio?" y antes un cartel rojo; en una ventana de incógnito los cambios de LUCIO y MARCELO LAVITOLA **sí estaban guardados** (falsa alarma).
+- [x] El aviso al cerrar ahora solo aparece si hay un guardado en curso o cambios que de verdad no están en la base ("no está" y vacío/null se consideran iguales).
+- [x] Control de cambios sin guardar: si una pantalla tiene diferencias con la base durante más de 15 segundos sin ningún guardado en curso, lo anota una vez en Fallas de guardado ("Aviso interno: cambios sin guardar hace 15 s: <claves>") y vuelve a intentar guardar.
+- [x] Cuando aparece un cartel rojo ("Otra pantalla cambió…" o "No se guardó tu cambio…") queda anotado en Fallas de guardado como "Aviso interno", con el detalle de lo guardado y lo que había en la base, para poder diagnosticarlo.
+- [x] Prueba de dos pantallas: al final verifica que ninguna pantalla quede con cambios sin guardar; ahora corre también con la app como Producción (sin prefijo qa_).
+- [x] Pregunta del usuario: "¿cómo sé que a partir de ahora las cosas que se cambian van a quedar guardadas?". Respuesta: prueba automática de dos pantallas en cada cambio (detecta los errores de hoy en las versiones anteriores), rastro de toda falla en Fallas de guardado, respaldo diario + historial de 90 días, y control en incógnito por unos días. Acuerdo propuesto: los cambios en la forma de guardar quedan un día en QA antes de Producción.
+- [x] Publicado en QA.
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pasa a producción… y chequea luego de pasar a producción que todo funcione"). Verónica sigue apagada en Producción.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

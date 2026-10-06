@@ -85,8 +85,15 @@ const simulada = `(function () {
   window.firebase = { apps: [], initializeApp() { this.apps.push({}); return {}; }, auth: () => ({ currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }), firestore };
   try { localStorage.setItem("obras-role", "admin"); } catch {}
 })();`;
+// Con MIA_AMBIENTE=prd la prueba corre la app como Producción (sin el prefijo qa_ en la base).
+const PRD = process.env.MIA_AMBIENTE === "prd",
+  P = PRD ? "" : "qa" + "_";
 const i = head.lastIndexOf("<script>window.__APP_ENV__");
-const html = head.slice(0, i) + "<script>" + simulada + "</script>\n" + head.slice(i) + app + "\n" + tail;
+let html = head.slice(0, i) + "<script>" + simulada + "</script>\n" + head.slice(i) + app + "\n" + tail;
+if (PRD) {
+  if (html.split('<script>window.__APP_ENV__ = "qa";</script>').length !== 2) throw new Error("No se encontró el ambiente en la página");
+  html = html.replace('<script>window.__APP_ENV__ = "qa";</script>', '<script>window.__APP_ENV__ = "prd";</script>');
+}
 const archivo = path.join(os.tmpdir(), "mia_prueba_dos_pantallas.html");
 fs.writeFileSync(archivo, html);
 
@@ -161,7 +168,7 @@ async function fs_(fuente, op, a, b) {
   const navegador = await chromium.launch();
   const ctx = await navegador.newContext({ viewport: { width: 1600, height: 1000 } });
   await ctx.exposeBinding("__fs", (fuente, op, a, b) => fs_(fuente, op, a, b));
-  base.set("qa_app/state", { data: {}, ver: 1 });
+  base.set(P + "app/state", { data: {}, ver: 1 });
   const errores = [];
   let fallas = 0;
   const abrir = async (nombre) => {
@@ -204,8 +211,8 @@ async function fs_(fuente, op, a, b) {
       [texto, contiene],
     );
   const estado = () => {
-    const s = (base.get("qa_app/state") || {}).data || {};
-    const ext = base.get("qa_app/st_pagosSemanales");
+    const s = (base.get(P + "app/state") || {}).data || {};
+    const ext = base.get(P + "app/st_pagosSemanales");
     return { ...s, pagosSemanales: ext && ext.data ? ext.data.v : s.pagosSemanales };
   };
   const avisosRojos = (p) =>
@@ -337,7 +344,7 @@ async function fs_(fuente, op, a, b) {
     if (internas.length) throw new Error(internas.map((x) => x.data.motivo).join(" | "));
   });
   await navegador.close();
-  console.log(fallas ? "\n" + fallas + " prueba(s) de dos pantallas fallaron" : "\nPruebas de dos pantallas OK");
+  console.log((PRD ? "[Producción] " : "[QA] ") + (fallas ? fallas + " prueba(s) de dos pantallas fallaron" : "Pruebas de dos pantallas OK"));
   process.exit(fallas ? 1 : 0);
 })().catch((e) => {
   process.env.GITHUB_ACTIONS && console.log("::error::" + String((e && e.stack) || e).slice(0, 900).replace(/\n/g, " "));
