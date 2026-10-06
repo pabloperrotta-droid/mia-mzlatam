@@ -1348,6 +1348,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (05/10/2026) con el OK del usuario ("PASALO A PRODUCCION"), solo esta sección (el arreglo del PIN sigue en QA; Verónica apagada). GitHub tenía una falla de sus máquinas ese día y demoró la publicación. Después de publicado, hay que recargar MIA en todas las pantallas abiertas.
 
+### 102. El nombre "Dot y Arcos" volvió a "Plaza Oeste" otra vez (con la Sección 101 ya publicada)
+
+- Aviso del usuario (06/10/2026): "entré a MIA y veo que en B+D que cambié Plaza Oeste a Dot y Arcos volvió a Plaza Oeste". En Fallas de guardado: "6/10/2026 09:36 ROMINA — La base de datos no confirmó el guardado en 20 segundos (conexión lenta o cortada)".
+- [x] Causa: la Sección 101 combinaba elemento por elemento **al recibir** datos de otra pantalla, pero **al guardar** cada pantalla escribía su lista entera (obras, pagos…) sin mirar la base. La pantalla de Romina tenía la lista de antes del cambio de nombre (abierta desde antes, compu dormida o sin conexión); su guardado de las 9:36 quedó en espera por la conexión y, al entrar, escribió la lista vieja y pisó "Dot y Arcos". Como el que había guardado el nombre ya no tenía MIA abierta, no salió el aviso rojo. Los procesos automáticos (Xubio, respaldo) no tocan las obras.
+- [x] Arreglo: **al guardar**, MIA lee lo que hay en ese momento en la base y, en las listas, aplica solo los elementos que cambió esa pantalla (en una misma operación). Una pantalla con datos viejos ya no puede pisar lo que cambió otra.
+- [x] Sin conexión, el guardado ya no queda "en espera" para entrar horas después con datos viejos: falla, se avisa "Sin conexión: los últimos cambios todavía no se guardaron. MIA reintenta sola" y se reintenta cada 10 segundos (cada reintento se combina con lo último de la base). La falla se registra una sola vez.
+- [x] Aviso de **versión nueva**: cada versión de MIA anota su número en la base; una pantalla con una versión anterior muestra "Hay una versión nueva de MIA. Recargá la página" con botón Recargar (sirve desde esta versión en adelante; las pantallas abiertas con versiones anteriores hay que recargarlas a mano).
+- [x] Prueba automática con el caso de Romina (lista vieja + cambio de otra obra contra la base con DOT Y ARCOS y una obra nueva → queda DOT Y ARCOS, el cambio de Romina y la obra nueva), también en listas dentro de mapas.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

@@ -71,6 +71,21 @@ prueba("Guardado: una lista cambiada en otra pantalla no pisa un cambio de nombr
   const m2 = JSON.parse(JSON.stringify(f.combinarEstado(l2, b2, r2)));
   assert.deepStrictEqual(m2.pagosSemanales, [{ id: "b", v: 2 }, { id: "c", v: 1 }, { id: "d", v: 1 }]);
 });
+prueba("Guardado combinado con la base (caso Romina): una pantalla vieja no pisa el cambio de nombre", () => {
+  const o = (obra, status) => ({ cliente: "B+D", obra, status });
+  // Romina tenía la lista de ayer (PLAZA OESTE) y cambió el estado de ALCORTA; en la base ya está DOT Y ARCOS.
+  const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], tc: 1 };
+  const cambios = [[["obras"], [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "FINALIZADA")]], [["tc"], 2]];
+  const enBase = { obras: [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "EN PROCESO"), o("NUEVA", "EN PROCESO")] };
+  const fin = JSON.parse(JSON.stringify(f.combinarCambiosConRemoto(cambios, base, (ruta) => f.valorEnRuta(enBase, ruta))));
+  assert.deepStrictEqual(fin[0][1], [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "FINALIZADA"), o("NUEVA", "EN PROCESO")]);
+  assert.deepStrictEqual(fin[1], [["tc"], 2]);
+  // Listas dentro de un mapa (ej. pagos de una obra) y en documentos propios ("v"): igual.
+  const b2 = { pagosMap: { k: [{ id: 1, m: 1 }] } };
+  const r2 = { v: { k: [{ id: 1, m: 1 }, { id: 2, m: 5 }] } };
+  const fin2 = JSON.parse(JSON.stringify(f.combinarCambiosConRemoto([[["pagosMap", "k"], [{ id: 1, m: 9 }]]], b2, (ruta) => f.valorEnRuta(r2, ["v", ...ruta.slice(1)]))));
+  assert.deepStrictEqual(fin2[0][1], [{ id: 1, m: 9 }, { id: 2, m: 5 }]);
+});
 prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
   const o = (obra, status) => ({ cliente: "B+D", obra, status });
   const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };

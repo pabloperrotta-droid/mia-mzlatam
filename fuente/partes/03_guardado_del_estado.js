@@ -1,3 +1,5 @@
+// Número de versión de MIA (Sección 102): si en la base hay uno mayor, la pantalla pide recargar.
+const VERSION_MIA = 102;
 const BORRAR_CAMPO = "__MIA_BORRAR_CAMPO__";
 // Sección 90: el estado ya no entra en un solo documento (límite de 1 MB de la base). Estas claves, las
 // más pesadas, se guardan cada una en su propio documento app/st_<clave> (campo "v"); el resto sigue en
@@ -144,6 +146,20 @@ function combinarEstado(local, base, remoto) {
     }),
     r
   );
+}
+// Sección 102: al guardar, las listas se combinan con lo que hay EN ESE MOMENTO en la base (leído dentro
+// de la misma operación), para que una pantalla con datos viejos (ej. conexión cortada o compu dormida)
+// no pise con su lista entera lo que otra pantalla cambió mientras tanto.
+function valorEnRuta(obj, ruta) {
+  return ruta.length === 1 ? (obj || {})[ruta[0]] : ((obj || {})[ruta[0]] || {})[ruta[1]];
+}
+function combinarCambiosConRemoto(cambios, base, remotoEn) {
+  return (cambios || []).map(([ruta, v]) => {
+    if (v === BORRAR_CAMPO || !esListaDeObjetos(v)) return [ruta, v];
+    const B = valorEnRuta(base, ruta),
+      R = remotoEn(ruta);
+    return esListaDeObjetos(B) && esListaDeObjetos(R) ? [ruta, combinarLista(v, B, R)] : [ruta, v];
+  });
 }
 
 // ---------- Aviso de cambios pisados (Sección 101) ----------

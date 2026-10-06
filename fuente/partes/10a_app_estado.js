@@ -212,8 +212,10 @@ function App() {
     [fallasGuardado, setFallasGuardado] = useState([]),
     baseGuardadaRef = useRef(null),
     misGuardadosRef = useRef([]),
+    reintentandoRef = useRef(false),
     [avisoPisado, setAvisoPisado] = useState(null),
     [otraPestana, setOtraPestana] = useState(false),
+    [versionNueva, setVersionNueva] = useState(false),
     estadoLocalRef = useRef(null),
     partesEstadoRef = useRef({ main: null, ext: {}, listos: new Set(), mudando: false, desuscribir: [] }),
     deshaciendoRef = useRef(false),
@@ -322,6 +324,19 @@ function App() {
     window.addEventListener("pagehide", chau);
     return () => (chau(), window.removeEventListener("pagehide", chau), canal.close());
   }, []);
+  // Sección 102: cada versión de MIA anota su número en la base; una pantalla con una versión anterior
+  // (que no se recargó) muestra un aviso para recargar.
+  useEffect(() => {
+    if (!datosCargados || !dbRef.current || estadoConexion === "unavailable") return;
+    const ref = dbRef.current.doc("app/versionMia");
+    return ref.onSnapshot(
+      (s) => {
+        const v = Number(((s.exists && s.data()) || {}).v) || 0;
+        v > VERSION_MIA ? setVersionNueva(true) : v < VERSION_MIA && ref.set({ v: VERSION_MIA, desde: Date.now() }).catch(() => {});
+      },
+      () => {},
+    );
+  }, [datosCargados, estadoConexion]);
   function rr() {
     if (cn === ADMIN_PIN) {
       (ko("admin"), on(""), kn(false));
@@ -636,29 +651,40 @@ function App() {
           // (todo en un solo lote: se guarda todo o nada).
           const partes = partesEstadoRef.current,
             esExterno = (k) => ESTADO_EXTERNO.includes(k) && partes.ext[k] !== void 0,
-            grupos = {};
-          (cambios || []).forEach(([ruta, v]) => {
-            const ext = esExterno(ruta[0]),
-              d = ext ? docEstadoExterno(ruta[0]) : "app/state",
-              r2 = ext ? ["v", ...ruta.slice(1)] : ruta;
-            (grupos[d] = grupos[d] || []).push(
-              new firebase.firestore.FieldPath(...r2),
-              v === BORRAR_CAMPO ? firebase.firestore.FieldValue.delete() : v,
-            );
-          });
+            docDe = (ruta) => (esExterno(ruta[0]) ? docEstadoExterno(ruta[0]) : "app/state"),
+            rutaEnDoc = (ruta) => (esExterno(ruta[0]) ? ["v", ...ruta.slice(1)] : ruta);
           const idGuardado = Date.now() + Math.random();
           let promesa;
           try {
-            const lote = firebase.firestore().batch();
-            if (cambios) Object.entries(grupos).forEach(([d, args]) => lote.update(t.doc(d), ...args));
+            if (cambios)
+              // Sección 102: se lee lo que hay ahora en la base y, en las listas, se aplican solo los
+              // elementos que cambió esta pantalla (todo en una misma operación: se guarda todo o nada).
+              promesa = firebase.firestore().runTransaction(async (tx) => {
+                const docs = [...new Set(cambios.map(([ruta]) => docDe(ruta)))],
+                  actuales = {};
+                for (const d of docs) {
+                  const s = await tx.get(t.doc(d));
+                  actuales[d] = s.exists ? s.data() || {} : {};
+                }
+                const finales = combinarCambiosConRemoto(cambios, baseAntes, (ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta))),
+                  grupos = {};
+                finales.forEach(([ruta, v]) => {
+                  (grupos[docDe(ruta)] = grupos[docDe(ruta)] || []).push(
+                    new firebase.firestore.FieldPath(...rutaEnDoc(ruta)),
+                    v === BORRAR_CAMPO ? firebase.firestore.FieldValue.delete() : v,
+                  );
+                });
+                Object.entries(grupos).forEach(([d, args]) => tx.update(t.doc(d), ...args));
+              });
             else {
+              const lote = firebase.firestore().batch();
               const principal = { ...e };
               ESTADO_EXTERNO.forEach((k) => {
                 esExterno(k) && (lote.set(t.doc(docEstadoExterno(k)), { v: e[k] === void 0 ? null : e[k] }), delete principal[k]);
               });
               lote.set(t.doc("app/state"), principal);
+              promesa = lote.commit();
             }
-            promesa = lote.commit();
           } catch (err) {
             ((guardandoRef.current = false),
               mostrarErrorGuardado(idGuardado, "La base de datos rechazó los datos (" + ((err && err.message) || "error") + ")."));
@@ -680,6 +706,7 @@ function App() {
                   ? ((misGuardadosRef.current = anotarGuardado(misGuardadosRef.current, cambios, baseAntes, Date.now())),
                     baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios)))
                   : (baseGuardadaRef.current = JSON.parse(JSON.stringify(e))),
+                (reintentandoRef.current = false),
                 setAvisoGuardado(null));
             })
             .catch((r) => {
@@ -690,8 +717,13 @@ function App() {
                     )
                   : r && r.code === "quota_exceeded"
                     ? setAvisoGuardado("Se alcanzó el límite de almacenamiento de la app.")
-                    : setAvisoGuardado("No se pudieron guardar los últimos cambios. Verificá tu conexión."),
-                mostrarErrorGuardado(idGuardado, "La base de datos rechazó el guardado (" + ((r && (r.code || r.message)) || "error desconocido") + ")."));
+                    : setAvisoGuardado("Sin conexión: los últimos cambios todavía no se guardaron. MIA reintenta sola; no cierres la página."),
+                // Sección 102: el aviso se registra una vez y se reintenta solo (contra lo último de la base).
+                reintentandoRef.current ||
+                  mostrarErrorGuardado(idGuardado, "La base de datos rechazó el guardado (" + ((r && (r.code || r.message)) || "error desconocido") + ")."),
+                r && (r.code === "invalid_argument" || r.code === "invalid-argument" || r.code === "quota_exceeded" || r.code === "resource-exhausted")
+                  ? void 0
+                  : ((reintentandoRef.current = true), setTimeout(() => setReintentoGuardado((n) => n + 1), 1e4)));
             });
         }, 500);
       return () => clearTimeout(o);

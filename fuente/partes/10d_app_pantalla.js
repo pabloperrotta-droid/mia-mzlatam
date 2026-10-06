@@ -103,6 +103,17 @@
               "Entendido",
             ),
           ),
+        versionNueva &&
+          React.createElement(
+            "div",
+            { style: { background: "#7A1F1F", color: "#fff", fontSize: 13, padding: "8px 20px", textAlign: "center", display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap" } },
+            "Hay una versión nueva de MIA. Recargá la página para seguir trabajando con la última versión.",
+            React.createElement(
+              "button",
+              { onClick: () => window.location.reload(), style: { ...smallBtnGhost, background: "#fff", color: "#7A1F1F", padding: "3px 10px" } },
+              "Recargar",
+            ),
+          ),
         otraPestana &&
           React.createElement(
             "div",
