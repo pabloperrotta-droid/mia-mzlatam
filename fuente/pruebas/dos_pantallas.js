@@ -191,7 +191,9 @@ async function fs_(fuente, op, a, b) {
       for (let k = oyentes.length - 1; k >= 0; k--) oyentes[k].pagina === p && oyentes.splice(k, 1);
     });
     await p.goto("file://" + archivo + (hash || ""));
-    await p.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
+    hash
+      ? (await p.waitForFunction(() => (document.getElementById("root") || {}).innerText?.length > 200, null, { timeout: 30000 }), await espera(3000))
+      : await p.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
     return p;
   };
   const control = async (nombre, fn) => {
