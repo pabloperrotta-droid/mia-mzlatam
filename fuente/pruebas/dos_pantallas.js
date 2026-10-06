@@ -111,7 +111,8 @@ const oyentes = []; // { pagina, id, ruta, cadena, pausada }
 let A, B;
 const pausadas = new Set();
 const escriturasDeEstado = new Map();
-const bitacora = []; // pagina → cantidad de escrituras al estado de MIA
+const bitacora = [];
+let retrasoMax = 120; // demora máxima (ms) con la que la base manda cada novedad // pagina → cantidad de escrituras al estado de MIA
 const pendientesDePausa = new Map(); // pagina → Set(oyente)
 const copia = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 // Como la base real: devuelve los campos de cada objeto ordenados por nombre (no en el orden en que se guardaron).
@@ -142,7 +143,7 @@ function entregar(o) {
   }
   // En orden para cada oyente, con demora al azar (la confirmación del guardado llega antes que la versión nueva).
   o.cadena = o.cadena.then(async () => {
-    await espera(5 + Math.random() * 120);
+    await espera(5 + Math.random() * retrasoMax);
     const d = base.get(o.ruta);
     await o.pagina.evaluate(([id, e, x]) => window.__entregar(id, e, x), [o.id, !!(d && d.data !== undefined), d ? ordenada(d.data) : undefined]).catch(() => {});
   });
@@ -370,6 +371,30 @@ async function fs_(fuente, op, a, b) {
     if (n) throw new Error("La pantalla de solo lectura hizo " + n + " escritura(s)");
   });
   await C.close();
+  await cerrarAvisos();
+  await control("Borrar líneas seguidas con la base lenta (cada guardado toca dos partes): sin falsa alarma ni valores que vuelven", async () => {
+    retrasoMax = 1500; // conexión lenta: las partes llegan con mucha demora y en cualquier orden
+    for (let vuelta = 0; vuelta < 4; vuelta++) {
+      const antes = (estado().pagosSemanales || []).length;
+      for (let k = 0; k < 2; k++) {
+        await A.evaluate(() => {
+          const filas = [...document.querySelectorAll("tbody tr")].filter((tr) => [...tr.querySelectorAll("button")].some((b) => b.querySelector("svg") && !b.textContent.trim()));
+          const tr = filas[filas.length - 1];
+          const bs = [...tr.querySelectorAll("button")].filter((b) => b.querySelector("svg") && !b.textContent.trim());
+          bs[bs.length - 1].click();
+        });
+        await espera(650 + Math.random() * 500);
+      }
+      await espera(4000);
+      const total = (estado().pagosSemanales || []).length;
+      if (total !== antes - 2) throw new Error("Vuelta " + (vuelta + 1) + ": en la base quedaron " + total + " líneas; se esperaban " + (antes - 2));
+      const enA = await A.evaluate(() => [...document.querySelectorAll("tbody tr")].length);
+      if (!enA) throw new Error("A no muestra líneas");
+    }
+    retrasoMax = 120;
+    await espera(2000);
+    await sinAvisos(A, B);
+  });
   await cerrarAvisos();
   await control("Recargar MIA en todas las pantallas (3 toques seguidos): la otra pantalla se recarga y no hay fallas", async () => {
     let recargas = 0;
