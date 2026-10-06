@@ -192,7 +192,7 @@ async function fs_(fuente, op, a, b) {
     });
     await p.goto("file://" + archivo + (hash || ""));
     hash
-      ? (await p.waitForFunction(() => (document.getElementById("root") || {}).innerText?.length > 200, null, { timeout: 30000 }), await espera(3000))
+      ? (await p.waitForFunction(() => !!window.__miaPendientes, null, { timeout: 30000 }), await espera(3000))
       : await p.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
     return p;
   };
