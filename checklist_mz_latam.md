@@ -1420,6 +1420,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Producción: pendiente del OK del usuario.
 
+### 109. Falsa alarma con dos cambios seguidos en una sola pantalla (conexión lenta)
+
+- Aviso del usuario (06/10/2026 13:46, solo una ventana de incógnito abierta, rol Pablo, versión 107): "Otra pantalla cambió cosas que vos habías guardado recién: Proveedores de Costos: LUCIO · Proveedores de Costos: RUBEN". Los dos cambios sí quedaron guardados.
+- [x] Causa: los datos llegan de la base en partes (la general con los registros y la de proveedores van por separado). Con dos cambios seguidos y la conexión lenta, a veces llegaba primero la parte general nueva mientras la de proveedores todavía era la anterior (la versión intermedia se descarta por vieja): por un momento MIA veía los proveedores sin los cambios y avisaba (y podía mostrar por un instante el valor anterior).
+- [x] Arreglo: MIA lleva la cuenta de qué partes guardó y cuáles ya llegaron de vuelta; hasta que no llegaron todas, no compara ni aplica lo recibido.
+- [x] Las claves guardadas enteras (por ejemplo, en el primer guardado) se anotan parte por parte para el aviso de cambios pisados, así un cambio posterior de otra parte no da falsa alarma.
+- [x] Prueba de dos pantallas nueva: base lenta (hasta 1,5 s, partes en cualquier orden) y borrado de líneas seguidas (cada guardado toca dos partes). Con la versión 108 da la falsa alarma; con esta pasa (corrida dos veces).
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario (junto con la Sección 108).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
