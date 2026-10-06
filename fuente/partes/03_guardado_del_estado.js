@@ -63,7 +63,7 @@ function idDeElemento(x) {
 function esListaDeObjetos(v) {
   return Array.isArray(v) && v.every(esObjetoPlano);
 }
-function combinarLista(L, B, R) {
+function combinarLista(L, B, R, descartados) {
   const texto = (x) => JSON.stringify(x),
     resultado = R.slice(),
     usados = new Set(),
@@ -92,7 +92,9 @@ function combinarLista(L, B, R) {
     L.forEach((l, i) => {
       if (texto(l) === texto(B[i])) return;
       const j = buscarEnR(B[i]);
-      j >= 0 ? ((resultado[j] = l), usados.add(j)) : idDeElemento(l) && !resultado.some((x) => idDeElemento(x) === idDeElemento(l)) && resultado.push(l);
+      // Sección 102: si el elemento ya no está en la base (otra pantalla le cambió el nombre o lo borró),
+      // no se vuelve a agregar con los datos viejos (antes quedaba repetido o volvía el nombre viejo): se descarta y se avisa.
+      j >= 0 ? ((resultado[j] = l), usados.add(j)) : descartados && descartados.push(l);
     });
     return resultado;
   }
@@ -153,12 +155,16 @@ function combinarEstado(local, base, remoto) {
 function valorEnRuta(obj, ruta) {
   return ruta.length === 1 ? (obj || {})[ruta[0]] : ((obj || {})[ruta[0]] || {})[ruta[1]];
 }
-function combinarCambiosConRemoto(cambios, base, remotoEn) {
+function combinarCambiosConRemoto(cambios, base, remotoEn, descartados) {
   return (cambios || []).map(([ruta, v]) => {
     if (v === BORRAR_CAMPO || !esListaDeObjetos(v)) return [ruta, v];
     const B = valorEnRuta(base, ruta),
-      R = remotoEn(ruta);
-    return esListaDeObjetos(B) && esListaDeObjetos(R) ? [ruta, combinarLista(v, B, R)] : [ruta, v];
+      R = remotoEn(ruta),
+      d = [];
+    if (!(esListaDeObjetos(B) && esListaDeObjetos(R))) return [ruta, v];
+    const r = combinarLista(v, B, R, d);
+    descartados && d.forEach((el) => descartados.push((NOMBRES_CLAVES[ruta[0]] || ruta[0]) + ": " + (nombreElemento(ruta[0], el) || (ruta[1] || ""))));
+    return [ruta, r];
   });
 }
 

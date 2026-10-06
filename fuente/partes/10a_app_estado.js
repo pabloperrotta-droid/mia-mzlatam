@@ -216,6 +216,7 @@ function App() {
     [avisoPisado, setAvisoPisado] = useState(null),
     [otraPestana, setOtraPestana] = useState(false),
     [versionNueva, setVersionNueva] = useState(false),
+    [avisoDescartado, setAvisoDescartado] = useState(null),
     estadoLocalRef = useRef(null),
     partesEstadoRef = useRef({ main: null, ext: {}, listos: new Set(), mudando: false, desuscribir: [] }),
     deshaciendoRef = useRef(false),
@@ -653,20 +654,22 @@ function App() {
             esExterno = (k) => ESTADO_EXTERNO.includes(k) && partes.ext[k] !== void 0,
             docDe = (ruta) => (esExterno(ruta[0]) ? docEstadoExterno(ruta[0]) : "app/state"),
             rutaEnDoc = (ruta) => (esExterno(ruta[0]) ? ["v", ...ruta.slice(1)] : ruta);
-          const idGuardado = Date.now() + Math.random();
+          const idGuardado = Date.now() + Math.random(),
+            descartados = [];
           let promesa;
           try {
             if (cambios)
               // Sección 102: se lee lo que hay ahora en la base y, en las listas, se aplican solo los
               // elementos que cambió esta pantalla (todo en una misma operación: se guarda todo o nada).
               promesa = firebase.firestore().runTransaction(async (tx) => {
+                descartados.length = 0;
                 const docs = [...new Set(cambios.map(([ruta]) => docDe(ruta)))],
                   actuales = {};
                 for (const d of docs) {
                   const s = await tx.get(t.doc(d));
                   actuales[d] = s.exists ? s.data() || {} : {};
                 }
-                const finales = combinarCambiosConRemoto(cambios, baseAntes, (ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta))),
+                const finales = combinarCambiosConRemoto(cambios, baseAntes, (ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta)), descartados),
                   grupos = {};
                 finales.forEach(([ruta, v]) => {
                   (grupos[docDe(ruta)] = grupos[docDe(ruta)] || []).push(
@@ -707,6 +710,7 @@ function App() {
                     baseGuardadaRef.current === baseAntes && (baseGuardadaRef.current = aplicarCambios(baseAntes, cambios)))
                   : (baseGuardadaRef.current = JSON.parse(JSON.stringify(e))),
                 (reintentandoRef.current = false),
+                descartados.length && setAvisoDescartado((x) => [...new Set([...(x || []), ...descartados])]),
                 setAvisoGuardado(null));
             })
             .catch((r) => {

@@ -84,6 +84,25 @@
               ),
             ),
           ),
+        avisoDescartado &&
+          avisoDescartado.length > 0 &&
+          React.createElement(
+            "div",
+            { role: "alert", style: { background: "#7A1F1F", color: "#fff", fontSize: 13, padding: "10px 20px", display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap" } },
+            React.createElement(
+              "div",
+              { style: { maxWidth: 900 } },
+              React.createElement("strong", null, "⚠ No se guardó tu cambio en: "),
+              avisoDescartado.slice(0, 6).join(" · "),
+              avisoDescartado.length > 6 ? " y " + (avisoDescartado.length - 6) + " más" : "",
+              ". Otra pantalla ya lo había cambiado o borrado (por ejemplo, le cambió el nombre) y tu pantalla tenía los datos viejos. Revisalo y, si hace falta, volvé a hacer el cambio.",
+            ),
+            React.createElement(
+              "button",
+              { onClick: () => setAvisoDescartado(null), style: { ...smallBtnGhost, background: "#fff", color: "#7A1F1F", padding: "3px 10px" } },
+              "Entendido",
+            ),
+          ),
         avisoPisado &&
           avisoPisado.length > 0 &&
           React.createElement(

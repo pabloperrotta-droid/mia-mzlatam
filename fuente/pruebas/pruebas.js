@@ -86,6 +86,16 @@ prueba("Guardado combinado con la base (caso Romina): una pantalla vieja no pisa
   const fin2 = JSON.parse(JSON.stringify(f.combinarCambiosConRemoto([[["pagosMap", "k"], [{ id: 1, m: 9 }]]], b2, (ruta) => f.valorEnRuta(r2, ["v", ...ruta.slice(1)]))));
   assert.deepStrictEqual(fin2[0][1], [{ id: 1, m: 9 }, { id: 2, m: 5 }]);
 });
+prueba("Guardado combinado: si la pantalla vieja cambió la MISMA obra que otra renombró, no vuelve el nombre viejo ni queda repetida, y se avisa", () => {
+  const o = (obra, status) => ({ cliente: "B+D", obra, status });
+  const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] };
+  const cambios = [[["obras"], [o("PLAZA OESTE", "FINALIZADA"), o("ALCORTA", "EN PROCESO")]]];
+  const enBase = { obras: [o("DOT Y ARCOS", "EN PROCESO"), o("ALCORTA", "EN PROCESO")] };
+  const desc = [];
+  const fin = JSON.parse(JSON.stringify(f.combinarCambiosConRemoto(cambios, base, (ruta) => f.valorEnRuta(enBase, ruta), desc)));
+  assert.deepStrictEqual(fin[0][1], enBase.obras);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(desc)), ["Obras: B+D – PLAZA OESTE"]);
+});
 prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
   const o = (obra, status) => ({ cliente: "B+D", obra, status });
   const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };
