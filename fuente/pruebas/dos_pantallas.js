@@ -292,7 +292,11 @@ async function fs_(fuente, op, a, b) {
     await espera(300);
     const botones = await A.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((t) => /Recargar|Herramientas|backup|Registros/i.test(t)));
     if (!botones.includes("Recargar MIA en todas las pantallas")) throw new Error("Botones visibles: " + botones.join(" | "));
-    for (let k = 0; k < 3; k++) await clic(A, "Recargar MIA en todas las pantallas");
+    for (let k = 0; k < 3; k++) {
+      const abierto = await A.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Recargar MIA en todas las pantallas"));
+      abierto || (await clic(A, "Herramientas", true), await espera(200));
+      await clic(A, "Recargar MIA en todas las pantallas");
+    }
     await esperarGuardado(A);
     await espera(2000);
     if (!recargas) throw new Error("La pantalla B no se recargó");

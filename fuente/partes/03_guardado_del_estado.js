@@ -199,7 +199,9 @@ function anotarGuardado(anotados, cambios, baseAntes, ahora) {
   (cambios || []).forEach(([ruta, v]) => {
     const k = ruta[0],
       clave = ruta.join("\u0001"),
-      B = valorEn(baseAntes, ruta);
+      B0 = valorEn(baseAntes, ruta),
+      // Si antes no había lista (ej. primer guardado), se toma como vacía: se anotan los elementos, no la lista entera.
+      B = esListaDeObjetos(v) && B0 == null ? [] : B0;
     if (esListaDeObjetos(v) && esListaDeObjetos(B)) {
       const enB = new Set(B.map(t)),
         enV = new Set(v.map(t)),
