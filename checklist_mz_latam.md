@@ -1397,7 +1397,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Si el guardado choca 3 veces seguidas con la base, se guarda igual combinando contra la última versión recibida (no se pierde el cambio). El detalle del choque queda anotado una vez en Fallas de guardado como "Aviso interno". Las fallas ahora anotan también el mensaje de la base, no solo el código. Prueba de dos pantallas con una base que rechaza siempre: el cambio queda guardado.
 - [x] El aviso al cerrar ("hay cambios sin guardar") podía quedar prendido sin cambios pendientes; corregido.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario. El usuario tiene que volver a cargar el presupuesto de LUCIO (y lo de MARCELO LAVITOLA).
+- [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pasalo a producción"). Verónica sigue apagada en Producción. El usuario tiene que volver a cargar el presupuesto de LUCIO (y lo de MARCELO LAVITOLA).
 
 ## 41. Pendientes / recomendaciones
 
