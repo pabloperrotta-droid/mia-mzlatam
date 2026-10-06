@@ -1410,6 +1410,16 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) con el OK del usuario ("pasa a producción… y chequea luego de pasar a producción que todo funcione"). Verónica sigue apagada en Producción.
 
+### 108. Guardado salteado cuando llegan datos en el mismo momento, y pantallas de solo lectura que escribían
+
+- Rastro en Fallas de guardado (06/10/2026 13:00, gracias a la Sección 107): "Aviso interno: cambios sin guardar hace 15 s: registros" (Admin) y "se mostró 'Otra pantalla cambió': Proveedores de Costos: LUCIO — guardado 25.588.736 / en la base 20.588.736". El usuario aclaró que operaciones no edita y que el usuario fue Admin.
+- [x] Causa 1: al recibir datos de la base, la pantalla se salteaba el siguiente guardado; si en ese mismo momento el usuario hacía un cambio (se dibujan juntos), ese cambio no se guardaba hasta el próximo cambio (de ahí "¿Deseas abandonar el sitio?" y cambios que no quedaban al cerrar). Arreglo: siempre se compara contra la base y se guarda solo lo que difiere; el "Deshacer" solo suma un paso cuando de verdad se guarda algo.
+- [x] Causa 2 (agujero): las pantallas de solo lectura (rol Operaciones, roles con todo en lectura, o la pantalla antes de ingresar el PIN) también guardaban lo que tenían. Arreglo: solo guardan las pantallas con algún permiso de edición.
+- [x] Las notas internas anotaban el rol de la pantalla al abrirse (antes del PIN, "operaciones"); ahora anotan el rol real. La nota "operaciones" de las 13:00 era la pantalla de Admin.
+- [x] Prueba de dos pantallas: se suma una pantalla de solo lectura (no debe escribir nada), un caso de datos que llegan en el mismo instante en que se hace un cambio, y la prueba arranca con la base ya acomodada como la real. Con esta versión pasa; con la 107 falla.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
