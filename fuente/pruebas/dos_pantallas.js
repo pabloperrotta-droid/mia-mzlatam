@@ -331,19 +331,21 @@ async function fs_(fuente, op, a, b) {
   });
 
   await cerrarAvisos();
-  await control("Si la base rechaza siempre el guardado con choque, el cambio se guarda igual (sin perderse)", async () => {
+  await control("Si la base rechaza el guardado por choques un rato, el cambio no se pierde y se guarda al destrabarse (sin guardado a ciegas)", async () => {
     const antes = (estado().pagosSemanales || []).length;
     await A.evaluate(() => (window.__txSiempreFalla = true));
     await clic(A, "Agregar línea", true);
-    await espera(6000);
-    await esperarGuardado(A);
+    await espera(5000);
+    const mientras = (estado().pagosSemanales || []).length;
+    if (mientras !== antes) throw new Error("Con la base rechazando, igual se escribió (guardado a ciegas): " + mientras + " vs " + antes);
+    const pend = await A.evaluate(() => window.__miaPendientes());
+    if (!pend.claves.length && !pend.guardando) throw new Error("El cambio desapareció de la pantalla sin guardarse");
     await A.evaluate(() => (window.__txSiempreFalla = false));
+    await espera(12000);
     const total = (estado().pagosSemanales || []).length;
-    if (total !== antes + 1) throw new Error("En la base quedaron " + total + " líneas; se esperaban " + (antes + 1));
+    if (total !== antes + 1) throw new Error("Después de destrabarse quedaron " + total + " líneas; se esperaban " + (antes + 1));
     const avisos = await avisosRojos(A);
     if (avisos.length) throw new Error("Apareció un aviso: " + avisos.join(" || "));
-    const fallas = agregados.filter((x) => /erroresGuardado/.test(x.col) && !/Aviso interno/.test(x.data.motivo));
-    if (fallas.length) throw new Error("Fallas: " + fallas.map((x) => x.data.motivo).join(" | "));
   });
   await cerrarAvisos();
   await control("Llegan datos de la base justo cuando el usuario hace un cambio: el cambio se guarda igual", async () => {

@@ -780,11 +780,10 @@ function App() {
             });
             return grupos;
           };
-          // Sección 106: si la operación que lee y escribe choca varias veces seguidas, se guarda igual
-          // combinando contra la última versión que llegó de la base (como antes), para no perder el cambio.
-          const usarLote = cambios && choquesRef.current >= 3;
+          // Sección 110: ya no hay "guardado de emergencia" a ciegas (combinaba contra una versión que podía estar
+          // atrasada y borraba lo último de otra pantalla). Si choca, se reintenta la operación normal.
           try {
-            if (cambios && !usarLote)
+            if (cambios)
               // Sección 102: se lee lo que hay ahora en la base y, en las listas, se aplican solo los
               // elementos que cambió esta pantalla (todo en una misma operación: se guarda todo o nada).
               promesa = firebase.firestore().runTransaction(async (tx) => {
@@ -797,14 +796,7 @@ function App() {
                 const grupos = armarGrupos((ruta) => valorEnRuta(actuales[docDe(ruta)], rutaEnDoc(ruta)));
                 Object.entries(grupos).forEach(([d, args]) => tx.update(t.doc(d), ...args, "__sello", sello));
               });
-            else if (usarLote) {
-              const ultimo = { ...(partes.main || {}) };
-              ESTADO_EXTERNO.forEach((k) => partes.ext[k] !== void 0 && (ultimo[k] = partes.ext[k]));
-              const grupos = armarGrupos((ruta) => valorEnRuta(ultimo, ruta)),
-                lote = firebase.firestore().batch();
-              Object.entries(grupos).forEach(([d, args]) => lote.update(t.doc(d), ...args, "__sello", sello));
-              promesa = lote.commit();
-            } else {
+            else {
               const lote = firebase.firestore().batch();
               const principal = { ...e };
               ESTADO_EXTERNO.forEach((k) => {
@@ -854,8 +846,12 @@ function App() {
                 !detalleChoqueRef.current &&
                 ((detalleChoqueRef.current = true),
                 mostrarErrorGuardado(idGuardado, "Aviso interno (se reintenta solo): " + String(r.code) + " — " + String(r.message || "").slice(0, 300)));
-              if (r && (r.code === "failed-precondition" || r.code === "aborted") && (choquesRef.current = choquesRef.current + 1) <= 5) {
-                (setErrorGuardado((x) => (x && x.id === idGuardado ? null : x)), setTimeout(() => setReintentoGuardado((n) => n + 1), 300 + Math.random() * 700));
+              // Choque con otro guardado: se reintenta solo, esperando cada vez un poco más (sin límite de intentos;
+              // el cambio sigue en la pantalla y el aviso de "sin guardar" lo cubre si tarda).
+              if (r && (r.code === "failed-precondition" || r.code === "aborted")) {
+                const n = (choquesRef.current = choquesRef.current + 1);
+                (setErrorGuardado((x) => (x && x.id === idGuardado ? null : x)),
+                  setTimeout(() => setReintentoGuardado((k) => k + 1), Math.min(8e3, 300 * 2 ** Math.min(n, 5)) * (0.5 + Math.random())));
                 return;
               }
               choquesRef.current = 0;
