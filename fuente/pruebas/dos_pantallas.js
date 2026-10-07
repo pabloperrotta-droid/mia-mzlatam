@@ -185,6 +185,8 @@ async function fs_(fuente, op, a, b) {
   const ctx = await navegador.newContext({ viewport: { width: 1600, height: 1000 } });
   await ctx.exposeBinding("__fs", (fuente, op, a, b) => fs_(fuente, op, a, b));
   base.set(P + "app/state", { data: {}, ver: 1 });
+  // Como en la base real, los arreglos de una sola vez ya están hechos.
+  for (const d of ["tcHistoricoAplicado", "subCostoIdsAplicado", "facturasSeed"]) base.set(P + "app/" + d, { data: { done: true }, ver: 1 });
   const errores = [];
   let fallas = 0;
   const abrir = async (nombre, hash) => {

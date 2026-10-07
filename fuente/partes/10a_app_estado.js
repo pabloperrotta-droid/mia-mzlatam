@@ -590,9 +590,16 @@ function App() {
               const loc = estadoLocalRef.current,
                 base = baseGuardadaRef.current,
                 pendientes = loc && base ? cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base) : [];
+              // Sección 110: lo aplicado queda enseguida como "lo que muestra la pantalla". Antes se actualizaba recién
+              // al redibujar; si llegaban dos novedades casi juntas, la segunda se comparaba contra lo de antes de la
+              // primera, lo tomaba como cambio pendiente y volvía a guardar datos viejos.
+              const aplicar = (x) => {
+                aplicarEstadoGuardado(x);
+                loc && (estadoLocalRef.current = Object.fromEntries(Object.keys(loc).map((k) => [k, x[k] !== void 0 ? x[k] : loc[k]])));
+              };
               (pendientes.length === 0
-                ? ((ignorarProximoGuardadoRef.current = true), ($n.current = true), aplicarEstadoGuardado(u), (baseGuardadaRef.current = u))
-                : (($n.current = true), (baseGuardadaRef.current = u), aplicarEstadoGuardado(combinarEstado(JSON.parse(JSON.stringify(loc)), base, u))),
+                ? ((ignorarProximoGuardadoRef.current = true), ($n.current = true), aplicar(u), (baseGuardadaRef.current = u))
+                : (($n.current = true), (baseGuardadaRef.current = u), aplicar(combinarEstado(JSON.parse(JSON.stringify(loc)), base, u))),
                 setEstadoConexion("ok"),
                 setDatosCargados(true));
               // Mudanza (una sola vez): lo que todavía esté en app/state pasa a su documento propio.
