@@ -1438,7 +1438,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Nota de Romina (07/10 11:10): "se mostró 'Otra pantalla cambió': reglasProveedoresPago: ESCRIBANIA… MARTA… / en la base undefined" — falsa alarma: estaba cargando un proveedor nuevo en la tabla de Proveedores y se guarda letra por letra; se comparaba lo guardado unas letras antes. Ahora el aviso de cambios pisados no cuenta lo que la misma pantalla cambió después, y se confirma 4 segundos después de la última novedad contra lo último recibido (una demora momentánea de la base no lo dispara; un pisado real sigue faltando y se avisa).
 - [x] Prueba de dos pantallas: diagnóstico de qué escribe cada pantalla; el caso "base que rechaza" ahora verifica que no se escriba a ciegas y que el cambio se guarde al destrabarse; la base simulada arranca con los arreglos de una sola vez ya hechos (como la real). con los arreglos, 4 corridas seguidas sin fallas (antes fallaba ~1 de cada 3).
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (07/10/2026) con el OK del usuario ("no lo revisé, pero si está ok subilo"), después de 4 corridas seguidas de las pruebas sin fallas. Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
