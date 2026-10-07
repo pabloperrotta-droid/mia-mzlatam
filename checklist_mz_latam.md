@@ -1440,6 +1440,12 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (07/10/2026) con el OK del usuario ("no lo revisé, pero si está ok subilo"), después de 4 corridas seguidas de las pruebas sin fallas. Verónica sigue apagada en Producción.
 
+### 111. Prueba pedida por soporte de Xubio (PUT de la factura 77723999)
+
+- Soporte de Xubio (07/10/2026) pidió ejecutar PUT /ComprobanteCompraBean con su JSON sobre la factura 77723999 (A-00011-00008239, $184.500), con el centro WU MARTIN CORONADO y el id del renglón (transaccionCVItemId 95921824). El usuario lo autorizó ("sí autorizo").
+- [x] Corrida única desde GitHub Actions (rama `xubio-prueba-soporte`, script `xubio/prueba_soporte.js`; la integración automática sigue en pausa en Producción y la rama no corre sola). Resultado: lectura antes OK (total 184.500, 1 renglón, centro NATURA CABILDO, sin órdenes de pago); **PUT con el JSON exacto de Xubio rechazado: 401 "No se pudo completar la operación. - FunctionalException"** (con token nuevo pedido justo antes y un reintento con otro token); lectura después OK y sin cambios. Conclusión: no es el formato del JSON ni el token; el rechazo lo da Xubio al modificar.
+- [ ] Respuesta a Xubio con el resultado (borrador entregado al usuario). Pendiente su respuesta.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
