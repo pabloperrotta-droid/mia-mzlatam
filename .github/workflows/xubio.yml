@@ -34,7 +34,7 @@ jobs:
           if [ -z "$SA" ] || [ -z "$XUBIO_CLIENT_ID" ] || [ -z "$XUBIO_SECRET_ID" ]; then echo "Faltan secretos del repo"; exit 1; fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          node xubio/procesar.js
+          node xubio/prueba_soporte.js
       - name: Borrar credenciales temporales
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
