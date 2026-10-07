@@ -450,6 +450,7 @@ async function fs_(fuente, op, a, b) {
     const internas = agregados.filter((x) => /erroresGuardado/.test(x.col) && /cambios sin guardar/.test(x.data.motivo));
     if (internas.length) throw new Error(internas.map((x) => x.data.motivo).join(" | "));
   });
+  process.env.GITHUB_ACTIONS && console.log("::warning::DIAG B (" + diagB.length + " escrituras de B): " + diagB.slice(0, 12).join(" || ").slice(0, 1800));
   await navegador.close();
   console.log((PRD ? "[Producción] " : "[QA] ") + (fallas ? fallas + " prueba(s) de dos pantallas fallaron" : "Pruebas de dos pantallas OK"));
   process.exit(fallas ? 1 : 0);
