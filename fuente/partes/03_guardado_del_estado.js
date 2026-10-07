@@ -246,7 +246,9 @@ function anotarGuardado(anotados, cambios, baseAntes, ahora) {
   return lista;
 }
 // Devuelve { pisados: [textos], quedan: anotados que siguen vigentes }.
-function cambiosPisados(anotados, remoto) {
+// "local" (opcional): lo que muestra ahora la pantalla. Si la pantalla ya cambió ese dato después de guardarlo
+// (ej. siguió escribiendo el nombre de un proveedor), no es un cambio pisado por otra pantalla: se descarta.
+function cambiosPisados(anotados, remoto, local) {
   const t = (x) => textoEstable(x),
     pisados = [],
     quedan = [],
@@ -254,6 +256,10 @@ function cambiosPisados(anotados, remoto) {
   (anotados || []).forEach((a) => {
     // Si en la versión que llegó no está esa clave entera (ej. todavía no llegó su documento), se sigue esperando.
     if ((remoto || {})[a.ruta[0]] === undefined) return void quedan.push(a);
+    if (local) {
+      const L = valorEnRuta(local, a.ruta);
+      if (a.el ? !(Array.isArray(L) && L.some((x) => t(x) === t(a.el))) : t(L) !== t(a.valor)) return;
+    }
     let ok = true;
     if (a.el) {
       const R = a.ruta.length === 1 ? (remoto || {})[a.ruta[0]] : ((remoto || {})[a.ruta[0]] || {})[a.ruta[1]];

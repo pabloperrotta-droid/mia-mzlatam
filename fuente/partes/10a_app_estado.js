@@ -230,6 +230,7 @@ function App() {
     miPantallaRef = useRef(Math.random().toString(36).slice(2)),
     sellosConfirmadosRef = useRef({}),
     sellosRecibidosRef = useRef({}),
+    revisarPisadosRef = useRef(null),
     [avisoPisado, setAvisoPisado] = useState(null),
     [otraPestana, setOtraPestana] = useState(false),
     [versionNueva, setVersionNueva] = useState(false),
@@ -580,13 +581,21 @@ function App() {
                 partes.ext[k] !== void 0 && (u[k] = partes.ext[k]);
               });
               // Sección 101: ¿otra pantalla pisó algo que esta guardó hace poco?
-              if (misGuardadosRef.current.length) {
-                const rev = cambiosPisados(misGuardadosRef.current, u);
-                misGuardadosRef.current = rev.quedan;
-                rev.pisados.length &&
-                  (setAvisoPisado((x) => [...new Set([...(x || []), ...rev.pisados])]),
-                  registrarInterno("se mostró 'Otra pantalla cambió': " + rev.pisados.slice(0, 6).join(" · ") + " — " + rev.detalle.slice(0, 2).join(" | ")));
-              }
+              // Sección 110: el aviso de cambios pisados se confirma 4 s después de la última novedad, contra lo último
+              // recibido y lo que muestra la pantalla (una demora momentánea de la base o un cambio propio posterior
+              // no son un pisado). Lo que se pisó de verdad sigue faltando a los 4 s y se avisa.
+              misGuardadosRef.current.length &&
+                (clearTimeout(revisarPisadosRef.current),
+                (revisarPisadosRef.current = setTimeout(() => {
+                  if (!misGuardadosRef.current.length || !partesAlDia(sellosConfirmadosRef.current, sellosRecibidosRef.current)) return;
+                  const ultimo = { ...(partes.main || {}) };
+                  ESTADO_EXTERNO.forEach((k) => partes.ext[k] !== void 0 && (ultimo[k] = partes.ext[k]));
+                  const rev = cambiosPisados(misGuardadosRef.current, ultimo, estadoLocalRef.current);
+                  misGuardadosRef.current = rev.quedan;
+                  rev.pisados.length &&
+                    (setAvisoPisado((x) => [...new Set([...(x || []), ...rev.pisados])]),
+                    registrarInterno("se mostró 'Otra pantalla cambió': " + rev.pisados.slice(0, 6).join(" · ") + " — " + rev.detalle.slice(0, 2).join(" | ")));
+                }, 4e3)));
               const loc = estadoLocalRef.current,
                 base = baseGuardadaRef.current,
                 pendientes = loc && base ? cambiosParaGuardar(JSON.parse(JSON.stringify(loc)), base) : [];

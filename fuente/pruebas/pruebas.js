@@ -118,6 +118,17 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Aviso de cambios pisados: si la pantalla siguió cambiando ese dato (ej. escribiendo el nombre), no avisa", () => {
+  // Caso real (Romina): proveedor nuevo en la tabla de Proveedores, guardado letra por letra.
+  const base = { reglasProveedoresPago: [] };
+  const an = f.anotarGuardado([], [[["reglasProveedoresPago"], [{ proveedor: "ESCRIBANIA MAR", cuit: "27117685603" }]]], base, Date.now());
+  const remoto = { reglasProveedoresPago: [{ proveedor: "ESCRIBANIA MARTA", cuit: "27117685603" }] };
+  const local = { reglasProveedoresPago: [{ proveedor: "ESCRIBANIA MARTA", cuit: "27117685603" }] };
+  assert.strictEqual(f.cambiosPisados(an, remoto, local).pisados.length, 0);
+  // Si la pantalla todavía tiene lo que guardó y en la base no está, sí es un pisado.
+  const local2 = { reglasProveedoresPago: [{ proveedor: "ESCRIBANIA MAR", cuit: "27117685603" }] };
+  assert.strictEqual(f.cambiosPisados(an, remoto, local2).pisados.length, 1);
+});
 prueba("Aviso de cambios pisados: avisa si otra pantalla pisó lo guardado, y no si cambió otra cosa", () => {
   const o = (obra, status) => ({ cliente: "B+D", obra, status });
   const base = { obras: [o("PLAZA OESTE", "EN PROCESO"), o("ALCORTA", "EN PROCESO")], cf: { a: 1 } };

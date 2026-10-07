@@ -1430,6 +1430,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (06/10/2026) junto con la Sección 108, con el OK del usuario. Verónica sigue apagada en Producción.
 
+### 110. Revisión del día siguiente: guardado de emergencia a ciegas y novedades casi juntas
+
+- Pedido del usuario (07/10/2026): "¿algo roto, algo para revisar para que no suceda lo de ayer?". Ayer a la noche: respaldo diario OK y 39 corridas de Xubio OK. La prueba de dos pantallas (modo QA) a veces daba falsa alarma en el caso de base lenta.
+- [x] Causa 1 (riesgo real): el "guardado de emergencia" de la Sección 106 (si chocaba 3 veces, guardaba combinando contra la última versión recibida) escribía a ciegas: con mucha actividad podía borrar lo último que había agregado otra pantalla (o la misma). Se saca: si choca, se reintenta la operación normal con espera creciente (hasta 8 s), sin límite; el cambio queda en pantalla y el control de "sin guardar" lo cubre.
+- [x] Causa 2 (riesgo real): si llegaban dos novedades de la base casi juntas, la segunda se comparaba contra lo que la pantalla tenía antes de aplicar la primera; lo tomaba como "cambio pendiente" y volvía a guardar datos viejos (explica la nota de ayer 14:13 "cambios sin guardar: registros, cambiosFinancieros"). Ahora lo recibido queda enseguida como estado de la pantalla.
+- [x] Prueba de dos pantallas: diagnóstico de qué escribe cada pantalla; el caso "base que rechaza" ahora verifica que no se escriba a ciegas y que el cambio se guarde al destrabarse; la base simulada arranca con los arreglos de una sola vez ya hechos (como la real). 6 corridas seguidas sin fallas (antes fallaba ~1 de cada 3).
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
