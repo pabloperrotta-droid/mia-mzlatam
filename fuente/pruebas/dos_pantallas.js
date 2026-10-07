@@ -112,6 +112,7 @@ let A, B;
 const pausadas = new Set();
 const escriturasDeEstado = new Map();
 const bitacora = [];
+const diagB = [];
 let retrasoMax = 120; // demora máxima (ms) con la que la base manda cada novedad // pagina → cantidad de escrituras al estado de MIA
 const pendientesDePausa = new Map(); // pagina → Set(oyente)
 const copia = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
@@ -164,6 +165,23 @@ async function fs_(fuente, op, a, b) {
   if (op === "guardar") {
     for (const w of a.escrituras) /app\/(state|st_)/.test(w.path) && escriturasDeEstado.set(pagina, (escriturasDeEstado.get(pagina) || 0) + 1);
     const quien = pagina === A ? "A" : pagina === B ? "B" : "C";
+    // Diagnóstico: qué cambió en las líneas de Pagos cuando escribe B.
+    if (quien === "B")
+      for (const w of a.escrituras)
+        if (/st_pagosSemanales/.test(w.path) && w.pares)
+          for (const [r, v] of w.pares)
+            if (r[0] === "v" && Array.isArray(v)) {
+              const viejo = ((base.get(w.path) || {}).data || {}).v || [];
+              const porId = new Map(viejo.map((x) => [x.id, x]));
+              const difs = [];
+              v.forEach((x) => {
+                const o = porId.get(x.id);
+                if (!o) return void difs.push("nueva:" + x.id);
+                Object.keys({ ...o, ...x }).forEach((c) => JSON.stringify(o[c]) !== JSON.stringify(x[c]) && difs.push(c + ":" + JSON.stringify(o[c]) + "→" + JSON.stringify(x[c])));
+              });
+              viejo.forEach((o) => !v.some((x) => x.id === o.id) && difs.push("quitada:" + o.id));
+              diagB.push(difs.slice(0, 6).join(" ") || "(sin diferencias: " + v.length + " vs " + viejo.length + ")");
+            }
     for (const w of a.escrituras)
       /app\/(state|st_)/.test(w.path) &&
         bitacora.push(quien + (a.lecturas ? "tx" : "lote") + ":" + w.path.replace(/^.*app\//, "") + "[" + (w.pares || []).map((p) => p[0].join(".")).filter((k) => k !== "__sello").slice(0, 4).join(";") + "]");
@@ -247,6 +265,7 @@ async function fs_(fuente, op, a, b) {
         throw new Error(
           "Apareció un aviso en " + (p === A ? "A" : "B") + ": " + a.join(" || ").slice(0, 200) +
             " ## NOTAS: " + agregados.filter((x) => /erroresGuardado/.test(x.col)).map((x) => x.data.rol + ": " + x.data.motivo).join(" | ").slice(0, 900) +
+            " ## DIAG B: " + diagB.slice(-6).join(" || ").slice(0, 700) +
             " ## ESCRITURAS: " + bitacora.slice(-25).join(", "),
         );
     }
