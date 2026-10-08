@@ -1452,7 +1452,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] En Herramientas → Registros, la caja de Fallas de guardado muestra solo las posteriores a la última revisión, con el botón **"Marcar como revisadas"** (solo Admin) y el enlace "Ver las revisadas (N)". Si no hay nuevas: "✓ Sin fallas de guardado nuevas desde el dd/mm hh:mm". La fecha de revisión se guarda en la base (app/fallasRevisadas), así vale para todos.
 - [x] Prueba de pantalla: abre Herramientas → Registros.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (08/10/2026) junto con la Sección 113, con el OK del usuario ("está ok, pasalo a producción"). Verónica sigue apagada en Producción.
 
 ### 113. Pagos → Proveedores (MAT/MO/Fact. A): campo de búsqueda
 
@@ -1460,7 +1460,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Campo "Buscar proveedor, razón social, CUIT, CBU…" arriba de la tabla, con ✕ para borrar y el conteo "N de M". Busca en Proveedor, Razón Social, CUIT, CBU, Imputación, Actividad y Factura, sin distinguir mayúsculas ni acentos; varias palabras tienen que estar todas; CUIT y CBU se encuentran también sin guiones. Las filas recién agregadas (todavía sin nombre) se muestran siempre. Editar una fila filtrada sigue editando esa misma fila.
 - [x] Prueba automática de la búsqueda y prueba de pantalla (abre la tabla, busca y muestra el conteo).
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario (junto con la Sección 112).
+- [x] **Subido a Producción** (08/10/2026) junto con la Sección 112, con el OK del usuario. Verónica sigue apagada en Producción.
 
 ## 41. Pendientes / recomendaciones
 
