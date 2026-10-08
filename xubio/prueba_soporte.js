@@ -13,7 +13,7 @@ const cuerpo = {
   condicionDePago: 1, transaccionid: 77723999, fechaComprobante: "2026-09-25",
   transaccionProductoItems: [{
     transaccionCVItemId: 95921824, importe: 152479.34, descripcion: "",
-    centroDeCosto: { ID: 61321, nombre: "WU MARTIN CORONADO", codigo: "WU_MARTIN_CORONADO", id: 61321 },
+    centroDeCosto: { ID: 61321 }, // 2º intento (08/10/2026): Xubio mandó el centro solo con {ID}
     cantidad: 1, precio: 152479.34,
     producto: { ID: 2676728, nombre: "MATERIALES", codigo: "MATERIALES", id: 2676728 },
     deposito: { ID: -2, nombre: "Depósito Universal", codigo: "DEPOSITO_UNIVERSAL", id: -2 },
