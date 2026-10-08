@@ -1463,6 +1463,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (08/10/2026) junto con la Sección 112, con el OK del usuario. Verónica sigue apagada en Producción.
 
+### 114. Verónica: importar el Excel y completar las columnas amarillas con los PDF
+
+- Pedido del usuario (08/10/2026, con su Excel de ejemplo y dos PDF de Cencosud): "el primer paso es importar el Excel… me armás todo tal cual el Excel en el sistema. Luego subo los PDF y me termina de completar los campos que están en amarillo… si hay ítem que se repite, la línea del que más unidades tiene (columna cantidad)… la clave es el número de solicitud" (ej. SNC "WH X999903960547").
+- [x] Amarillas en su Excel: **N° Comp, Asoc · Descripcion · Subtotal · Sucursal** (columnas E, G, H, J).
+- [x] Pestaña Verónica rehecha: 1) **Importar Excel** → la planilla queda en pantalla con sus 20 columnas, tal cual (cada columna se ubica por su título; fechas como dd/mm/aaaa; se guarda en la base, colección `veronicaPlanilla`). 2) **Subir PDF** (o arrastrar) → por el SNC (se compara la parte "X999…", así "WH X9999…" y " X9999…" coinciden) completa las amarillas vacías de esa fila (todas las filas con ese SNC); el resto de las columnas no se toca. Resultado por PDF: completado / ya estaba completo / no está en la planilla. 3) **Descargar Excel** con las 20 columnas (fechas como fecha, importes con 2 decimales).
+- [x] En pantalla: amarillo = falta completar con el PDF; verde = completado con el PDF (al pasar el mouse dice de qué archivo). Filtro "Por completar" (filas sin Subtotal o sin Sucursal; las filas viejas de su Excel que solo no tienen N° Comp. Asoc. no cuentan) y "Todas", buscador, "Vaciar planilla".
+- [x] Reimportar el Excel: reemplaza la planilla (pide confirmación) pero conserva lo que ya se había completado con PDF si en el Excel nuevo esas celdas están vacías.
+- [x] Probado con los archivos reales del usuario (no se suben al repositorio): WH X999903960547 → 0036A00002946 · "Merc Fact no Rec/Dif Descuento y/o preci" · $676.090,19 · Supermercados; WC X999903964306 → 611R00001948 · "Base de yogur vain 190g LAS TRES NIÑAS" (el ítem de más cantidad) · $187.722,91 · Jumbo Puertos. Prueba automática con datos inventados y prueba de pantalla de la descarga.
+- [x] Ya no se usan "Realizado" ni la lista de PDF sueltos de la versión anterior (la planilla manda).
+- [x] Publicado en QA. Producción: NO (Verónica sigue apagada en Producción salvo pedido explícito).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

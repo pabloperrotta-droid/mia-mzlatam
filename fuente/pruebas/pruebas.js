@@ -128,6 +128,30 @@ prueba("Búsqueda en la tabla de proveedores de Pagos", () => {
   assert.strictEqual(f.coincideBusquedaProveedor({ proveedor: "" }, "lucio"), true); // recién agregado
   assert.strictEqual(f.coincideBusquedaProveedor(fila, ""), true);
 });
+prueba("Verónica: importar la planilla y completar las amarillas con el PDF por SNC (datos inventados)", () => {
+  const tit = ["Fecha de Recepcion ", "Cliente", "FechaSNC", "SNC", "N° Comp, Asoc", "Concepto de SNC ", "Descripcion", "Subtotal", "Monto Final", "Sucursal", "Estado ", "OP", "Lote", "ND Interna", "Fecha NC", "Nro, NC Emitida", "Monto Neto", "Monto Final", "Observaciones", "Cargada en BI"];
+  const vacia = () => Array(20).fill("");
+  const r1 = vacia(); Object.assign(r1, { 0: new Date(Date.UTC(2026, 8, 21)), 1: "CLIENTE SA", 2: "07/09/2026", 3: "WH X999900000001", 5: "Diferencia", 8: 1000, 10: "En revisión" });
+  const r2 = vacia(); Object.assign(r2, { 0: 46286, 1: "CLIENTE SA", 2: "08/09/2026", 3: "WC X999900000002", 6: "Producto viejo", 7: 50, 8: 60, 9: "Local 1" });
+  const filas = JSON.parse(JSON.stringify(f.veroLeerPlanilla([[], tit, r1, vacia(), r2])));
+  assert.strictEqual(filas.length, 2);
+  assert.strictEqual(filas[0].v[0], "21/09/2026");
+  assert.strictEqual(filas[1].v[0], "21/09/2026"); // número de serie de Excel
+  assert.strictEqual(filas[0].v[3], "WH X999900000001");
+  assert.strictEqual(f.veroClaveSnc(" X999900000001"), f.veroClaveSnc("WH X999900000001"));
+  const pdf = { snc: "WH X999900000001", comprobante: "0001A00000001", descripcion: "Producto con más cantidad", subtotal: 800.5, sucursal: "Sucursal Uno" };
+  const r = JSON.parse(JSON.stringify(f.veroCompletarConPdf(filas, pdf, "solicitud.pdf")));
+  assert.strictEqual(r.estado, "completado");
+  assert.deepStrictEqual([r.filas[0].v[4], r.filas[0].v[6], r.filas[0].v[7], r.filas[0].v[9]], ["0001A00000001", "Producto con más cantidad", 800.5, "Sucursal Uno"]);
+  assert.strictEqual(r.filas[0].v[8], 1000); // el Monto Final del Excel no se toca
+  assert.deepStrictEqual(r.filas[1], filas[1]); // otra SNC: sin cambios
+  assert.strictEqual(f.veroCompletarConPdf(r.filas, pdf).estado, "ya_estaba");
+  assert.strictEqual(f.veroCompletarConPdf(filas, { ...pdf, snc: "WC X999911111111" }).estado, "no_esta");
+  // Reimportar el Excel sin esos datos: lo completado con el PDF se conserva.
+  const de_nuevo = JSON.parse(JSON.stringify(f.veroConservarCompletados(f.veroLeerPlanilla([tit, r1, r2]), r.filas)));
+  assert.strictEqual(de_nuevo[0].v[7], 800.5);
+  assert.strictEqual(de_nuevo[1].v[6], "Producto viejo");
+});
 prueba("Aviso de cambios pisados: si la pantalla siguió cambiando ese dato (ej. escribiendo el nombre), no avisa", () => {
   // Caso real (Romina): proveedor nuevo en la tabla de Proveedores, guardado letra por letra.
   const base = { reglasProveedoresPago: [] };

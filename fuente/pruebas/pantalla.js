@@ -109,16 +109,19 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.waitForFunction(() => document.body.innerText.includes("Facturas PDF cargadas"), null, { timeout: 30000 });
   });
   // Sección 99: el Excel de Verónica sale con las 20 columnas de su planilla, fechas como fecha.
-  await control("Verónica → Descargar Excel (20 columnas, fechas)", async () => {
+  await control("Verónica → planilla importada y Descargar Excel (20 columnas, fechas)", async () => {
     await pagina.evaluate(() => {
       VERO_ST.iniciado = true;
       VERO_ST.cargado = true;
-      VERO_ST.filas = {
-        p1: { id: "p1", snc: "WC X999901234567", fecha: "10/09/2026", recepcion: "05/10/2026", cliente: "CENCOSUD SA", comprobante: "0001A00000001", descripcion: "Producto", sucursal: "Sucursal", subtotal: 100.5, total: 121.6, cargado: 1 },
-      };
+      const v = Array(20).fill("");
+      Object.assign(v, { 0: "05/10/2026", 1: "CLIENTE SA", 2: "10/09/2026", 3: "WC X999901234567", 4: "0001A00000001", 6: "Producto", 7: 100.5, 8: 121.6, 9: "Sucursal" });
+      const v2 = Array(20).fill("");
+      Object.assign(v2, { 1: "CLIENTE SA", 3: "WH X999901234568", 8: 50 });
+      VERO_ST.planilla = { archivo: "prueba.xlsx", filas: [{ id: "f1", v, pdf: { 4: "a.pdf" } }, { id: "f2", v: v2, pdf: {} }] };
       VERO_ST.subs.forEach((f) => f());
     });
     await clic("Verónica");
+    await clic("Todas (2)");
     const espera = pagina.waitForEvent("download", { timeout: 15000 });
     await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Descargar Excel/.test(b.textContent)).click());
     const archivo = await (await espera).path();
