@@ -1213,8 +1213,30 @@
               React.createElement(
                 "div",
                 { style: { flex: 1, overflowY: "auto", padding: "8px 18px" } },
-                fallasGuardado.length > 0 &&
-                  React.createElement(
+                (() => {
+                  // Sección 112: solo las fallas posteriores a la última revisión (las revisadas, con un clic).
+                  const nuevas = fallasGuardado.filter((e) => Number(e.fecha) > fallasRevisadasHasta),
+                    revisadas = fallasGuardado.length - nuevas.length,
+                    lista = verFallasRevisadas ? fallasGuardado : nuevas,
+                    cuando = fallasRevisadasHasta
+                      ? new Date(fallasRevisadasHasta).toLocaleDateString("es-AR") + " " + new Date(fallasRevisadasHasta).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+                      : "",
+                    linkRevisadas =
+                      revisadas > 0 &&
+                      React.createElement(
+                        "button",
+                        { onClick: () => setVerFallasRevisadas((v) => !v), style: { border: "none", background: "none", color: NAVY, textDecoration: "underline", cursor: "pointer", fontSize: 12, padding: 0 } },
+                        verFallasRevisadas ? "Ocultar las revisadas" : "Ver las revisadas (" + revisadas + ")",
+                      );
+                  return lista.length === 0
+                    ? fallasRevisadasHasta > 0 &&
+                        React.createElement(
+                          "div",
+                          { style: { border: "1px solid #CFE3D2", background: "#EEF7EF", borderRadius: 10, padding: "8px 12px", margin: "6px 0 12px", fontSize: 12.5, color: "#2E6B3A", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
+                          React.createElement("span", null, "✓ Sin fallas de guardado nuevas desde el " + cuando + "."),
+                          linkRevisadas,
+                        )
+                    : React.createElement(
                     "div",
                     {
                       style: {
@@ -1227,10 +1249,22 @@
                     },
                     React.createElement(
                       "div",
-                      { style: { fontWeight: 700, color: RED, fontSize: 12.5, marginBottom: 6 } },
-                      "⚠ Fallas de guardado (" + fallasGuardado.length + ")",
+                      { style: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 6 } },
+                      React.createElement(
+                        "div",
+                        { style: { fontWeight: 700, color: RED, fontSize: 12.5 } },
+                        "⚠ Fallas de guardado (" + (verFallasRevisadas ? fallasGuardado.length + ", " + revisadas + " ya revisadas" : nuevas.length + (fallasRevisadasHasta ? " nuevas desde el " + cuando : "")) + ")",
+                      ),
+                      fn &&
+                        nuevas.length > 0 &&
+                        React.createElement(
+                          "button",
+                          { onClick: marcarFallasRevisadas, style: { ...smallBtnGhost, padding: "2px 10px", fontSize: 12 } },
+                          "Marcar como revisadas",
+                        ),
+                      linkRevisadas,
                     ),
-                    fallasGuardado.map((e, t) =>
+                    lista.map((e, t) =>
                       React.createElement(
                         "div",
                         {
@@ -1258,7 +1292,8 @@
                         React.createElement("div", { style: { color: "#333" } }, e.motivo),
                       ),
                     ),
-                  ),
+                  );
+                })(),
                 registros.length === 0
                   ? React.createElement(
                       "div",

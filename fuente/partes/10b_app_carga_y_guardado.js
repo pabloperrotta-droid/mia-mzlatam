@@ -140,6 +140,27 @@
           .catch(() => {});
     } catch {}
   }
+  // Sección 112: "Marcar como revisadas" en Fallas de guardado: se guarda hasta qué momento se revisaron
+  // (app/fallasRevisadas) y la lista muestra solo las posteriores (las revisadas se pueden ver con un clic).
+  useEffect(() => {
+    !or ||
+      !dbRef.current ||
+      (setVerFallasRevisadas(false),
+      dbRef.current
+        .doc("app/fallasRevisadas")
+        .get()
+        .then((d) => setFallasRevisadasHasta(Number(((d.exists && d.data()) || {}).hasta) || 0))
+        .catch(() => {}));
+  }, [or]);
+  function marcarFallasRevisadas() {
+    const hasta = Date.now();
+    dbRef.current &&
+      dbRef.current
+        .doc("app/fallasRevisadas")
+        .set({ hasta, por: rolActualRef.current })
+        .then(() => (setFallasRevisadasHasta(hasta), setVerFallasRevisadas(false)))
+        .catch(() => alert("No se pudo marcar como revisadas. Verificá la conexión."));
+  }
   useEffect(() => {
     !or ||
       !dbRef.current ||

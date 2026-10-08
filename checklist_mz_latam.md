@@ -1446,6 +1446,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Corrida única desde GitHub Actions (rama `xubio-prueba-soporte`, script `xubio/prueba_soporte.js`; la integración automática sigue en pausa en Producción y la rama no corre sola). Resultado: lectura antes OK (total 184.500, 1 renglón, centro NATURA CABILDO, sin órdenes de pago); **PUT con el JSON exacto de Xubio rechazado: 401 "No se pudo completar la operación. - FunctionalException"** (con token nuevo pedido justo antes y un reintento con otro token); lectura después OK y sin cambios. Conclusión: no es el formato del JSON ni el token; el rechazo lo da Xubio al modificar.
 - [ ] Respuesta a Xubio con el resultado (borrador entregado al usuario). Pendiente su respuesta.
 
+### 112. Fallas de guardado: "Marcar como revisadas"
+
+- Pregunta del usuario (08/10/2026): "¿por qué están todas esas fallas registradas?" — eran las notas del 07/10 11:13 (Admin cargando REFRIGERACION ALSINA en la tabla de Proveedores letra por letra), falsas alarmas de antes de la Sección 110; desde que se publicó la 110 no hubo notas nuevas. Pedido: "ok" a agregar un botón para marcarlas como revisadas.
+- [x] En Herramientas → Registros, la caja de Fallas de guardado muestra solo las posteriores a la última revisión, con el botón **"Marcar como revisadas"** (solo Admin) y el enlace "Ver las revisadas (N)". Si no hay nuevas: "✓ Sin fallas de guardado nuevas desde el dd/mm hh:mm". La fecha de revisión se guarda en la base (app/fallasRevisadas), así vale para todos.
+- [x] Prueba de pantalla: abre Herramientas → Registros.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

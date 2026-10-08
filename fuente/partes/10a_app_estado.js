@@ -217,6 +217,8 @@ function App() {
     [errorGuardado, setErrorGuardado] = useState(null),
     [reintentoGuardado, setReintentoGuardado] = useState(0),
     [fallasGuardado, setFallasGuardado] = useState([]),
+    [fallasRevisadasHasta, setFallasRevisadasHasta] = useState(0),
+    [verFallasRevisadas, setVerFallasRevisadas] = useState(false),
     baseGuardadaRef = useRef(null),
     misGuardadosRef = useRef([]),
     reintentandoRef = useRef(false),

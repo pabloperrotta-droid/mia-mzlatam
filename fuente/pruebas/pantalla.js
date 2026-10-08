@@ -67,6 +67,19 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (p === "Cashflow") for (const s of SUB_CASHFLOW) await control("Cashflow → " + s, () => clic(s));
   }
   // Sección 97: cargar una factura PDF ficticia cuyos datos están solo en el QR (prueba el lector de QR).
+  await control("Herramientas → Registros (con Fallas de guardado)", async () => {
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Herramientas")).click());
+    await pagina.waitForTimeout(300);
+    await clic("Registros");
+    const ok = await pagina.evaluate(() => document.body.innerText.includes("cambios de los últimos 3 días"));
+    if (!ok) throw new Error("No se abrió la ventana de Registros");
+    await pagina.keyboard.press("Escape");
+    await pagina.evaluate(() => {
+      const x = [...document.querySelectorAll("button")].find((b) => b.closest("[role=dialog]") || (b.parentElement && b.parentElement.textContent.includes("cambios de los últimos 3 días") && b.querySelector("svg")));
+      x && x.click();
+    });
+    await pagina.waitForTimeout(300);
+  });
   await control("Pagos → Facturas PDF (lee el QR de ARCA)", async () => {
     await clic("Pagos");
     const entrada = await pagina.$("input[type=file][multiple]");
