@@ -1444,7 +1444,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - Soporte de Xubio (07/10/2026) pidió ejecutar PUT /ComprobanteCompraBean con su JSON sobre la factura 77723999 (A-00011-00008239, $184.500), con el centro WU MARTIN CORONADO y el id del renglón (transaccionCVItemId 95921824). El usuario lo autorizó ("sí autorizo").
 - [x] Corrida única desde GitHub Actions (rama `xubio-prueba-soporte`, script `xubio/prueba_soporte.js`; la integración automática sigue en pausa en Producción y la rama no corre sola). Resultado: lectura antes OK (total 184.500, 1 renglón, centro NATURA CABILDO, sin órdenes de pago); **PUT con el JSON exacto de Xubio rechazado: 401 "No se pudo completar la operación. - FunctionalException"** (con token nuevo pedido justo antes y un reintento con otro token); lectura después OK y sin cambios. Conclusión: no es el formato del JSON ni el token; el rechazo lo da Xubio al modificar.
-- [ ] Respuesta a Xubio con el resultado (borrador entregado al usuario). Pendiente su respuesta.
+- [x] Respuesta a Xubio con el resultado (borrador entregado al usuario).
+- [x] 2º pedido de soporte (08/10/2026, Joaquín): mismo PUT con el centro solo como `{"ID": 61321}` y cotización 1. Corrido igual (rama `xubio-prueba-soporte`): **otra vez 401 "No se pudo completar la operación. - FunctionalException"**; la factura sigue sin cambios (NATURA CABILDO, $184.500, sin OP). Dato para Xubio: el 30/09 un PUT a esta misma factura (centro como `{ID}`) sí funcionó. Nuevo borrador de respuesta entregado al usuario.
 
 ### 112. Fallas de guardado: "Marcar como revisadas"
 
