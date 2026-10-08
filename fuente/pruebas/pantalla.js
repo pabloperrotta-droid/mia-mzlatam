@@ -80,6 +80,23 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     });
     await pagina.waitForTimeout(300);
   });
+  await control("Pagos → Proveedores (MAT/MO/Fact. A) con búsqueda", async () => {
+    await clic("Pagos");
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Proveedores (MAT/MO")).click());
+    await pagina.waitForTimeout(400);
+    const campo = pagina.locator('input[placeholder^="Buscar proveedor, razón social"]');
+    if (!(await campo.count())) throw new Error("No está el campo de búsqueda");
+    await campo.fill("zzzz-no-existe");
+    await pagina.waitForTimeout(300);
+    const txt = await pagina.evaluate(() => document.body.innerText);
+    if (!/\b0 de \d+/.test(txt)) throw new Error("No muestra el conteo de la búsqueda");
+    await campo.fill("");
+    await pagina.evaluate(() => {
+      const t = [...document.querySelectorAll("div")].find((d) => d.textContent.trim() === "Proveedores — Actividad y Factura");
+      t && t.parentElement.querySelector("button").click();
+    });
+    await pagina.waitForTimeout(300);
+  });
   await control("Pagos → Facturas PDF (lee el QR de ARCA)", async () => {
     await clic("Pagos");
     const entrada = await pagina.$("input[type=file][multiple]");

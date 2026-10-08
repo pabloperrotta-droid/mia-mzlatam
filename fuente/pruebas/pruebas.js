@@ -118,6 +118,16 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Búsqueda en la tabla de proveedores de Pagos", () => {
+  const fila = { proveedor: "REFRIGERACION ALSINA", razonSocial: "Refrigeración Alsina SRL", cuit: "30-71720122-8", cbu: "0170099220000012345678", imputacion: "PINTURA" };
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, "alsina"), true);
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, "refrigeración"), true);
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, "30717201228"), true);
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, "pintura"), true);
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, "lucio"), false);
+  assert.strictEqual(f.coincideBusquedaProveedor({ proveedor: "" }, "lucio"), true); // recién agregado
+  assert.strictEqual(f.coincideBusquedaProveedor(fila, ""), true);
+});
 prueba("Aviso de cambios pisados: si la pantalla siguió cambiando ese dato (ej. escribiendo el nombre), no avisa", () => {
   // Caso real (Romina): proveedor nuevo en la tabla de Proveedores, guardado letra por letra.
   const base = { reglasProveedoresPago: [] };

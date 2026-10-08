@@ -1454,6 +1454,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [ ] Producción: pendiente del OK del usuario.
 
+### 113. Pagos → Proveedores (MAT/MO/Fact. A): campo de búsqueda
+
+- Pedido del usuario (08/10/2026): "en pagos, la sección de proveedores MAT/MO etc… agregá un campo de búsqueda".
+- [x] Campo "Buscar proveedor, razón social, CUIT, CBU…" arriba de la tabla, con ✕ para borrar y el conteo "N de M". Busca en Proveedor, Razón Social, CUIT, CBU, Imputación, Actividad y Factura, sin distinguir mayúsculas ni acentos; varias palabras tienen que estar todas; CUIT y CBU se encuentran también sin guiones. Las filas recién agregadas (todavía sin nombre) se muestran siempre. Editar una fila filtrada sigue editando esa misma fila.
+- [x] Prueba automática de la búsqueda y prueba de pantalla (abre la tabla, busca y muestra el conteo).
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario (junto con la Sección 112).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

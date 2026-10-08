@@ -539,6 +539,16 @@ function XubioBotonesOP({ esAdmin, puedeEditar }) {
       ),
   );
 }
+// Sección 113: ¿la fila de la tabla de proveedores coincide con lo buscado? (sin mayúsculas ni acentos; el CUIT
+// y el CBU también sin guiones). Las filas recién agregadas (sin nombre) se muestran siempre.
+function coincideBusquedaProveedor(fila, texto) {
+  const norm = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  const q = norm(texto);
+  if (!q || !fila || !String(fila.proveedor || "").trim()) return true;
+  const dig = q.replace(/\D/g, "");
+  const campos = [fila.proveedor, fila.razonSocial, fila.cuit, fila.cbu, fila.imputacion, fila.actividad, fila.factura].map(norm);
+  return q.split(/\s+/).every((p) => campos.some((c) => c.includes(p))) || (dig.length >= 4 && [fila.cuit, fila.cbu].some((c) => String(c || "").replace(/\D/g, "").includes(dig)));
+}
 function PagosView({
   rows: n,
   obras: d,
@@ -579,6 +589,7 @@ function PagosView({
         : "Cliente";
     },
     [nt, H] = useState("vacias"),
+    [buscaProv, setBuscaProv] = useState(""),
     [Ee, Nt] = useState(""),
     [qt, po] = useState(false),
     [oo, Eo] = useState(false),
@@ -3763,6 +3774,21 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                 borderBottom: "1px solid " + BORDER,
               },
             },
+            // Sección 113: búsqueda en la tabla de proveedores (nombre, razón social, CUIT, CBU, imputación…).
+            React.createElement("input", {
+              value: buscaProv,
+              onChange: (l) => setBuscaProv(l.target.value),
+              placeholder: "Buscar proveedor, razón social, CUIT, CBU…",
+              style: { ...inputStyle, width: 260, padding: "6px 10px", fontSize: 12.5 },
+            }),
+            buscaProv &&
+              React.createElement("button", { onClick: () => setBuscaProv(""), style: smallBtnGhost, title: "Borrar búsqueda" }, "✕"),
+            buscaProv &&
+              React.createElement(
+                "span",
+                { style: { fontSize: 12, color: MUTED } },
+                (A || []).filter((l) => coincideBusquedaProveedor(l, buscaProv)).length + " de " + (A || []).length,
+              ),
             React.createElement("button", { onClick: Jt, style: smallBtnGhost }, "Traer proveedores nuevos de Costos"),
             React.createElement(
               "button",
@@ -3847,7 +3873,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                     ),
                   ),
                 (A || []).map((l, I) =>
-                  React.createElement(
+                  !coincideBusquedaProveedor(l, buscaProv) ? null : React.createElement(
                     "tr",
                     { key: I },
                     React.createElement(
