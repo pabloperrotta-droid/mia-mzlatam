@@ -31,12 +31,27 @@ const resumen = (f) => {
   const antes = await xubio("GET", "/comprobanteCompraBean/" + ID);
   console.log("::notice::ANTES " + resumen(antes));
   if (Math.abs(Number(antes.importetotal) - 184500) > 1) { console.log("::error::El total no es 184500: no se manda nada."); process.exit(1); }
-  try {
-    await xubio("PUT", "/comprobanteCompraBean/" + ID, cuerpo);
-    console.log("::notice::PUT OK");
-  } catch (e) {
-    console.log("::error::PUT rechazado: " + String((e && e.message) || e).slice(0, 600).replace(/\n/g, " "));
-  }
+  // 3er pedido de soporte (09/10): "el CURL que están utilizando y el error exacto". Se hace el PUT a mano
+  // (sin el ayudante) para mostrar la respuesta de Xubio completa, tal cual llega.
+  const id = String(process.env.XUBIO_CLIENT_ID || "").trim(), sec = String(process.env.XUBIO_SECRET_ID || "").trim();
+  const tk = await fetch("https://xubio.com/API/1.1/TokenEndpoint", {
+    method: "POST",
+    headers: { Authorization: "Basic " + Buffer.from(id + ":" + sec).toString("base64"), "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    body: "grant_type=client_credentials",
+  });
+  const tkTxt = await tk.text();
+  console.log("::notice::TOKEN status " + tk.status + " | campos: " + Object.keys((() => { try { return JSON.parse(tkTxt); } catch { return {}; } })()).join(","));
+  const token = JSON.parse(tkTxt).access_token;
+  const cuerpoTxt = JSON.stringify(cuerpo);
+  const r = await fetch("https://xubio.com/API/1.1/comprobanteCompraBean/" + ID, {
+    method: "PUT",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
+    body: cuerpoTxt,
+  });
+  const txt = await r.text();
+  console.log("::notice::PUT status " + r.status + " " + r.statusText + " | date " + r.headers.get("date") + " | content-type " + r.headers.get("content-type") + " | largo " + txt.length);
+  for (let i = 0; i < Math.min(txt.length, 12000); i += 1800) console.log("::notice::RESPUESTA[" + i + "] " + txt.slice(i, i + 1800).replace(/\r?\n/g, " ⏎ "));
+  console.log("::notice::BODY_ENVIADO_LARGO " + cuerpoTxt.length);
   const despues = await xubio("GET", "/comprobanteCompraBean/" + ID);
   console.log("::notice::DESPUES " + resumen(despues));
 })().catch((e) => { console.log("::error::" + String((e && e.message) || e).slice(0, 600).replace(/\n/g, " ")); process.exit(1); });
