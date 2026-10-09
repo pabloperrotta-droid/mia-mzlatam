@@ -263,7 +263,7 @@ function VeronicaView({ canEdit: puede }) {
   const st = useVeronica(),
     planilla = st.planilla,
     filas = (planilla && planilla.filas) || [],
-    [filtro, setFiltro] = React.useState("pendientes"),
+    [filtro, setFiltro] = React.useState("todas"),
     [busca, setBusca] = React.useState(""),
     [prog, setProg] = React.useState(""),
     [res, setRes] = React.useState(null),
@@ -287,7 +287,7 @@ function VeronicaView({ canEdit: puede }) {
       const finales = veroConservarCompletados(nuevas, filas);
       await guardar(finales, { archivo: archivo.name, importado: Date.now() });
       setRes({ titulo: "✅ Excel importado: " + finales.length + " filas (" + finales.filter((f) => veroFaltan(f).length).length + " con campos amarillos por completar)", lineas: [] });
-      setFiltro("pendientes");
+      setFiltro("todas"); // Sección 115: después de importar se ve la planilla entera, tal cual el Excel
     } catch (e) {
       window.alert("No se pudo leer el Excel: " + ((e && e.message) || e));
     }
@@ -412,8 +412,8 @@ function VeronicaView({ canEdit: puede }) {
         React.createElement(Download, { size: 13, style: { verticalAlign: "-2px" } }),
         " 3) Descargar Excel",
       ),
-      React.createElement("button", { onClick: () => setFiltro("pendientes"), style: boton(filtro === "pendientes") }, "Por completar (" + pendientes.length + ")"),
       React.createElement("button", { onClick: () => setFiltro("todas"), style: boton(filtro === "todas") }, "Todas (" + filas.length + ")"),
+      React.createElement("button", { onClick: () => setFiltro("pendientes"), style: boton(filtro === "pendientes") }, "Solo por completar con PDF (" + pendientes.length + ")"),
       React.createElement("input", { value: busca, onChange: (e) => setBusca(e.target.value), placeholder: "Buscar SNC, sucursal, descripción…", style: { ...inputStyle, width: 230 } }),
       puede && filas.length > 0 && React.createElement("button", { onClick: vaciar, style: { ...smallBtnGhost, color: RED } }, "Vaciar planilla"),
     ),

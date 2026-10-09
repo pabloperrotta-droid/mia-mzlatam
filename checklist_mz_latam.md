@@ -1474,6 +1474,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Ya no se usan "Realizado" ni la lista de PDF sueltos de la versión anterior (la planilla manda).
 - [x] Publicado en QA. Producción: NO (Verónica sigue apagada en Producción salvo pedido explícito).
 
+### 115. Verónica: al importar se ve la planilla entera
+
+- Aviso del usuario (08/10/2026): "el Excel inicial que yo subo… me tenía que subir todos los campos del Excel, no solo lo que está en amarillo". Se importaban todas las filas y columnas, pero después de importar la vista quedaba en el filtro "Por completar" y solo mostraba las filas con amarillas pendientes.
+- [x] Ahora la vista por defecto (al entrar y después de importar) es **"Todas"**: la planilla completa, todas las filas y las 20 columnas, tal cual el Excel. El filtro opcional se llama "Solo por completar con PDF".
+- [x] Prueba de pantalla: al entrar se ven todas las filas.
+- [x] Publicado en QA. Producción: NO (Verónica apagada en Producción).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
