@@ -1513,6 +1513,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Últimos 30 días: 148 OP en Xubio, 138 instrumentos con cheque (todos con `chequePropio`), así que el control por e-cheq tiene con qué comparar.
 - [x] La integración en Producción sigue en pausa.
 
+### 120. Xubio: centro de costo solo en líneas sin Fecha Pagado, y centros nuevos más rápido
+
+- Pedidos del usuario (09/10/2026): "que se haga en las sin fecha de pago, incluida la postergada, sí" (las ya pagadas no se tocan); y sobre los centros que no existen en Xubio: "cada seis horas… ¿no puede ser más rápido?".
+- [x] `xubio/procesar.js`: el centro de costo se pone solo en líneas **sin Fecha Pagado** ("Sin Fecha Pagado" y "Postergados"). Las pagadas no se mandan a Xubio, salvo las pagadas desde que se activen las órdenes de pago (esas necesitan el centro antes de emitir su OP). Los estados que ya tenían las pagadas viejas quedan como estaban.
+- [x] Centro que no existía en Xubio ("No hay en Xubio un centro de costo que coincida…"): se vuelve a probar **cada 30 minutos** (antes, una vez por día). Cada prueba busca en la lista de Xubio en ese momento, así que apenas se crea a mano en Xubio, en ≤30 min la línea pasa a ✅.
+- [x] La lista de centros de Xubio que se ve en MIA se actualiza cada 30 minutos (antes cada 6 horas).
+- [x] Sigue sin crear centros de costo en Xubio (la API no lo permite y el usuario pidió no crear nada).
+- [x] La integración en Producción sigue en pausa.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).

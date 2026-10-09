@@ -96,7 +96,14 @@ async function procesarLineas(amb) {
   // en 3 sub obras de WU): en Xubio se le pone el centro de costo de la parte con mayor Importe Bruto
   // (definición del usuario: "en Xubio poner el centro de costo de la imputación más grande"). Las demás
   // líneas quedan como "en_otra_linea".
-  const validas = lineas.filter((l) => l && l.id && soloDigitos(l.cuit) && t(l.factura));
+  // Sección 120 (pedido del usuario, 09/10/2026): el centro de costo se pone solo en las líneas SIN Fecha Pagado
+  // ("Sin Fecha Pagado" y "Postergados"). Las pagadas no se tocan (en Xubio ya suelen tener el pago aplicado), salvo
+  // las pagadas desde que se activaron las OP: esas necesitan el centro antes de emitir su OP.
+  const cfgOP = await db.doc(amb.prefijo + "xubioConfig/op").get();
+  const opDesde = (cfgOP.exists && cfgOP.get("desde")) || null;
+  const validas = lineas.filter(
+    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && (!fechaISO(l.fechaPagado) || (opDesde && fechaISO(l.fechaPagado) >= opDesde)),
+  );
   const objetivo = (l) =>
     normalizar(
       t(l.centroCostoXubio) ||
@@ -139,7 +146,8 @@ async function procesarLineas(amb) {
     else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
-    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
+    // Sección 120: si faltaba el centro de costo en Xubio, se vuelve a probar cada 30 minutos (por si lo crearon a mano).
+    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (e.estado === "centro_no_encontrado" ? 30 * 60 * 1000 : LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;
     if (prioridad !== null) cola.push({ l, f, e, prioridad });
   }
@@ -332,11 +340,12 @@ async function procesarPedidos(amb) {
   }
 }
 
-// ---------- Lista de centros de costo de Xubio para MIA (cada ~6 horas) ----------
+// ---------- Lista de centros de costo de Xubio para MIA (cada ~30 minutos) ----------
 async function actualizarCentros() {
   const refs = AMBIENTES.map((a) => db.doc(a.prefijo + "xubioConfig/centros"));
   const actual = await refs[0].get();
-  if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 6 * 3600 * 1000) return;
+  // Sección 120: la lista de centros de Xubio que se ve en MIA se actualiza cada 30 minutos (antes cada 6 horas).
+  if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 30 * 60 * 1000) return;
   const nombres = (await centrosDeCosto())
     .map((c) => c.nombre)
     .filter(Boolean)
