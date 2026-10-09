@@ -315,6 +315,7 @@ const XUBIO_OP_ESTADOS = {
   creada: ["🧾", "OP creada en Xubio", "#1A7F37"],
   anterior: ["–", "OP hecha a mano (ya estaba pagada al activar la integración)", MUTED],
   ya_existia: ["🧾", "OP ya estaba en Xubio", "#1A7F37"],
+  pago_ya_aplicado: ["–", "El pago ya fue aplicado anteriormente en Xubio (OP hecha a mano): no se emitió la OP", "#9A6700"],
   creando: ["⏳", "Creando la OP…", "#9A6700"],
   lista: ["🧾", "OP lista", "#0969DA"],
   esperando_centro: ["⏳", "OP: esperando el centro de costo", "#9A6700"],

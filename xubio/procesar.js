@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -189,7 +189,7 @@ async function procesarLineas(amb) {
 
 
 // ---------- Órdenes de pago (ver ordenesPago.js) ----------
-const OP_HECHA = new Set(["creada", "ya_existia"]);
+const OP_HECHA = new Set(["creada", "ya_existia", "pago_ya_aplicado"]);
 async function procesarOPs(amb) {
   const cfgRef = db.doc(amb.prefijo + "xubioConfig/op");
   const cfgSnap = await cfgRef.get();
@@ -245,6 +245,27 @@ async function procesarOPs(amb) {
     const doc = { ...r, actualizado: Date.now(), modo: crear ? "crear" : "vista_previa" };
     delete doc.cuerpo;
     if (r.estado === "lista" && crear) {
+      // Sección 118: antes de emitir, se verifica factura por factura que no tenga ya un pago aplicado.
+      let aplicadas = [];
+      try {
+        for (const f of r.facturas || []) (await facturaYaAplicada(f.id)).aplicada && aplicadas.push(f.numero);
+      } catch (e) {
+        doc.estado = "error";
+        doc.mensaje = "No se pudo verificar si las facturas ya tienen un pago aplicado: " + texto((e && e.message) || e, 300);
+        await colOP.doc(clave).set(limpio(doc));
+        console.log(`[${amb.nombre}] OP ${clave} → error al verificar: ${doc.mensaje}`);
+        continue;
+      }
+      if (aplicadas.length) {
+        doc.estado = "pago_ya_aplicado";
+        doc.mensaje =
+          "El pago ya fue aplicado anteriormente en Xubio a " + (aplicadas.length > 1 ? "las facturas " : "la factura ") + aplicadas.join(", ") +
+          " (la OP se hizo a mano). No se emitió la OP.";
+        await registrar(amb, { accion: "ordenPago", grupo: clave, estado: doc.estado, mensaje: doc.mensaje });
+        await colOP.doc(clave).set(limpio(doc));
+        console.log(`[${amb.nombre}] OP ${clave} → ${doc.estado}: ${doc.mensaje}`);
+        continue;
+      }
       await colOP.doc(clave).set(limpio({ ...doc, estado: "creando" }));
       try {
         const c = await crearOP(r.cuerpo);

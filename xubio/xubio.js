@@ -511,4 +511,30 @@ async function resumenFacturas(p) {
 
 
 
-module.exports = { resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+// Sección 118 (pedido del usuario, 09/10/2026): justo antes de emitir la OP, se vuelve a guardar cada factura
+// en Xubio con el mismo centro de costo que ya tiene (sin cambiar nada). Si Xubio responde "La transacción se
+// encuentra aplicada", la factura ya tiene un pago aplicado (alguien hizo la OP a mano) y la OP no se emite.
+async function facturaYaAplicada(id) {
+  const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const numero = completo.numeroDocumento;
+  if (comoLista(completo.transaccionOrdenPagoItems).length) return { aplicada: true, numero };
+  const items = comoLista(completo.transaccionProductoItems);
+  const cuerpo = {
+    ...completo,
+    transaccionProductoItems: items.map((it) => ({ ...it, ...(it.centroDeCosto && idDe(it.centroDeCosto) != null ? { centroDeCosto: { ID: idDe(it.centroDeCosto) } } : {}) })),
+  };
+  try {
+    await xubio("PUT", "/comprobanteCompraBean/" + id, cuerpo);
+  } catch (err) {
+    if (/se encuentra aplicada/i.test(String(err.message || "") + String(err.cuerpo || ""))) return { aplicada: true, numero };
+    throw err;
+  }
+  // Control: se vuelve a leer y no tiene que haber cambiado el total ni los centros.
+  const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const centros = (f) => comoLista(f.transaccionProductoItems).map((it) => idDe(it.centroDeCosto)).join(",");
+  if (Number(despues.importetotal) !== Number(completo.importetotal) || centros(despues) !== centros(completo))
+    throw new Error("Al verificar la factura " + numero + " en Xubio cambió el total o el centro de costo: revisarla.");
+  return { aplicada: false, numero };
+}
+
+module.exports = { facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };

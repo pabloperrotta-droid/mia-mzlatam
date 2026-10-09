@@ -1496,6 +1496,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - Regla que confirma esto (ya estaba anotada en la Sección 87): el centro de costo se tiene que poner en Xubio **antes** de aplicar el pago/OP; después Xubio no deja cambiarlo.
 - La integración automática en Producción sigue en pausa (`automatico: false`); reactivarla queda a decisión del usuario.
 
+### 118. Órdenes de pago: no emitir si el pago ya se aplicó a mano en Xubio
+
+- Pregunta del usuario (09/10/2026): "…lo único que falta es que yo haga tilde en pagado para que emitas la OP, pero en el medio una persona hace la OP manual y le aplica el pago. ¿Qué pasa?". Hueco detectado: la OP solo se reconocía como ya hecha si había una del mismo proveedor, misma fecha y mismo importe; con otra fecha o importe se habría duplicado.
+- Regla del usuario: "cuando pongo pagado, que chequee si se puede cambiar el centro de costo o no… va por número de factura, más que por número de cheque… si lo puede cambiar, emite la orden de pago. Si no, no la emite y me dice: el pago ya ha sido aplicado anteriormente".
+- [x] `xubio/xubio.js` → `facturaYaAplicada(id)`: vuelve a guardar la factura en Xubio con el mismo centro de costo que ya tiene (sin cambiar nada); si Xubio responde "La transacción se encuentra aplicada" (o la factura trae una OP), está aplicada. Después de guardar, la vuelve a leer y controla que no hayan cambiado el total ni los centros.
+- [x] `xubio/procesar.js`: con la OP lista y en modo de crear, antes de emitirla se verifica cada factura del grupo. Si alguna ya está aplicada → no se emite y la línea queda "– El pago ya fue aplicado anteriormente en Xubio (OP hecha a mano): no se emitió la OP" (con las facturas), y no se reintenta. Si la verificación da error → "error" y se reintenta en la próxima pasada. Se mantiene además el control de OP igual (mismo proveedor, fecha e importe).
+- [x] QA (vista previa) no verifica ni emite nada en Xubio. La integración en Producción sigue en pausa (`automatico: false`).
+- [x] Publicado en QA (pantalla: nuevo estado de OP). Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
