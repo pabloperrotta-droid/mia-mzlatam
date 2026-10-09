@@ -270,7 +270,8 @@ function VeronicaView({ canEdit: puede }) {
     [arrastre, setArrastre] = React.useState(false),
     q = normalizarTexto(busca),
     pendientes = filas.filter((f) => veroFaltan(f).length),
-    visibles = (filtro === "pendientes" ? pendientes : filas).filter((f) => !q || normalizarTexto(f.v.join(" ")).includes(q));
+    completas = filas.filter((f) => !veroFaltan(f).length),
+    visibles = (filtro === "pendientes" ? pendientes : filtro === "completas" ? completas : filas).filter((f) => !q || normalizarTexto(f.v.join(" ")).includes(q));
   async function guardar(nuevas, extra) {
     const db = veroDb();
     if (!db) throw new Error("Sin conexión con la base de datos.");
@@ -348,7 +349,7 @@ function VeronicaView({ canEdit: puede }) {
       }),
     );
     XLSX.utils.book_append_sheet(libro, hoja, "Hoja1");
-    descargarLibroXlsx(libro, "planilla_nc_" + (filtro === "pendientes" ? "pendientes_" : "") + new Date().toISOString().slice(0, 10) + ".xlsx");
+    descargarLibroXlsx(libro, "planilla_nc_" + (filtro === "pendientes" ? "por_completar_" : filtro === "completas" ? "completas_" : "") + new Date().toISOString().slice(0, 10) + ".xlsx");
   }
   const th = { textAlign: "left", padding: "7px 8px", fontSize: 10.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", background: "#FAFAF7", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 1 },
     td = { padding: "6px 8px", fontSize: 12, borderBottom: "1px solid #EEE", verticalAlign: "top", whiteSpace: "nowrap", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" },
@@ -413,7 +414,9 @@ function VeronicaView({ canEdit: puede }) {
         " 3) Descargar Excel",
       ),
       React.createElement("button", { onClick: () => setFiltro("todas"), style: boton(filtro === "todas") }, "Todas (" + filas.length + ")"),
-      React.createElement("button", { onClick: () => setFiltro("pendientes"), style: boton(filtro === "pendientes") }, "Solo por completar con PDF (" + pendientes.length + ")"),
+      // Sección 116: filtros Todas / Por completar (falta PDF) / Completas.
+      React.createElement("button", { onClick: () => setFiltro("pendientes"), style: boton(filtro === "pendientes") }, "Por completar — falta PDF (" + pendientes.length + ")"),
+      React.createElement("button", { onClick: () => setFiltro("completas"), style: boton(filtro === "completas") }, "Completas (" + completas.length + ")"),
       React.createElement("input", { value: busca, onChange: (e) => setBusca(e.target.value), placeholder: "Buscar SNC, sucursal, descripción…", style: { ...inputStyle, width: 230 } }),
       puede && filas.length > 0 && React.createElement("button", { onClick: vaciar, style: { ...smallBtnGhost, color: RED } }, "Vaciar planilla"),
     ),
@@ -477,7 +480,7 @@ function VeronicaView({ canEdit: puede }) {
               React.createElement(
                 "td",
                 { colSpan: VERO_COLS.length, style: { ...td, textAlign: "center", color: MUTED, padding: 24, whiteSpace: "normal" } },
-                !st.cargado ? "Cargando…" : !filas.length ? "Todavía no hay planilla. Importá el Excel (o arrastralo acá)." : filtro === "pendientes" ? "No quedan filas con campos amarillos por completar." : "No hay filas.",
+                !st.cargado ? "Cargando…" : !filas.length ? "Todavía no hay planilla. Importá el Excel (o arrastralo acá)." : filtro === "pendientes" ? "No quedan filas con campos amarillos por completar." : filtro === "completas" ? "Todavía no hay filas completas." : "No hay filas.",
               ),
             ),
           visibles.map((f) =>

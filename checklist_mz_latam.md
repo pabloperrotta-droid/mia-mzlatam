@@ -1481,6 +1481,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Prueba de pantalla: al entrar se ven todas las filas.
 - [x] Publicado en QA. Producción: NO (Verónica apagada en Producción).
 
+### 116. Verónica: filtros Todas / Por completar / Completas
+
+- Pedido del usuario (08/10/2026): "poné como filtro: todas, falta PDF / por completar, y completas también".
+- [x] Tres filtros: **Todas** (por defecto), **Por completar — falta PDF** (filas sin Subtotal o sin Sucursal) y **Completas** (el resto). Cada uno con su cantidad. "Descargar Excel" baja lo que se ve según el filtro y el buscador.
+- [x] Prueba de pantalla de los tres filtros.
+- [x] Publicado en QA. Producción: NO (Verónica apagada en Producción).
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
