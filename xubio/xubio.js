@@ -79,7 +79,8 @@ async function xubioUnaVez(metodo, ruta, cuerpo) {
       const msgs = [];
       const juntar = (o, prof) => {
         if (!o || typeof o !== "object" || prof > 4) return;
-        for (const k of ["message", "localizedMessage", "error", "error_description", "descripcion", "mensaje"])
+        // "description" trae el motivo real (soporte de Xubio, 09/10/2026: "La transacción se encuentra aplicada.").
+        for (const k of ["description", "message", "localizedMessage", "error", "error_description", "descripcion", "mensaje"])
           if (typeof o[k] === "string" && o[k] && !msgs.includes(o[k])) msgs.push(o[k]);
         if (o.cause) juntar(o.cause, prof + 1);
       };
@@ -351,6 +352,16 @@ async function asignarCentroCosto(p) {
     await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
+    // Xubio (09/10/2026): el rechazo era porque "La transacción se encuentra aplicada" (la factura ya tiene un
+    // pago/OP aplicado). Una factura aplicada no se puede modificar por la API.
+    if (/se encuentra aplicada/i.test(String(err.message || "") + String(err.cuerpo || "")))
+      return {
+        estado: "bloqueada",
+        mensaje: "Factura aplicada en Xubio: la factura " + completo.numeroDocumento + " ya tiene un pago aplicado, y Xubio no deja cambiarle el centro de costo por la API. Si hace falta, ponerle \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
+        factura: antes,
+        centroDeCosto: cc,
+        transaccionid: id,
+      };
     // Se guarda la respuesta completa de Xubio (JSON) para poder mandarla a soporte (info@xubio.com).
     return { ...bloqueada(false), errorXubio: String(err.cuerpo || err.message || "").slice(0, 6000), transaccionid: id };
   }

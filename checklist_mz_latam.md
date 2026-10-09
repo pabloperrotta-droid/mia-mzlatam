@@ -1489,6 +1489,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Prueba de pantalla de los tres filtros.
 - [x] Publicado en QA. Producción: NO (Verónica apagada en Producción).
 
+### 117. Xubio: causa del rechazo encontrada — "La transacción se encuentra aplicada"
+
+- Respuesta de soporte de Xubio (09/10/2026, con el error exacto que les mandamos): "el comprobante de compra se encuentra aplicado… `description`: \"La transacción se encuentra aplicada.\", codeResponse 400… Debido a esto se genera el error". O sea: la factura A-00011-00008239 ya tiene un pago aplicado en Xubio (después del 30/09, cuando el cambio sí funcionó), y Xubio no deja modificar una factura aplicada por la API. La lectura de la factura no lo muestra (`transaccionOrdenPagoItems` viene vacío), por eso MIA no lo detectaba antes.
+- [x] `xubio/xubio.js`: al leer un error de Xubio se toma también el campo `description` (el motivo real), y si dice "se encuentra aplicada" la línea queda ⚠️ **"Factura aplicada en Xubio… Xubio no deja cambiarle el centro de costo por la API. Si hace falta, ponerle … a mano en Xubio"** (antes: "No se pudo completar la operación").
+- Regla que confirma esto (ya estaba anotada en la Sección 87): el centro de costo se tiene que poner en Xubio **antes** de aplicar el pago/OP; después Xubio no deja cambiarlo.
+- La integración automática en Producción sigue en pausa (`automatico: false`); reactivarla queda a decisión del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
