@@ -1524,6 +1524,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 ## 41. Pendientes / recomendaciones
 
+- [ ] **Activar Xubio en Producción cuando el usuario avise** ("dejá todo preparado, yo te aviso en estos días para subirlo", 09/10/2026). Pasos: (1) publicar `MIA.prd.html` con lo que está en QA de Pagos (estado de OP "pago ya aplicado", Sección 118) — Verónica sigue apagada; (2) en `xubio/procesar.js` poner `automatico: true` en "prd"; (3) confirmar con el usuario si se activan centro de costo y órdenes de pago juntos o primero solo el centro. Al activar las OP se fija la fecha "desde" (las líneas pagadas antes quedan como "anterior").
+
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
 - [ ] Definir si el link de Artifact de Claude se deja fijo apuntando a `MIAQA.html`/`MIA.prd.html`, o se retira directamente, ya que no puede mostrar datos reales.
 - [ ] Si hay gente del equipo que antes entraba a Producción sin PIN (modo solo lectura), avisarles que ahora necesitan un PIN (el de Admin, Comercial, o un rol nuevo que se les cree).
