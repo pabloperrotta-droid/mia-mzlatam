@@ -273,7 +273,11 @@ async function procesarOPs(amb) {
         doc.opNumero = c.numero || null;
         doc.opId = c.id || null;
         doc.mensaje =
-          (c.estado === "creada" ? "OP " + c.numero + " creada en Xubio." : "Ya había en Xubio una OP igual: " + c.numero + ".") +
+          (c.estado === "creada"
+            ? "OP " + c.numero + " creada en Xubio."
+            : c.porCheque
+              ? "Ya había en Xubio una OP con estos mismos e-cheqs (hecha a mano): " + c.numero + ". No se creó otra."
+              : "Ya había en Xubio una OP igual: " + c.numero + ".") +
           " Falta aplicarla a las facturas en Xubio.";
         doc.creada = Date.now();
         for (const ch of suyos) await db.collection(amb.prefijo + "echeqs").doc(ch.id).set({ asignadoA: clave }, { merge: true });

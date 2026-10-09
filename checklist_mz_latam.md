@@ -1505,6 +1505,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] QA (vista previa) no verifica ni emite nada en Xubio. La integración en Producción sigue en pausa (`automatico: false`).
 - [x] Publicado en QA (pantalla: nuevo estado de OP). Producción: pendiente del OK del usuario.
 
+### 119. OP: segundo control por número de e-cheq, y diagnóstico de saldo de facturas en Xubio
+
+- Pedido del usuario (09/10/2026): "ok, avanzá" con las dos mejoras propuestas al control de la Sección 118.
+- [x] **Control por e-cheq (solo lectura)**: antes de crear la OP se leen las OP de Xubio de los últimos 30 días; si una del mismo proveedor ya usa alguno de los mismos e-cheqs (campo `chequePropio`/`chequeTerceros`, sin ceros adelante), la OP ya se hizo (por ejemplo a mano, aunque todavía no esté aplicada a la factura): no se crea otra y queda "Ya había en Xubio una OP con estos mismos e-cheqs (hecha a mano): N°…". Cubre el caso que el control de la 118 no ve (OP manual hecha pero todavía no aplicada).
+- [x] **Saldo de la factura sin modificarla**: diagnóstico solo de lectura sobre la cuenta (rama `xubio-prueba-soporte`). La factura de compra (detalle y listado) **no trae ningún campo de saldo ni de "aplicada"** (`transaccionOrdenPagoItems` viene vacío aunque esté aplicada); las rutas de saldo/cuenta corriente probadas no existen (500). Las OP tampoco informan a qué facturas se aplicaron. Conclusión: la única forma que da la API de saber si una factura está aplicada es la de la Sección 118 (guardarla sin cambios y ver si Xubio responde "se encuentra aplicada"); se mantiene, con el control de total y centros después de guardar.
+- [x] Últimos 30 días: 148 OP en Xubio, 138 instrumentos con cheque (todos con `chequePropio`), así que el control por e-cheq tiene con qué comparar.
+- [x] La integración en Producción sigue en pausa.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
