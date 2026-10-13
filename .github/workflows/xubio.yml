@@ -12,7 +12,7 @@ on:
     paths: ["xubio/**", ".github/workflows/xubio.yml"]
   workflow_dispatch:
 concurrency:
-  group: xubio
+  group: xubio-diagnostico
   cancel-in-progress: false
 jobs:
   procesar:
