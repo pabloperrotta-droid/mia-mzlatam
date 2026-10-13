@@ -1528,7 +1528,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Si no hay "Neto Gravado", "No Gravado", "Exento" ni "Subtotal", se toma el renglón que dice solo **"NETO"** (con o sin ":"). Con la factura real: Importe Bruto $256.227,82 e Importe Final $319.003,64.
 - [x] Prueba automática con datos inventados. Control con las 15 facturas reales de pruebas anteriores: mismo resultado que antes en todas.
 - [x] Publicado en QA.
-- [ ] Producción: pendiente del OK del usuario.
+- [x] **Subido a Producción** (13/10/2026) con el OK del usuario ("subilo a producción"). Va con el mismo código: Verónica (Secciones 114-116) sigue apagada en Producción, y el estado de OP "pago ya aplicado" (Sección 118) solo es un texto en Pagos mientras la integración con Xubio sigue en pausa.
 
 ## 41. Pendientes / recomendaciones
 
