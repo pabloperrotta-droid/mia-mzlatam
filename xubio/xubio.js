@@ -79,7 +79,8 @@ async function xubioUnaVez(metodo, ruta, cuerpo) {
       const msgs = [];
       const juntar = (o, prof) => {
         if (!o || typeof o !== "object" || prof > 4) return;
-        for (const k of ["message", "localizedMessage", "error", "error_description", "descripcion", "mensaje"])
+        // "description" trae el motivo real (soporte de Xubio, 09/10/2026: "La transacción se encuentra aplicada.").
+        for (const k of ["description", "message", "localizedMessage", "error", "error_description", "descripcion", "mensaje"])
           if (typeof o[k] === "string" && o[k] && !msgs.includes(o[k])) msgs.push(o[k]);
         if (o.cause) juntar(o.cause, prof + 1);
       };
@@ -351,6 +352,16 @@ async function asignarCentroCosto(p) {
     await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
+    // Xubio (09/10/2026): el rechazo era porque "La transacción se encuentra aplicada" (la factura ya tiene un
+    // pago/OP aplicado). Una factura aplicada no se puede modificar por la API.
+    if (/se encuentra aplicada/i.test(String(err.message || "") + String(err.cuerpo || "")))
+      return {
+        estado: "bloqueada",
+        mensaje: "Factura aplicada en Xubio: la factura " + completo.numeroDocumento + " ya tiene un pago aplicado, y Xubio no deja cambiarle el centro de costo por la API. Si hace falta, ponerle \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
+        factura: antes,
+        centroDeCosto: cc,
+        transaccionid: id,
+      };
     // Se guarda la respuesta completa de Xubio (JSON) para poder mandarla a soporte (info@xubio.com).
     return { ...bloqueada(false), errorXubio: String(err.cuerpo || err.message || "").slice(0, 6000), transaccionid: id };
   }
@@ -500,4 +511,38 @@ async function resumenFacturas(p) {
 
 
 
-module.exports = { resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+// Sección 118 (pedido del usuario, 09/10/2026): justo antes de emitir la OP, se vuelve a guardar cada factura
+// en Xubio con el mismo centro de costo que ya tiene (sin cambiar nada). Si Xubio responde "La transacción se
+// encuentra aplicada", la factura ya tiene un pago aplicado (alguien hizo la OP a mano) y la OP no se emite.
+async function facturaYaAplicada(id) {
+  const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const numero = completo.numeroDocumento;
+  if (comoLista(completo.transaccionOrdenPagoItems).length) return { aplicada: true, numero };
+  const items = comoLista(completo.transaccionProductoItems);
+  const cuerpo = {
+    ...completo,
+    transaccionProductoItems: items.map((it) => ({ ...it, ...(it.centroDeCosto && idDe(it.centroDeCosto) != null ? { centroDeCosto: { ID: idDe(it.centroDeCosto) } } : {}) })),
+  };
+  try {
+    await xubio("PUT", "/comprobanteCompraBean/" + id, cuerpo);
+  } catch (err) {
+    if (/se encuentra aplicada/i.test(String(err.message || "") + String(err.cuerpo || ""))) return { aplicada: true, numero };
+    throw err;
+  }
+  // Control: se vuelve a leer y no tiene que haber cambiado el total ni los centros.
+  const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const centros = (f) => comoLista(f.transaccionProductoItems).map((it) => idDe(it.centroDeCosto)).join(",");
+  if (Number(despues.importetotal) !== Number(completo.importetotal) || centros(despues) !== centros(completo))
+    throw new Error("Al verificar la factura " + numero + " en Xubio cambió el total o el centro de costo: revisarla.");
+  return { aplicada: false, numero };
+}
+
+// Sección 122: el proceso ahora queda corriendo horas (vigilando); antes de cada pasada se borran las listas
+// guardadas de Xubio (facturas, proveedores, centros) para trabajar siempre con lo último.
+function limpiarCaches() {
+  for (const k of Object.keys(cacheListas)) delete cacheListas[k];
+  centrosCache = null;
+  proveedoresCache = null;
+}
+
+module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };

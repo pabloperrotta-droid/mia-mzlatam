@@ -186,6 +186,21 @@ async function crearOP(cuerpo) {
       ) < 1,
   );
   if (igual) return { estado: "ya_existia", numero: igual.numeroRecibo, id: igual.transaccionid };
+  // Sección 119: segundo control, solo de lectura. Si una OP del mismo proveedor de los últimos 30 días ya usa
+  // alguno de estos e-cheqs (un e-cheq se usa una sola vez), la OP ya se hizo (por ejemplo, a mano): no se crea.
+  const sinCeros = (x) => String(x == null ? "" : x).replace(/\D/g, "").replace(/^0+/, "");
+  const misCheques = new Set(cuerpo.transaccionInstrumentoDePago.map((i) => sinCeros(i.chequePropio)).filter(Boolean));
+  if (misCheques.size) {
+    const desde = new Date(new Date(cuerpo.fecha + "T12:00:00Z").getTime() - 30 * 86400000).toISOString().slice(0, 10),
+      hasta = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const recientes = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta));
+    const conCheque = recientes.find(
+      (op) =>
+        idDe(op.proveedor) === cuerpo.proveedor.ID &&
+        comoLista(op.transaccionInstrumentoDePago).some((i) => misCheques.has(sinCeros(i.chequePropio)) || misCheques.has(sinCeros(i.chequeTerceros))),
+    );
+    if (conCheque) return { estado: "ya_existia", numero: conCheque.numeroRecibo, id: conCheque.transaccionid, porCheque: true };
+  }
   const creada = await xubio("POST", "/pagoBean", cuerpo);
   return { estado: "creada", numero: creada && creada.numeroRecibo, id: creada && creada.transaccionid };
 }

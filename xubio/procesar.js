@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -28,10 +28,10 @@ const db = admin.firestore();
 // y las OP en QA son solo vista previa.
 const AMBIENTES = [
   { nombre: "qa", prefijo: "qa_", automatico: true, simular: true },
-  // PAUSADO en Producción el 30/09/2026 a pedido del usuario ("por el momento en producción sacame la
-  // conexión con Xubio… que no haga nada") hasta que Xubio responda por los rechazos de la API.
-  // Para reactivar: automatico: true.
-  { nombre: "prd", prefijo: "", automatico: false },
+  // Pausado del 30/09 al 13/10/2026. REACTIVADO el 13/10/2026 con OK del usuario ("lo de Xubio también"):
+  // centro de costo automático (solo líneas sin Fecha Pagado, Sección 120). `ops: false` = las órdenes de pago
+  // siguen apagadas hasta que el usuario confirme que también se activan.
+  { nombre: "prd", prefijo: "", automatico: true, ops: false },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
@@ -90,13 +90,25 @@ async function procesarLineas(amb) {
   const lineas = await leerPagos(amb);
   const col = db.collection(amb.prefijo + "xubioEstado");
   const previos = {};
-  (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
 
   // Una misma factura cargada en varias líneas de Pagos con distintos centros de costo (ej. Imak repartida
   // en 3 sub obras de WU): en Xubio se le pone el centro de costo de la parte con mayor Importe Bruto
   // (definición del usuario: "en Xubio poner el centro de costo de la imputación más grande"). Las demás
   // líneas quedan como "en_otra_linea".
-  const validas = lineas.filter((l) => l && l.id && soloDigitos(l.cuit) && t(l.factura));
+  // Sección 120 (pedido del usuario, 09/10/2026): el centro de costo se pone solo en las líneas SIN Fecha Pagado
+  // ("Sin Fecha Pagado" y "Postergados"). Las pagadas no se tocan (en Xubio ya suelen tener el pago aplicado), salvo
+  // las pagadas desde que se activaron las OP: esas necesitan el centro antes de emitir su OP.
+  const cfgOP = await db.doc(amb.prefijo + "xubioConfig/op").get();
+  const opDesde = (cfgOP.exists && cfgOP.get("desde")) || null;
+  const validas = lineas.filter(
+    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && (!fechaISO(l.fechaPagado) || (opDesde && fechaISO(l.fechaPagado) >= opDesde)),
+  );
+  // Sección 122: se leen solo los estados de estas líneas (no la colección entera), para gastar pocas lecturas
+  // de la base ahora que el proceso corre seguido.
+  for (let i = 0; i < validas.length; i += 200) {
+    const refs = validas.slice(i, i + 200).map((l) => col.doc(String(l.id)));
+    refs.length && (await db.getAll(...refs)).forEach((d) => d.exists && (previos[d.id] = d.data()));
+  }
   const objetivo = (l) =>
     normalizar(
       t(l.centroCostoXubio) ||
@@ -139,7 +151,8 @@ async function procesarLineas(amb) {
     else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
-    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
+    // Sección 120: si faltaba el centro de costo en Xubio, se vuelve a probar cada 30 minutos (por si lo crearon a mano).
+    else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (e.estado === "centro_no_encontrado" ? 30 * 60 * 1000 : LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;
     if (prioridad !== null) cola.push({ l, f, e, prioridad });
   }
@@ -185,11 +198,14 @@ async function procesarLineas(amb) {
     n++;
   }
   console.log(`[${amb.nombre}] líneas procesadas: ${n} (en espera: ${Math.max(0, cola.length - n)})`);
+  // Resumen visible en GitHub (sin datos): cuántas líneas se miraron y cuántas se procesaron.
+  avisos < 8 && n > 0 && (avisos++, console.log(`::notice::[${amb.nombre}] ${new Date().toISOString()} líneas sin pagar con factura: ${validas.length}, procesadas ahora: ${n}, en espera: ${Math.max(0, cola.length - n)}`));
 }
+let avisos = 0;
 
 
 // ---------- Órdenes de pago (ver ordenesPago.js) ----------
-const OP_HECHA = new Set(["creada", "ya_existia"]);
+const OP_HECHA = new Set(["creada", "ya_existia", "pago_ya_aplicado"]);
 async function procesarOPs(amb) {
   const cfgRef = db.doc(amb.prefijo + "xubioConfig/op");
   const cfgSnap = await cfgRef.get();
@@ -245,6 +261,27 @@ async function procesarOPs(amb) {
     const doc = { ...r, actualizado: Date.now(), modo: crear ? "crear" : "vista_previa" };
     delete doc.cuerpo;
     if (r.estado === "lista" && crear) {
+      // Sección 118: antes de emitir, se verifica factura por factura que no tenga ya un pago aplicado.
+      let aplicadas = [];
+      try {
+        for (const f of r.facturas || []) (await facturaYaAplicada(f.id)).aplicada && aplicadas.push(f.numero);
+      } catch (e) {
+        doc.estado = "error";
+        doc.mensaje = "No se pudo verificar si las facturas ya tienen un pago aplicado: " + texto((e && e.message) || e, 300);
+        await colOP.doc(clave).set(limpio(doc));
+        console.log(`[${amb.nombre}] OP ${clave} → error al verificar: ${doc.mensaje}`);
+        continue;
+      }
+      if (aplicadas.length) {
+        doc.estado = "pago_ya_aplicado";
+        doc.mensaje =
+          "El pago ya fue aplicado anteriormente en Xubio a " + (aplicadas.length > 1 ? "las facturas " : "la factura ") + aplicadas.join(", ") +
+          " (la OP se hizo a mano). No se emitió la OP.";
+        await registrar(amb, { accion: "ordenPago", grupo: clave, estado: doc.estado, mensaje: doc.mensaje });
+        await colOP.doc(clave).set(limpio(doc));
+        console.log(`[${amb.nombre}] OP ${clave} → ${doc.estado}: ${doc.mensaje}`);
+        continue;
+      }
       await colOP.doc(clave).set(limpio({ ...doc, estado: "creando" }));
       try {
         const c = await crearOP(r.cuerpo);
@@ -252,7 +289,11 @@ async function procesarOPs(amb) {
         doc.opNumero = c.numero || null;
         doc.opId = c.id || null;
         doc.mensaje =
-          (c.estado === "creada" ? "OP " + c.numero + " creada en Xubio." : "Ya había en Xubio una OP igual: " + c.numero + ".") +
+          (c.estado === "creada"
+            ? "OP " + c.numero + " creada en Xubio."
+            : c.porCheque
+              ? "Ya había en Xubio una OP con estos mismos e-cheqs (hecha a mano): " + c.numero + ". No se creó otra."
+              : "Ya había en Xubio una OP igual: " + c.numero + ".") +
           " Falta aplicarla a las facturas en Xubio.";
         doc.creada = Date.now();
         for (const ch of suyos) await db.collection(amb.prefijo + "echeqs").doc(ch.id).set({ asignadoA: clave }, { merge: true });
@@ -307,11 +348,12 @@ async function procesarPedidos(amb) {
   }
 }
 
-// ---------- Lista de centros de costo de Xubio para MIA (cada ~6 horas) ----------
+// ---------- Lista de centros de costo de Xubio para MIA (cada ~30 minutos) ----------
 async function actualizarCentros() {
   const refs = AMBIENTES.map((a) => db.doc(a.prefijo + "xubioConfig/centros"));
   const actual = await refs[0].get();
-  if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 6 * 3600 * 1000) return;
+  // Sección 120: la lista de centros de Xubio que se ve en MIA se actualiza cada 30 minutos (antes cada 6 horas).
+  if (actual.exists && Date.now() - (actual.get("actualizado") || 0) < 30 * 60 * 1000) return;
   const nombres = (await centrosDeCosto())
     .map((c) => c.nombre)
     .filter(Boolean)
@@ -320,18 +362,64 @@ async function actualizarCentros() {
   console.log("Centros de costo de Xubio actualizados: " + nombres.length);
 }
 
+// Una pasada completa por ambiente (pedidos sueltos, líneas de Pagos y OP).
+async function pasada(amb, conOP) {
+  limpiarCaches();
+  await procesarPedidos(amb);
+  if (amb.automatico) await procesarLineas(amb);
+  if (conOP && amb.automatico && amb.ops !== false)
+    await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
+}
+const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const ultimoCambio = async (amb) => {
+  const d = await db.doc(amb.prefijo + "app/st_pagosSemanales").get();
+  return d.exists && d.updateTime ? d.updateTime.toMillis() : 0;
+};
+const hayPedidos = async (amb) => !(await db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").limit(1).get()).empty;
+
+// Sección 122: GitHub no respeta el "cada 5 minutos" (corría cada 4-7 horas). Ahora cada corrida queda
+// VIGILANDO unas 5 horas y 45 minutos: cada 60 segundos mira si cambiaron los Pagos de Producción (1 lectura)
+// o si hay pedidos, y si cambió algo procesa enseguida. Cada 30 minutos hace una pasada completa en los dos
+// ambientes (reintentos). Al terminar, el workflow se vuelve a lanzar solo.
+async function vigilar(minutos) {
+  const fin = Date.now() + minutos * 60 * 1000;
+  const marca = {};
+  let completa = 0;
+  while (Date.now() < fin) {
+    const ahora = Date.now(),
+      toca = ahora - completa >= 30 * 60 * 1000;
+    try {
+      toca && (await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e)));
+      for (const amb of AMBIENTES) {
+        if (toca) {
+          marca[amb.nombre] = await ultimoCambio(amb);
+          await pasada(amb, true);
+          continue;
+        }
+        if (amb.nombre !== "prd") continue; // QA (pruebas) solo en las pasadas completas
+        const m = await ultimoCambio(amb);
+        if (m !== marca[amb.nombre] || (await hayPedidos(amb))) {
+          marca[amb.nombre] = m;
+          await pasada(amb, true);
+        }
+      }
+      toca && (completa = ahora);
+    } catch (e) {
+      console.error("Pasada:", (e && e.message) || e);
+    }
+    await dormir(60 * 1000);
+  }
+}
+
 (async () => {
+  const minutos = Number(process.env.VIGILAR_MINUTOS || 0);
+  if (minutos > 0) return vigilar(minutos);
   try {
     await actualizarCentros();
   } catch (e) {
     console.error("No se pudo actualizar la lista de centros:", (e && e.message) || e);
   }
-  for (const amb of AMBIENTES) {
-    await procesarPedidos(amb);
-    if (amb.automatico) await procesarLineas(amb);
-    if (amb.automatico)
-      await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
-  }
+  for (const amb of AMBIENTES) await pasada(amb, true);
 })().catch((e) => {
   console.error(e);
   process.exit(1);
