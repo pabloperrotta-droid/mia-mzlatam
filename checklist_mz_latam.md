@@ -1538,6 +1538,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Resumen sin datos en GitHub (anotaciones): cuántas líneas se miraron y cuántas se procesaron.
 - Nota técnica: para que tome código nuevo de `xubio/` hay que cancelar la corrida que está vigilando (la siguiente arranca con el código nuevo).
 
+### 123. Xubio: "No se pudo completar la operación" era por la descripción vacía de la factura
+
+- Aviso del usuario (13/10/2026, con capturas): la factura A-00014-00074897 de CENTRO-SEC SRL no tenía centro de costo en Xubio, MIA mostraba "Xubio rechazó el cambio… No se pudo completar la operación" y el centro WU SAN MARTIN sí existe en Xubio.
+- [x] Diagnóstico (rama `xubio-prueba-soporte`): 91 líneas de Producción rechazadas así. El motivo real de Xubio (campo "description", al final de la respuesta, que MIA cortaba): `NullPointerException: … TransaccionNXVVO.getDescripcion() is null` — cuando la factura no tiene descripción, la lectura la trae sin ese campo y al guardarla Xubio se rompe. Mandando `descripcion: ""` la 74897 se guardó bien: **quedó con WU SAN MARTIN** y el total sin cambios.
+- [x] `xubio/xubio.js`: al cambiar el centro (y al verificar antes de la OP) se manda la descripción vacía si no viene. Se guarda el principio y el final de la respuesta de error (ahí está el motivo) y el motivo se muestra en el aviso de la línea.
+- [x] `xubio/procesar.js`: las líneas rechazadas antes del arreglo se vuelven a probar una vez enseguida (de a 40 por pasada).
+- Nota: la factura 77723999 de soporte (A-00011-00008239) sí estaba aplicada; ese caso era otro.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

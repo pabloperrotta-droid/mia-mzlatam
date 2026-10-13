@@ -36,6 +36,7 @@ const AMBIENTES = [
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
+const ARREGLO_DESCRIPCION = Date.UTC(2026, 9, 13, 18, 0); // 13/10/2026 15:00 (Argentina)
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
@@ -151,6 +152,8 @@ async function procesarLineas(amb) {
     else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
+    // Sección 123: las rechazadas antes del arreglo de la descripción vacía se vuelven a probar una vez enseguida.
+    else if (e.estado === "rechazada" && (e.intento || 0) < ARREGLO_DESCRIPCION) prioridad = 1;
     // Sección 120: si faltaba el centro de costo en Xubio, se vuelve a probar cada 30 minutos (por si lo crearon a mano).
     else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (e.estado === "centro_no_encontrado" ? 30 * 60 * 1000 : LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;
