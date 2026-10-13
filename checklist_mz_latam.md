@@ -1551,7 +1551,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 13/10/2026, pedido del usuario ("agregame en pagos para poder ordenar por Xubio, así me ordena por estado de Xubio también"). El título **Xubio** de la tabla de Pagos ahora se puede clickear como las demás columnas: **▲** muestra primero las ❌, después las ⚠️ (agrupadas por motivo: rechazada, orden de pago aplicada, importe no coincide…), ⏳, 🧪 y al final las ✅; **▼** al revés. Las líneas que no se mandan a Xubio (falta CUIT o factura, "–") quedan siempre al final. Tercer click: sin orden.
 - [x] El cálculo del ícono se sacó a una función (`xubioClase`) que usan la celda y el orden, así no pueden mostrar cosas distintas. Si llega un cambio de estado desde Xubio con la tabla ordenada por esa columna, se reordena sola.
 - [x] Prueba automática nueva ("Pagos: ordenar por la columna Xubio").
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("pasalo a producción", 13/10/2026), en `MIA.prd.html` (Verónica sigue apagada).
 
 ### 125. Xubio: los gastos internos van siempre a "Gastos Generales de Oficina"
 
