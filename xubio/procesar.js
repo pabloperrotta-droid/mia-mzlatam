@@ -387,16 +387,20 @@ const hayPedidos = async (amb) => !(await db.collection(amb.prefijo + "xubioPedi
 async function vigilar(minutos) {
   const fin = Date.now() + minutos * 60 * 1000;
   const marca = {};
-  let completa = 0;
+  let completa = 0,
+    opQA = 0;
   while (Date.now() < fin) {
     const ahora = Date.now(),
       toca = ahora - completa >= 30 * 60 * 1000;
     try {
       toca && (await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e)));
-      for (const amb of AMBIENTES) {
+      // Producción primero (QA es de prueba y su vista previa de OP puede tardar).
+      for (const amb of [...AMBIENTES].sort((a, b) => (a.nombre === "prd" ? -1 : b.nombre === "prd" ? 1 : 0))) {
         if (toca) {
           marca[amb.nombre] = await ultimoCambio(amb);
-          await pasada(amb, true);
+          // La vista previa de OP de QA, solo cada 3 horas.
+          await pasada(amb, amb.nombre === "prd" || ahora - opQA >= 3 * 3600 * 1000);
+          amb.nombre !== "prd" && ahora - opQA >= 3 * 3600 * 1000 && (opQA = ahora);
           continue;
         }
         if (amb.nombre !== "prd") continue; // QA (pruebas) solo en las pasadas completas
