@@ -118,6 +118,30 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Pagos: ordenar por la columna Xubio", () => {
+  const base = { cuit: "30-71720122-8", cliente: "WU", centroCosto: "SAN MARTIN", importe: 100 };
+  const lin = (id, factura) => ({ ...base, id, factura });
+  const L = [lin("ok", "A-1"), lin("rech", "A-2"), lin("sin", ""), lin("esp", "A-4"), lin("cnf", "A-5"), lin("blq", "A-6")];
+  const est = {
+    ok: { estado: "ok", firma: "x" },
+    rech: { estado: "rechazada", firma: f.xubioFirma(L[1]) },
+    cnf: { estado: "centro_no_encontrado", firma: f.xubioFirma(L[4]) },
+    blq: { estado: "bloqueada", firma: f.xubioFirma(L[5]) },
+  };
+  assert.strictEqual(f.xubioClase(L[0], est.ok).icono, "✅");
+  assert.strictEqual(f.xubioClase(L[1], est.rech).icono, "⚠️");
+  assert.strictEqual(f.xubioClase(L[2], undefined).icono, "–");
+  assert.strictEqual(f.xubioClase(L[3], undefined).icono, "⏳");
+  assert.strictEqual(f.xubioClase(L[4], est.cnf).icono, "❌");
+  const ord = (dir) =>
+    [...L]
+      .map((l) => ({ id: l.id, v: f.xubioValorOrden(l, est) }))
+      .sort((a, b) => f.compararOrdenPago(a, b, { key: "v", dir }))
+      .map((x) => x.id);
+  // ▲: ❌, ⚠️ (agrupadas por motivo), ⏳, ✅; las que no se mandan, al final.
+  assert.deepStrictEqual(ord("asc"), ["cnf", "blq", "rech", "esp", "ok", "sin"]);
+  assert.deepStrictEqual(ord("desc"), ["ok", "esp", "rech", "blq", "cnf", "sin"]);
+});
 prueba("Búsqueda en la tabla de proveedores de Pagos", () => {
   const fila = { proveedor: "REFRIGERACION ALSINA", razonSocial: "Refrigeración Alsina SRL", cuit: "30-71720122-8", cbu: "0170099220000012345678", imputacion: "PINTURA" };
   assert.strictEqual(f.coincideBusquedaProveedor(fila, "alsina"), true);

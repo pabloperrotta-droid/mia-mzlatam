@@ -1546,6 +1546,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] `xubio/procesar.js`: las líneas rechazadas antes del arreglo se vuelven a probar una vez enseguida (de a 40 por pasada).
 - Nota: la factura 77723999 de soporte (A-00011-00008239) sí estaba aplicada; ese caso era otro.
 
+### 124. Pagos: ordenar por la columna Xubio
+
+- [x] 13/10/2026, pedido del usuario ("agregame en pagos para poder ordenar por Xubio, así me ordena por estado de Xubio también"). El título **Xubio** de la tabla de Pagos ahora se puede clickear como las demás columnas: **▲** muestra primero las ❌, después las ⚠️ (agrupadas por motivo: rechazada, orden de pago aplicada, importe no coincide…), ⏳, 🧪 y al final las ✅; **▼** al revés. Las líneas que no se mandan a Xubio (falta CUIT o factura, "–") quedan siempre al final. Tercer click: sin orden.
+- [x] El cálculo del ícono se sacó a una función (`xubioClase`) que usan la celda y el orden, así no pueden mostrar cosas distintas. Si llega un cambio de estado desde Xubio con la tabla ordenada por esa columna, se reordena sola.
+- [x] Prueba automática nueva ("Pagos: ordenar por la columna Xubio").
+- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -22,6 +22,7 @@ function xubioDb() {
   }
 }
 function xubioAvisar() {
+  XUBIO_ST.version = (XUBIO_ST.version || 0) + 1;
   XUBIO_ST.subs.forEach((f) => f());
 }
 function xubioIniciar() {
@@ -118,11 +119,9 @@ function xubioCuando(t) {
     ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "";
 }
-function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
-  const st = useXubio(),
-    [abierto, setAbierto] = React.useState(false),
-    e = st.estados[l.id],
-    falta = !String(l.cuit || "").replace(/\D/g, "")
+// Qué muestra la columna Xubio para una línea (lo usa la celda y el orden por esa columna).
+function xubioClase(l, e) {
+  const falta = !String(l.cuit || "").replace(/\D/g, "")
       ? "Falta el CUIT"
       : !String(l.factura || "").trim()
         ? "Falta el número de factura"
@@ -133,14 +132,31 @@ function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
     espera = !falta && (!vigente || e.forzar),
     aviso = vigente && !espera && ["otro_centro", "bloqueada", "rechazada", "importe_no_coincide"].includes(e.estado),
     icono = falta ? "–" : espera ? "⏳" : bien ? "✅" : aviso ? "⚠️" : e.estado === "simulacion" ? "🧪" : "❌",
-    opTodo = l.fechaPagado ? st.ops[xubioClaveOP(l)] : null,
-    op = opTodo && opTodo.estado !== "anterior" ? opTodo : null,
-    opInfo = op ? XUBIO_OP_ESTADOS[op.estado] || ["•", op.estado, MUTED] : null,
     titulo = falta
       ? falta + ": no se manda a Xubio"
       : espera
         ? "Se manda a Xubio en unos minutos"
-        : (XUBIO_TEXTOS[e.estado] || e.estado) + (bien && e.centroMia ? ": " + e.centroMia : ""),
+        : (XUBIO_TEXTOS[e.estado] || e.estado) + (bien && e.centroMia ? ": " + e.centroMia : "");
+  return { falta, vigente, bien, espera, aviso, icono, titulo };
+}
+// Orden por la columna Xubio: ❌ primero, después ⚠️, ⏳, 🧪 y ✅; dentro de cada grupo, por motivo.
+// Las que no se mandan (falta CUIT o factura) quedan siempre al final.
+const XUBIO_ORDEN_ICONOS = ["❌", "⚠️", "⏳", "🧪", "✅"];
+function xubioValorOrden(l, estados) {
+  const c = xubioClase(l, (estados || {})[l.id]);
+  if (c.falta) return null;
+  const e = (estados || {})[l.id],
+    motivo = c.bien || c.espera ? "" : XUBIO_TEXTOS[e.estado] || e.estado || "";
+  return XUBIO_ORDEN_ICONOS.indexOf(c.icono) + "|" + motivo;
+}
+function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
+  const st = useXubio(),
+    [abierto, setAbierto] = React.useState(false),
+    e = st.estados[l.id],
+    { falta, vigente, bien, espera, icono, titulo } = xubioClase(l, e),
+    opTodo = l.fechaPagado ? st.ops[xubioClaveOP(l)] : null,
+    op = opTodo && opTodo.estado !== "anterior" ? opTodo : null,
+    opInfo = op ? XUBIO_OP_ESTADOS[op.estado] || ["•", op.estado, MUTED] : null,
     reintentar = () => {
       const db = xubioDb();
       db &&
@@ -597,6 +613,7 @@ function PagosView({
     [Oo, Bo] = useState(null),
     [w, Ne] = useState(null),
     [ordPag, setOrdPag] = useState(null),
+    xubioSt = useXubio(),
     [busqPag, setBusqPag] = useState(""),
     [Re, at] = useState(null),
     dt = useMemo(
@@ -2040,7 +2057,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
             const q = normalizarTexto(busqPag);
             return normalizarTexto(I.proveedorPago).includes(q) || normalizarTexto(I.proveedor).includes(q);
           })),
-        ordPag
+        ordPag && ordPag.key === "xubio"
+          ? (l = [...l].sort((I, U) =>
+              compararOrdenPago({ v: xubioValorOrden(I, xubioSt.estados) }, { v: xubioValorOrden(U, xubioSt.estados) }, { key: "v", dir: ordPag.dir }),
+            ))
+          : ordPag
           ? (l = [...l].sort((I, U) => compararOrdenPago(I, U, ordPag)))
           : Oo
           ? (l = [...l].sort((I, U) => {
@@ -2058,7 +2079,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
             })),
         l
       );
-    }, [n, nt, Ee, Oo, w, ordPag, busqPag]),
+    }, [n, nt, Ee, Oo, w, ordPag, busqPag, ordPag && ordPag.key === "xubio" ? xubioSt.version : 0]),
     v = useMemo(() => {
       const l = n.filter((me) => !me.fechaPagado && me.sePaga === "SI" && (me.cliente || "").trim()),
         I = /* @__PURE__ */ new Map();
@@ -2837,14 +2858,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
               thOrd("MO", "mo", { textAlign: "center" }),
               thOrd("MAT", "mat", { textAlign: "center" }),
               thOrd("Factura", "factura"),
-              React.createElement(
-                "th",
-                {
-                  style: { ...q, textAlign: "center" },
-                  title:
-                    "Xubio: cada línea con CUIT y número de factura se manda sola a Xubio para ponerle el centro de costo. ✅ quedó bien · ❌ no se pudo (clic para ver el motivo; se reintenta sola cada 3 horas) · ⏳ se manda en unos minutos · – falta CUIT o factura.",
-                },
+              thOrd(
                 "Xubio",
+                "xubio",
+                { textAlign: "center" },
+                "Xubio: cada línea con CUIT y número de factura se manda sola a Xubio para ponerle el centro de costo. ✅ quedó bien · ⚠️ / ❌ no se pudo (clic en el ícono para ver el motivo) · ⏳ se manda en unos minutos · – falta CUIT o factura. Al ordenar: ▲ primero las ❌ y ⚠️ (agrupadas por motivo), ▼ primero las ✅",
               ),
               thOrd("Factura A", "facturaA", { textAlign: "center" }, "Si está tildado, en Costos se imputa el Importe Bruto tal cual está cargado (sin dividir por 1.21)"),
               thOrd("Importe Final", "importe", { textAlign: "right" }),
