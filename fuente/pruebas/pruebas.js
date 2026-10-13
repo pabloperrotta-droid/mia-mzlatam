@@ -152,6 +152,19 @@ prueba("Verónica: importar la planilla y completar las amarillas con el PDF por
   assert.strictEqual(de_nuevo[0].v[7], 800.5);
   assert.strictEqual(de_nuevo[1].v[6], "Producto viejo");
 });
+prueba("Factura con solo \"NETO :\" (sin gravado ni subtotal): el Importe Bruto se toma del neto (datos inventados)", () => {
+  const it = (s, x, y) => ({ s, x, y, w: 30, h: 8 });
+  const items = [
+    it("FACTURA", 300, 780), it("A", 290, 760), it("Punto de Venta: 0014", 380, 740), it("Comp. Nro: 00012345", 470, 740),
+    it("NETO", 401, 172), it(":", 455, 172), it("1000.00", 485, 172),
+    it("IVA", 401, 157), it("21% :", 431, 157), it("210.00", 491, 157),
+    it("IIBB CABA:", 401, 127), it("10.00", 497, 127),
+    it("TOTAL", 401, 97), it(":", 455, 97), it("1220.00", 485, 97),
+  ];
+  const r = JSON.parse(JSON.stringify(f.facturaDesdeTexto(items)));
+  assert.strictEqual(r.total, 1220);
+  assert.strictEqual(r.neto, 1000);
+});
 prueba("Aviso de cambios pisados: si la pantalla siguió cambiando ese dato (ej. escribiendo el nombre), no avisa", () => {
   // Caso real (Romina): proveedor nuevo en la tabla de Proveedores, guardado letra por letra.
   const base = { reglasProveedoresPago: [] };

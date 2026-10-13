@@ -139,7 +139,9 @@ function facturaDesdeTexto(items) {
     noGravado = importe(/^\s*(?:importe\s+)?(?:neto|sub\s*-?\s*total)\s+no\s+gravado\b/i, "(?:importe\\s+)?(?:neto|sub\\s*-?\\s*total)\\s+no\\s+gravado") || 0,
     exento = importe(/^\s*(?:importe\s+|neto\s+)?exento\b/i, "(?:importe\\s+|neto\\s+)?exento") || 0,
     subtotal = importe(/^\s*sub\s*-?\s*total\s*:?\s*$|^\s*sub\s*-?\s*total\s*:?\s*\$?\s*[\d.,]+\s*$/i, "\\bsub\\s*-?\\s*total", true) || 0;
-  gravado || noGravado || exento ? (r.neto = Math.abs(gravado + noGravado + exento)) : subtotal && (r.neto = Math.abs(subtotal));
+  // Sección 121: algunas facturas ponen solo "NETO :" (ej. Centro Sec SRL), sin "gravado" ni "subtotal".
+  const netoSolo = !gravado && !noGravado && !exento && !subtotal ? importe(/^\s*(?:importe\s+)?neto\s*:?\s*(?:\$?\s*[\d.,]+\s*)?$/i, "(?:importe\\s+)?\\bneto\\b(?!\\s+(?:gravado|no\\s+gravado))", true) || 0 : 0;
+  gravado || noGravado || exento ? (r.neto = Math.abs(gravado + noGravado + exento)) : subtotal ? (r.neto = Math.abs(subtotal)) : netoSolo && (r.neto = Math.abs(netoSolo));
   // Totales sin títulos legibles (ej. títulos dibujados como imagen): un renglón de importes donde el
   // mayor es la suma de los demás → ese es el total y el primero (a la izquierda) el subtotal.
   if (conPos && (!r.total || !r.neto)) {

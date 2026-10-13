@@ -1522,6 +1522,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Sigue sin crear centros de costo en Xubio (la API no lo permite y el usuario pidió no crear nada).
 - [x] La integración en Producción sigue en pausa.
 
+### 121. Facturas PDF: Importe Bruto cuando la factura dice solo "NETO :"
+
+- Aviso del usuario (13/10/2026, con una factura de Centro Sec SRL): "en pagos no me toma el importe bruto del centro SEC… para que ya lo tengas en cuenta y no lo tengas que aplicar manual". La factura pone "NETO : 256227.82", después IVA, IIBB CABA, IIBB ARBA y "TOTAL : 319003.64"; MIA buscaba "Neto Gravado" o "Subtotal" y no encontraba el neto.
+- [x] Si no hay "Neto Gravado", "No Gravado", "Exento" ni "Subtotal", se toma el renglón que dice solo **"NETO"** (con o sin ":"). Con la factura real: Importe Bruto $256.227,82 e Importe Final $319.003,64.
+- [x] Prueba automática con datos inventados. Control con las 15 facturas reales de pruebas anteriores: mismo resultado que antes en todas.
+- [x] Publicado en QA.
+- [ ] Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [ ] **Activar Xubio en Producción cuando el usuario avise** ("dejá todo preparado, yo te aviso en estos días para subirlo", 09/10/2026). Pasos: (1) publicar `MIA.prd.html` con lo que está en QA de Pagos (estado de OP "pago ya aplicado", Sección 118) — Verónica sigue apagada; (2) en `xubio/procesar.js` poner `automatico: true` en "prd"; (3) confirmar con el usuario si se activan centro de costo y órdenes de pago juntos o primero solo el centro. Al activar las OP se fija la fecha "desde" (las líneas pagadas antes quedan como "anterior").
