@@ -31,7 +31,10 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 1500).replace(/
     out(nombre + " → status " + r.status + " | MOTIVO: " + String(desc).slice(0, 700));
     return r.ok;
   };
-  let ok = await probar("A) como la integración", cuerpo);
+  let ok = false;
+  out("descripcion de la factura en el GET: " + JSON.stringify(f.descripcion));
+  // C) descripción de la factura vacía en vez de null (el error dice getDescripcion() is null)
+  if (!ok) ok = await probar("C) descripcion de la factura = \"\"", { ...cuerpo, descripcion: f.descripcion == null ? "" : f.descripcion });
   // B) percepciones con descripción vacía (en pantalla tienen "Observaciones")
   if (!ok) ok = await probar("B) percepción con descripcion", { ...cuerpo, transaccionPercepcionItems: comoLista(f.transaccionPercepcionItems).map((p) => ({ ...p, descripcion: "" })) });
   const r = { ok };
