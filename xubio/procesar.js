@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -90,7 +90,6 @@ async function procesarLineas(amb) {
   const lineas = await leerPagos(amb);
   const col = db.collection(amb.prefijo + "xubioEstado");
   const previos = {};
-  (await col.get()).docs.forEach((d) => (previos[d.id] = d.data()));
 
   // Una misma factura cargada en varias líneas de Pagos con distintos centros de costo (ej. Imak repartida
   // en 3 sub obras de WU): en Xubio se le pone el centro de costo de la parte con mayor Importe Bruto
@@ -104,6 +103,12 @@ async function procesarLineas(amb) {
   const validas = lineas.filter(
     (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && (!fechaISO(l.fechaPagado) || (opDesde && fechaISO(l.fechaPagado) >= opDesde)),
   );
+  // Sección 122: se leen solo los estados de estas líneas (no la colección entera), para gastar pocas lecturas
+  // de la base ahora que el proceso corre seguido.
+  for (let i = 0; i < validas.length; i += 200) {
+    const refs = validas.slice(i, i + 200).map((l) => col.doc(String(l.id)));
+    refs.length && (await db.getAll(...refs)).forEach((d) => d.exists && (previos[d.id] = d.data()));
+  }
   const objetivo = (l) =>
     normalizar(
       t(l.centroCostoXubio) ||
@@ -193,7 +198,10 @@ async function procesarLineas(amb) {
     n++;
   }
   console.log(`[${amb.nombre}] líneas procesadas: ${n} (en espera: ${Math.max(0, cola.length - n)})`);
+  // Resumen visible en GitHub (sin datos): cuántas líneas se miraron y cuántas se procesaron.
+  avisos < 8 && n > 0 && (avisos++, console.log(`::notice::[${amb.nombre}] ${new Date().toISOString()} líneas sin pagar con factura: ${validas.length}, procesadas ahora: ${n}, en espera: ${Math.max(0, cola.length - n)}`));
 }
+let avisos = 0;
 
 
 // ---------- Órdenes de pago (ver ordenesPago.js) ----------
@@ -354,18 +362,64 @@ async function actualizarCentros() {
   console.log("Centros de costo de Xubio actualizados: " + nombres.length);
 }
 
+// Una pasada completa por ambiente (pedidos sueltos, líneas de Pagos y OP).
+async function pasada(amb, conOP) {
+  limpiarCaches();
+  await procesarPedidos(amb);
+  if (amb.automatico) await procesarLineas(amb);
+  if (conOP && amb.automatico && amb.ops !== false)
+    await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
+}
+const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const ultimoCambio = async (amb) => {
+  const d = await db.doc(amb.prefijo + "app/st_pagosSemanales").get();
+  return d.exists && d.updateTime ? d.updateTime.toMillis() : 0;
+};
+const hayPedidos = async (amb) => !(await db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").limit(1).get()).empty;
+
+// Sección 122: GitHub no respeta el "cada 5 minutos" (corría cada 4-7 horas). Ahora cada corrida queda
+// VIGILANDO unas 5 horas y 45 minutos: cada 60 segundos mira si cambiaron los Pagos de Producción (1 lectura)
+// o si hay pedidos, y si cambió algo procesa enseguida. Cada 30 minutos hace una pasada completa en los dos
+// ambientes (reintentos). Al terminar, el workflow se vuelve a lanzar solo.
+async function vigilar(minutos) {
+  const fin = Date.now() + minutos * 60 * 1000;
+  const marca = {};
+  let completa = 0;
+  while (Date.now() < fin) {
+    const ahora = Date.now(),
+      toca = ahora - completa >= 30 * 60 * 1000;
+    try {
+      toca && (await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e)));
+      for (const amb of AMBIENTES) {
+        if (toca) {
+          marca[amb.nombre] = await ultimoCambio(amb);
+          await pasada(amb, true);
+          continue;
+        }
+        if (amb.nombre !== "prd") continue; // QA (pruebas) solo en las pasadas completas
+        const m = await ultimoCambio(amb);
+        if (m !== marca[amb.nombre] || (await hayPedidos(amb))) {
+          marca[amb.nombre] = m;
+          await pasada(amb, true);
+        }
+      }
+      toca && (completa = ahora);
+    } catch (e) {
+      console.error("Pasada:", (e && e.message) || e);
+    }
+    await dormir(60 * 1000);
+  }
+}
+
 (async () => {
+  const minutos = Number(process.env.VIGILAR_MINUTOS || 0);
+  if (minutos > 0) return vigilar(minutos);
   try {
     await actualizarCentros();
   } catch (e) {
     console.error("No se pudo actualizar la lista de centros:", (e && e.message) || e);
   }
-  for (const amb of AMBIENTES) {
-    await procesarPedidos(amb);
-    if (amb.automatico) await procesarLineas(amb);
-    if (amb.automatico && amb.ops !== false)
-      await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
-  }
+  for (const amb of AMBIENTES) await pasada(amb, true);
 })().catch((e) => {
   console.error(e);
   process.exit(1);

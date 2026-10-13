@@ -1530,6 +1530,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Publicado en QA.
 - [x] **Subido a Producción** (13/10/2026) con el OK del usuario ("subilo a producción"). Va con el mismo código: Verónica (Secciones 114-116) sigue apagada en Producción, y el estado de OP "pago ya aplicado" (Sección 118) solo es un texto en Pagos mientras la integración con Xubio sigue en pausa.
 
+### 122. Xubio: el proceso queda vigilando (GitHub no respetaba "cada 5 minutos")
+
+- Aviso del usuario (13/10/2026 13:54): "hace más de 15 min cargué y aún no veo que se carguen en Xubio". Revisado: el horario automático de GitHub ("cada 5 minutos") no se cumplía; las corridas eran cada 4 a 7 horas (ej. 06:44, 11:32).
+- [x] Ahora cada corrida queda **vigilando ~5 h 45 min**: cada 60 segundos mira si cambiaron los Pagos de Producción (1 lectura de la base) o si hay pedidos (Reintentar, etc.) y, si cambió algo, procesa enseguida. Cada 30 minutos hace una pasada completa en Producción y QA (reintentos, centros que faltaban, lista de centros). Al terminar, el workflow se vuelve a lanzar solo; el horario de GitHub queda de respaldo por si la cadena se corta.
+- [x] Para gastar pocas lecturas de la base (plan gratuito): se leen solo los estados de las líneas que corresponden (sin Fecha Pagado), no la colección entera; QA solo en las pasadas completas. Antes de cada pasada se borran las listas guardadas de Xubio (facturas, proveedores, centros) para trabajar con lo último.
+- [x] Resumen sin datos en GitHub (anotaciones): cuántas líneas se miraron y cuántas se procesaron.
+- Nota técnica: para que tome código nuevo de `xubio/` hay que cancelar la corrida que está vigilando (la siguiente arranca con el código nuevo).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -537,4 +537,12 @@ async function facturaYaAplicada(id) {
   return { aplicada: false, numero };
 }
 
-module.exports = { facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+// Sección 122: el proceso ahora queda corriendo horas (vigilando); antes de cada pasada se borran las listas
+// guardadas de Xubio (facturas, proveedores, centros) para trabajar siempre con lo último.
+function limpiarCaches() {
+  for (const k of Object.keys(cacheListas)) delete cacheListas[k];
+  centrosCache = null;
+  proveedoresCache = null;
+}
+
+module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
