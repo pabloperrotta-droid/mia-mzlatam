@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar } = require("./xubio");
+const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -37,6 +37,7 @@ const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
 const ARREGLO_DESCRIPCION = Date.UTC(2026, 9, 13, 18, 0); // 13/10/2026 15:00 (Argentina)
+const ARREGLO_INTERNOS = Date.UTC(2026, 9, 13, 19, 50); // 13/10/2026 16:50 (Argentina): internos → Gastos Generales
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
@@ -110,10 +111,13 @@ async function procesarLineas(amb) {
     const refs = validas.slice(i, i + 200).map((l) => col.doc(String(l.id)));
     refs.length && (await db.getAll(...refs)).forEach((d) => d.exists && (previos[d.id] = d.data()));
   }
+  // Los gastos internos van todos a Gastos Generales (Sección 125): dos rubros internos en la misma factura no son "repartida".
   const objetivo = (l) =>
     normalizar(
       t(l.centroCostoXubio) ||
-        (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.cliente) + " " + t(l.centroCosto)),
+        (normalizar(l.cliente) === "INTERNO"
+          ? CENTRO_GASTOS_GENERALES
+          : normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.cliente) + " " + t(l.centroCosto)),
     );
   const grupos = {};
   for (const l of validas) {
@@ -125,7 +129,9 @@ async function procesarLineas(amb) {
   const importePorFactura = {};
   for (const l of validas) importePorFactura[claveFactura(l)] = (importePorFactura[claveFactura(l)] || 0) + (Number(l.importe) || 0);
   const repartida = {};
-  const nombreCentro = (l) => t(l.centroCostoXubio) || (normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto));
+  const nombreCentro = (l) =>
+    t(l.centroCostoXubio) ||
+    (normalizar(l.cliente) === "INTERNO" ? CENTRO_GASTOS_GENERALES : normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto));
   for (const g of Object.values(grupos)) {
     const destinos = [...new Set(g.map(objetivo))];
     if (g.length > 1 && destinos.length > 1) {
@@ -154,6 +160,8 @@ async function procesarLineas(amb) {
     else if (!e || e.firma !== f) prioridad = 0;
     // Sección 123: las rechazadas antes del arreglo de la descripción vacía se vuelven a probar una vez enseguida.
     else if (e.estado === "rechazada" && (e.intento || 0) < ARREGLO_DESCRIPCION) prioridad = 1;
+    // Sección 125: las líneas internas que no quedaron bien se vuelven a probar una vez enseguida, ahora con Gastos Generales.
+    else if (normalizar(l.cliente) === "INTERNO" && !t(l.centroCostoXubio) && (e.intento || 0) < ARREGLO_INTERNOS) prioridad = 1;
     // Sección 120: si faltaba el centro de costo en Xubio, se vuelve a probar cada 30 minutos (por si lo crearon a mano).
     else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (e.estado === "centro_no_encontrado" ? 30 * 60 * 1000 : LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;

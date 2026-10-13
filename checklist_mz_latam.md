@@ -1553,6 +1553,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Prueba automática nueva ("Pagos: ordenar por la columna Xubio").
 - [x] Publicado en QA. Producción: pendiente del OK del usuario.
 
+### 125. Xubio: los gastos internos van siempre a "Gastos Generales de Oficina"
+
+- [x] 13/10/2026, pedido del usuario ("los centros de costos que dice interno, ponerlo siempre como gastos generales en Xubio"). Las líneas de Pagos con Cliente **INTERNO** (sea cual sea el rubro) se mandan a Xubio con el centro de costo **"Gastos Generales de Oficina"**, que es el nombre exacto que tiene en Xubio (verificado con un diagnóstico de solo lectura: no existe uno llamado solo "Gastos Generales"). Antes se buscaba un centro con el nombre del rubro y quedaban en "El centro de costo no existe en Xubio" (17 líneas).
+- [x] Si en la línea se eligió a mano otro centro de la lista de Xubio, manda lo elegido a mano. Las líneas que ya estaban en ✅ no se tocan (regla del usuario: una vez en verde no se vuelve a mandar). Dos rubros internos de la misma factura ya no cuentan como "factura repartida".
+- [x] Las internas que no estaban bien se reintentan una vez enseguida (`ARREGLO_INTERNOS`).
+- [x] Es un cambio del proceso de Xubio (corre solo en Producción; QA solo simula), hecho por pedido directo del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -247,6 +247,7 @@ async function buscarFactura({ cuit, factura, fecha }) {
   return { estado: "encontrada", proveedor: prov.nombre || prov.razonSocial, comprobante: candidatas[0] };
 }
 
+const CENTRO_GASTOS_GENERALES = "Gastos Generales de Oficina"; // nombre exacto en Xubio (verificado 13/10/2026)
 function buscarCentro(centros, nombres) {
   for (const n of nombres) {
     const k = normalizar(n);
@@ -285,8 +286,13 @@ async function asignarCentroCosto(p) {
   const cc0 = String(p.centroCosto || "").trim();
   const cli = String(p.cliente || "").trim();
   const esWU = normalizar(cli) === "WU";
+  // Sección 125 (pedido del usuario): los gastos internos van siempre a "Gastos Generales de Oficina" en Xubio,
+  // sea cual sea el rubro (salvo que en la línea se haya elegido a mano otro centro de la lista).
+  const esInterno = normalizar(cli) === "INTERNO";
   const nombres = (
-    esWU
+    esInterno
+      ? [p.centroCostoXubio, CENTRO_GASTOS_GENERALES]
+      : esWU
       ? [p.centroCostoXubio, p.subObra]
       : [p.centroCostoXubio, cc0, cli && cc0 ? cli + " " + cc0 : "", cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : ""]
   ).filter((x) => x && String(x).trim());
@@ -553,4 +559,4 @@ function limpiarCaches() {
   proveedoresCache = null;
 }
 
-module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
