@@ -28,10 +28,10 @@ const db = admin.firestore();
 // y las OP en QA son solo vista previa.
 const AMBIENTES = [
   { nombre: "qa", prefijo: "qa_", automatico: true, simular: true },
-  // PAUSADO en Producción el 30/09/2026 a pedido del usuario ("por el momento en producción sacame la
-  // conexión con Xubio… que no haga nada") hasta que Xubio responda por los rechazos de la API.
-  // Para reactivar: automatico: true.
-  { nombre: "prd", prefijo: "", automatico: false },
+  // Pausado del 30/09 al 13/10/2026. REACTIVADO el 13/10/2026 con OK del usuario ("lo de Xubio también"):
+  // centro de costo automático (solo líneas sin Fecha Pagado, Sección 120). `ops: false` = las órdenes de pago
+  // siguen apagadas hasta que el usuario confirme que también se activan.
+  { nombre: "prd", prefijo: "", automatico: true, ops: false },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
@@ -363,7 +363,7 @@ async function actualizarCentros() {
   for (const amb of AMBIENTES) {
     await procesarPedidos(amb);
     if (amb.automatico) await procesarLineas(amb);
-    if (amb.automatico)
+    if (amb.automatico && amb.ops !== false)
       await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
   }
 })().catch((e) => {
