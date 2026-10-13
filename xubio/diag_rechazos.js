@@ -23,11 +23,18 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 1500).replace(/
   const id2 = String(process.env.XUBIO_CLIENT_ID || "").trim(), sec = String(process.env.XUBIO_SECRET_ID || "").trim();
   const tk = await fetch("https://xubio.com/API/1.1/TokenEndpoint", { method: "POST", headers: { Authorization: "Basic " + Buffer.from(id2 + ":" + sec).toString("base64"), "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: "grant_type=client_credentials" });
   const token = JSON.parse(await tk.text()).access_token;
-  const r = await fetch("https://xubio.com/API/1.1/comprobanteCompraBean/" + id, { method: "PUT", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(cuerpo) });
-  const txt = await r.text();
-  out("PUT status " + r.status + " | largo " + txt.length);
-  const m = txt.match(/"description"\s*:\s*"([^"]*)"/);
-  out("MOTIVO (description): " + (m ? m[1] : "(no vino)") + " | codeResponse: " + ((txt.match(/"codeResponse"\s*:\s*"?([^",}]*)/) || [])[1] || "-"));
+  const probar = async (nombre, body) => {
+    const r = await fetch("https://xubio.com/API/1.1/comprobanteCompraBean/" + id, { method: "PUT", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
+    const txt = await r.text();
+    let desc = "";
+    try { const j = JSON.parse(txt); desc = j.description || ""; } catch { desc = (txt.match(/"description"\s*:\s*"((?:[^"\\]|\\.)*)"/) || [])[1] || ""; }
+    out(nombre + " → status " + r.status + " | MOTIVO: " + String(desc).slice(0, 700));
+    return r.ok;
+  };
+  let ok = await probar("A) como la integración", cuerpo);
+  // B) percepciones con descripción vacía (en pantalla tienen "Observaciones")
+  if (!ok) ok = await probar("B) percepción con descripcion", { ...cuerpo, transaccionPercepcionItems: comoLista(f.transaccionPercepcionItems).map((p) => ({ ...p, descripcion: "" })) });
+  const r = { ok };
   if (r.ok) {
     const g = await xubio("GET", "/comprobanteCompraBean/" + id);
     out("Después: total " + g.importetotal + " | centros " + comoLista(g.transaccionProductoItems).map((it) => it.centroDeCosto && it.centroDeCosto.nombre).join(","));
