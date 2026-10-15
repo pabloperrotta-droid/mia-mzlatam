@@ -8,6 +8,6 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 1500));
   out("prd OP total " + ops.size);
   ops.docs.forEach((d, i) => {
     const x = d.data();
-    out("OP " + (i + 1) + " / estado " + x.estado + " / modo " + x.modo + " / tiene numero OP " + !!x.opNumero + " / retenciones " + ((x.retenciones || []).length) + " / mensaje: " + String(x.mensaje || "").replace(/[\d.,$]+/g, "#").slice(0, 200));
+    out("OP " + (i + 1) + " / estado " + x.estado + " / modo " + x.modo + " / tiene numero OP " + !!x.opNumero + " / retenciones " + ((x.retenciones || []).length) + " / actualizado " + (x.actualizado ? new Date(x.actualizado).toISOString() : "-") + " / intentos " + (x.intentos || "-") + " / mensaje: " + String(x.mensaje || "").replace(/[\d.,$]+/g, "#").slice(0, 200));
   });
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
