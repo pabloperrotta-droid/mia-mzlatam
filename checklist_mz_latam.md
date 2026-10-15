@@ -1567,6 +1567,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] En Producción no había e-cheqs cargados: las OP necesitan que primero se suba el Excel de e-cheqs del banco ("Subir e-cheqs del banco" en Pagos).
 - [x] Siguen los controles de antes de emitir: misma OP del mismo día e importe, mismo número de cheque en los últimos 30 días, y factura con pago ya aplicado en Xubio (no se emite y lo avisa).
 
+### 127. Órdenes de pago: solo para pagos con E-Cheq
+
+- [x] 15/10/2026, pedido del usuario ("transferencia, efectivo y Levy van sin orden de pago"). MIA arma la OP en Xubio solo cuando el pago (proveedor + Fecha Pagado) tiene E-Cheq. Si solo hay transferencia, efectivo o Diego Levy, no se arma OP ni se muestra marca de OP en Pagos.
+- [x] Si un mismo pago mezcla E-Cheq con transferencia/efectivo, la OP lleva solo los cheques (con la retención de Ganancias descontada de los cheques y su certificado, que numera Xubio); el detalle de la OP avisa lo que no fue.
+- [x] Consecuencia: en los pagos sin E-Cheq la retención de Ganancias (si corresponde) no la hace MIA en Xubio; se hace a mano.
+- [x] Probado con datos simulados (solo transferencia → sin OP; E-Cheq + transferencia → OP solo con el cheque).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
