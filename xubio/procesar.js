@@ -29,9 +29,11 @@ const db = admin.firestore();
 const AMBIENTES = [
   { nombre: "qa", prefijo: "qa_", automatico: true, simular: true },
   // Pausado del 30/09 al 13/10/2026. REACTIVADO el 13/10/2026 con OK del usuario ("lo de Xubio también"):
-  // centro de costo automático (solo líneas sin Fecha Pagado, Sección 120). `ops: false` = las órdenes de pago
-  // siguen apagadas hasta que el usuario confirme que también se activan.
-  { nombre: "prd", prefijo: "", automatico: true, ops: false },
+  // centro de costo automático (solo líneas sin Fecha Pagado, Sección 120).
+  // Sección 126: órdenes de pago ACTIVADAS el 15/10/2026 con OK del usuario ("poné en producción el tema de las
+  // órdenes de pago"). `opActivacion`: la fecha "desde" que quedó de la prueba del 30/09 se descarta; se toma
+  // de nuevo la de hoy y todo lo que ya estaba pagado queda como "anterior" (esas OP ya se hicieron a mano).
+  { nombre: "prd", prefijo: "", automatico: true, opActivacion: Date.UTC(2026, 9, 15, 13, 0) },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
@@ -222,7 +224,7 @@ async function procesarOPs(amb) {
   const cfgSnap = await cfgRef.get();
   let cfg = cfgSnap.exists ? cfgSnap.data() : {};
   let primeraVez = false;
-  if (!cfg.desde) {
+  if (!cfg.desde || (amb.opActivacion && (cfg.activado || 0) < amb.opActivacion)) {
     // Solo se arman OP de líneas pagadas desde que se activó esto. Las que ya estaban pagadas en ese
     // momento (aunque sean de hoy) quedan como "anterior": esas OP ya se hicieron a mano.
     const hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);

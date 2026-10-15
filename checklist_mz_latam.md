@@ -1560,10 +1560,17 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Las internas que no estaban bien se reintentan una vez enseguida (`ARREGLO_INTERNOS`).
 - [x] Es un cambio del proceso de Xubio (corre solo en Producción; QA solo simula), hecho por pedido directo del usuario.
 
+### 126. Xubio: órdenes de pago ACTIVADAS en Producción
+
+- [x] 15/10/2026, con el OK del usuario ("poné en producción el tema de las órdenes de pago"). En `xubio/procesar.js` se sacó `ops: false` de "prd".
+- [x] Antes de activar se revisó (diagnóstico de solo lectura) que en Producción había quedado una fecha "desde" del 30/09 (de la primera activación, que después se pausó). Con esa fecha MIA habría intentado hacer OP de todo lo pagado desde el 30/09, que ya se hizo a mano. Se agregó `opActivacion`: si la activación guardada es anterior, se toma de nuevo la fecha de hoy y **todo lo que ya estaba pagado (incluido lo de hoy) queda como "anterior"**; solo se hacen OP de lo que se tilde como pagado desde ahora.
+- [x] En Producción no había e-cheqs cargados: las OP necesitan que primero se suba el Excel de e-cheqs del banco ("Subir e-cheqs del banco" en Pagos).
+- [x] Siguen los controles de antes de emitir: misma OP del mismo día e importe, mismo número de cheque en los últimos 30 días, y factura con pago ya aplicado en Xubio (no se emite y lo avisa).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
-- [ ] (anterior) **Activar Xubio en Producción cuando el usuario avise** ("dejá todo preparado, yo te aviso en estos días para subirlo", 09/10/2026). Pasos: (1) publicar `MIA.prd.html` con lo que está en QA de Pagos (estado de OP "pago ya aplicado", Sección 118) — Verónica sigue apagada; (2) en `xubio/procesar.js` poner `automatico: true` en "prd"; (3) confirmar con el usuario si se activan centro de costo y órdenes de pago juntos o primero solo el centro. Al activar las OP se fija la fecha "desde" (las líneas pagadas antes quedan como "anterior").
+- [x] (anterior, hecho el 15/10/2026, Sección 126) **Activar Xubio en Producción cuando el usuario avise** ("dejá todo preparado, yo te aviso en estos días para subirlo", 09/10/2026). Pasos: (1) publicar `MIA.prd.html` con lo que está en QA de Pagos (estado de OP "pago ya aplicado", Sección 118) — Verónica sigue apagada; (2) en `xubio/procesar.js` poner `automatico: true` en "prd"; (3) confirmar con el usuario si se activan centro de costo y órdenes de pago juntos o primero solo el centro. Al activar las OP se fija la fecha "desde" (las líneas pagadas antes quedan como "anterior").
 
 - [ ] Rotar el token (PAT) de GitHub usado para las publicaciones automáticas, por buena práctica de seguridad (quedó expuesto en la conversación en su momento).
 - [ ] Definir si el link de Artifact de Claude se deja fijo apuntando a `MIAQA.html`/`MIA.prd.html`, o se retira directamente, ya que no puede mostrar datos reales.
