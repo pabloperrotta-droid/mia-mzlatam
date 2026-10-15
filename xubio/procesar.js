@@ -263,8 +263,8 @@ async function procesarOPs(amb) {
   for (const [clave, ls] of Object.entries(grupos)) {
     const prev = previas[clave];
     if (prev && (OP_HECHA.has(prev.estado) || prev.estado === "anterior")) continue;
-    // Sección 127: sin E-Cheq no hay OP (transferencia, efectivo y Diego Levy van sin orden de pago).
-    if (!ls.some((l) => (Number(l.echeq) || 0) > 0)) {
+    // Sección 127: sin E-Cheq ni transferencia no hay OP (efectivo y Diego Levy van sin orden de pago).
+    if (!ls.some((l) => (Number(l.echeq) || 0) > 0 || (Number(l.transferencia) || 0) > 0)) {
       if (prev) await colOP.doc(clave).delete();
       continue;
     }

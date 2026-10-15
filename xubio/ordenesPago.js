@@ -8,11 +8,11 @@
  *        - retención de Ganancias igual que el botón "Retenciones" de MIA: sobre el Importe Bruto
  *          (sin IVA) de las facturas A, MAT 2% sobre lo que pase de $224.000 (Enajenación Bs. Cambio
  *          y Bs. Muebles), MO 2% sobre lo que pase de $67.170 (Locación de Obras y/o Servicios);
- *          se descuenta de los cheques;
+ *          se descuenta de los cheques si hay E-Cheq, si no de la transferencia;
  *        - cheques: los del Excel del banco con ese CUIT y esa fecha de emisión; tienen que sumar
  *          E-Cheq − retención;
- *        - solo los pagos con E-Cheq llevan OP (Sección 127, 15/10/2026): transferencia, efectivo y
- *          Diego Levy van sin OP; si una línea mezcla E-Cheq con otra cosa, la OP lleva solo los cheques.
+ *        - E-Cheq y transferencia (→ Banco Santander Rio) llevan OP; efectivo y Diego Levy no
+ *          (Sección 127, 15/10/2026): si el pago es solo efectivo/Levy no se arma OP.
  *   El resultado queda en `xubioOP/{cuit}_{fecha}` y MIA lo muestra en Pagos.
  *   En Producción la OP se crea en Xubio al tildar la línea como pagada (pedido del usuario: "es el
  *   mismo checkbox o el mismo campo de fecha de pagado"). En QA solo se muestra la vista previa.
@@ -93,8 +93,7 @@ async function armarOP(lineas, cheques, estadosCentro) {
   const diegoLevy = lineas.reduce((s, l) => s + num(l.diegoLevy), 0);
   const ret = retencion(lineas);
   const retEnCheques = echeq > 0 ? ret.total : 0;
-  // Sección 127 (pedido del usuario): solo el E-Cheq lleva OP; transferencia, efectivo y Diego Levy van sin OP.
-  const retEnTransf = 0;
+  const retEnTransf = echeq > 0 ? 0 : transf > 0 ? ret.total : 0;
   const retAplicada = retEnCheques + retEnTransf;
   const esperadoCheques = r2(echeq - retEnCheques);
   const sumaCheques = r2(cheques.reduce((s, c) => s + num(c.importe), 0));
@@ -141,7 +140,10 @@ async function armarOP(lineas, cheques, estadosCentro) {
       descripcion: "",
     })),
   ];
-  if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq: no lleva orden de pago." };
+  // Sección 127 (corregida, pedido del usuario): E-Cheq y transferencia llevan OP; efectivo y Diego Levy no.
+  if (res.importes.transferencia > 0)
+    instrumentos.push({ tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
+  if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq ni Transferencia: no lleva orden de pago." };
 
   const retItems = [];
   if (retAplicada > 0) {
@@ -162,7 +164,6 @@ async function armarOP(lineas, cheques, estadosCentro) {
     transaccionRetencionItems: retItems,
   };
   res.aviso = [
-    transf > 0 ? "Transferencia ($" + r2(transf).toLocaleString("es-AR") + ") no va en la OP." : "",
     efectivo > 0 ? "Efectivo ($" + r2(efectivo).toLocaleString("es-AR") + ") no va en la OP." : "",
     diegoLevy > 0 ? "Diego Levy ($" + r2(diegoLevy).toLocaleString("es-AR") + ") no va en la OP." : "",
   ]

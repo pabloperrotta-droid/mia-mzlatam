@@ -1567,12 +1567,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] En Producción no había e-cheqs cargados: las OP necesitan que primero se suba el Excel de e-cheqs del banco ("Subir e-cheqs del banco" en Pagos).
 - [x] Siguen los controles de antes de emitir: misma OP del mismo día e importe, mismo número de cheque en los últimos 30 días, y factura con pago ya aplicado en Xubio (no se emite y lo avisa).
 
-### 127. Órdenes de pago: solo para pagos con E-Cheq
+### 127. Órdenes de pago: efectivo y Diego Levy van sin OP
 
-- [x] 15/10/2026, pedido del usuario ("transferencia, efectivo y Levy van sin orden de pago"). MIA arma la OP en Xubio solo cuando el pago (proveedor + Fecha Pagado) tiene E-Cheq. Si solo hay transferencia, efectivo o Diego Levy, no se arma OP ni se muestra marca de OP en Pagos.
-- [x] Si un mismo pago mezcla E-Cheq con transferencia/efectivo, la OP lleva solo los cheques (con la retención de Ganancias descontada de los cheques y su certificado, que numera Xubio); el detalle de la OP avisa lo que no fue.
-- [x] Consecuencia: en los pagos sin E-Cheq la retención de Ganancias (si corresponde) no la hace MIA en Xubio; se hace a mano.
-- [x] Probado con datos simulados (solo transferencia → sin OP; E-Cheq + transferencia → OP solo con el cheque).
+- [x] 15/10/2026, pedido del usuario. Primero se entendió "transferencia, efectivo y Levy van sin orden de pago" y se dejó OP solo para E-Cheq; el usuario corrigió el mismo día: "transferencia sí tiene que tener orden de pago, solo efectivo y Levy no". Quedó así:
+  - E-Cheq → OP con los cheques del Excel del banco.
+  - Transferencia → OP con Banco Santander Rio.
+  - Retención de Ganancias (y su certificado, que numera Xubio) dentro de la OP: se descuenta de los cheques si hay E-Cheq, si no de la transferencia.
+  - Efectivo y Diego Levy no van en la OP. Si el pago es solo efectivo y/o Levy no se arma OP ni aparece marca de OP en Pagos; si se mezclan con E-Cheq o transferencia, el detalle de la OP avisa lo que no fue.
+- [x] Probado con datos simulados (transferencia con retención de MO → OP con transferencia + retención que suman el total; solo efectivo → sin OP; E-Cheq + efectivo → OP solo con el cheque).
 
 ## 41. Pendientes / recomendaciones
 
