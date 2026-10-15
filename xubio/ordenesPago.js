@@ -11,7 +11,8 @@
  *          se descuenta de los cheques si hay E-Cheq, si no de la transferencia;
  *        - cheques: los del Excel del banco con ese CUIT y esa fecha de emisión; tienen que sumar
  *          E-Cheq − retención;
- *        - transferencia → Banco Santander Rio; efectivo → Caja.
+ *        - E-Cheq y transferencia (→ Banco Santander Rio) llevan OP; efectivo y Diego Levy no
+ *          (Sección 127, 15/10/2026): si el pago es solo efectivo/Levy no se arma OP.
  *   El resultado queda en `xubioOP/{cuit}_{fecha}` y MIA lo muestra en Pagos.
  *   En Producción la OP se crea en Xubio al tildar la línea como pagada (pedido del usuario: "es el
  *   mismo checkbox o el mismo campo de fecha de pagado"). En QA solo se muestra la vista previa.
@@ -139,10 +140,10 @@ async function armarOP(lineas, cheques, estadosCentro) {
       descripcion: "",
     })),
   ];
+  // Sección 127 (corregida, pedido del usuario): E-Cheq y transferencia llevan OP; efectivo y Diego Levy no.
   if (res.importes.transferencia > 0)
     instrumentos.push({ tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
-  if (efectivo > 0) instrumentos.push({ tipoCuenta: 1, cuenta: CUENTA_CAJA, moneda: PESOS, cotizacion: 1, importe: r2(efectivo), descripcion: "" });
-  if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq, Transferencia ni Efectivo." };
+  if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq ni Transferencia: no lleva orden de pago." };
 
   const retItems = [];
   if (retAplicada > 0) {
@@ -162,7 +163,10 @@ async function armarOP(lineas, cheques, estadosCentro) {
     transaccionInstrumentoDePago: instrumentos,
     transaccionRetencionItems: retItems,
   };
-  res.aviso = [diegoLevy > 0 ? "Diego Levy ($" + r2(diegoLevy).toLocaleString("es-AR") + ") no va en la OP." : ""]
+  res.aviso = [
+    efectivo > 0 ? "Efectivo ($" + r2(efectivo).toLocaleString("es-AR") + ") no va en la OP." : "",
+    diegoLevy > 0 ? "Diego Levy ($" + r2(diegoLevy).toLocaleString("es-AR") + ") no va en la OP." : "",
+  ]
     .filter(Boolean)
     .join(" ");
   return { ...res, estado: "lista", mensaje: "OP lista para crear en Xubio." };

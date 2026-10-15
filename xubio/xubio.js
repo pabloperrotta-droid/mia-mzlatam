@@ -88,7 +88,8 @@ async function xubioUnaVez(metodo, ruta, cuerpo) {
       detalle = msgs.length ? msgs.join(" | ") : Object.keys(j).join(",");
     } catch {}
     const e = new Error("Xubio respondió " + r.status + " en " + metodo + " " + ruta.split("?")[0] + ": " + String(detalle).slice(0, 400));
-    e.cuerpo = txt.slice(0, 6000);
+    // El motivo real ("description") viene al final: se guarda el principio y el final de la respuesta.
+    e.cuerpo = txt.length > 6000 ? txt.slice(0, 1500) + " … " + txt.slice(-4500) : txt;
     e.status = r.status;
     throw e;
   }
@@ -246,6 +247,7 @@ async function buscarFactura({ cuit, factura, fecha }) {
   return { estado: "encontrada", proveedor: prov.nombre || prov.razonSocial, comprobante: candidatas[0] };
 }
 
+const CENTRO_GASTOS_GENERALES = "Gastos Generales de Oficina"; // nombre exacto en Xubio (verificado 13/10/2026)
 function buscarCentro(centros, nombres) {
   for (const n of nombres) {
     const k = normalizar(n);
@@ -284,8 +286,13 @@ async function asignarCentroCosto(p) {
   const cc0 = String(p.centroCosto || "").trim();
   const cli = String(p.cliente || "").trim();
   const esWU = normalizar(cli) === "WU";
+  // Sección 125 (pedido del usuario): los gastos internos van siempre a "Gastos Generales de Oficina" en Xubio,
+  // sea cual sea el rubro (salvo que en la línea se haya elegido a mano otro centro de la lista).
+  const esInterno = normalizar(cli) === "INTERNO";
   const nombres = (
-    esWU
+    esInterno
+      ? [p.centroCostoXubio, CENTRO_GASTOS_GENERALES]
+      : esWU
       ? [p.centroCostoXubio, p.subObra]
       : [p.centroCostoXubio, cc0, cli && cc0 ? cli + " " + cc0 : "", cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : ""]
   ).filter((x) => x && String(x).trim());
@@ -323,6 +330,9 @@ async function asignarCentroCosto(p) {
 
   const modificado = {
     ...completo,
+    // Sección 123: si la factura no tiene descripción, Xubio falla al guardar ("getDescripcion() is null" →
+    // "No se pudo completar la operación"). Se manda vacía.
+    descripcion: completo.descripcion == null ? "" : completo.descripcion,
     transaccionProductoItems: items.map((it) => ({
       ...it,
       centroDeCosto: { ID: cc.id },
@@ -338,12 +348,13 @@ async function asignarCentroCosto(p) {
 
   // Chequeo previo 2 (pedido del usuario): si la factura ya tiene una orden de pago aplicada no se toca.
   // Xubio no siempre lo informa en la factura; si no lo informa, lo confirma rechazando el cambio.
+  let motivoXubio = "";
   const bloqueada = (tieneOP) => ({
     estado: tieneOP ? "bloqueada" : "rechazada",
     mensaje: tieneOP
       ? "Orden de pago aplicada: la factura " + completo.numeroDocumento + " ya tiene una orden de pago aplicada en Xubio. Hay que ponerle el centro de costo \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + "."
       : "Xubio rechazó el cambio de centro de costo de la factura " + completo.numeroDocumento +
-        " (respondió \"No se pudo completar la operación\"). Hay que ponerle \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
+        " (respondió \"No se pudo completar la operación\"" + (motivoXubio ? ": " + motivoXubio : "") + "). Hay que ponerle \"" + cc.nombre + "\" a mano en Xubio" + antesTenia + ".",
     factura: antes,
     centroDeCosto: cc,
   });
@@ -362,6 +373,8 @@ async function asignarCentroCosto(p) {
         centroDeCosto: cc,
         transaccionid: id,
       };
+    motivoXubio = (String(err.cuerpo || "").match(/"description"\s*:\s*"((?:[^"\\]|\\.)*)"/) || [])[1] || "";
+    motivoXubio = motivoXubio.replace(/\\"/g, '"').slice(0, 200);
     // Se guarda la respuesta completa de Xubio (JSON) para poder mandarla a soporte (info@xubio.com).
     return { ...bloqueada(false), errorXubio: String(err.cuerpo || err.message || "").slice(0, 6000), transaccionid: id };
   }
@@ -521,6 +534,7 @@ async function facturaYaAplicada(id) {
   const items = comoLista(completo.transaccionProductoItems);
   const cuerpo = {
     ...completo,
+    descripcion: completo.descripcion == null ? "" : completo.descripcion, // Sección 123
     transaccionProductoItems: items.map((it) => ({ ...it, ...(it.centroDeCosto && idDe(it.centroDeCosto) != null ? { centroDeCosto: { ID: idDe(it.centroDeCosto) } } : {}) })),
   };
   try {
@@ -545,4 +559,4 @@ function limpiarCaches() {
   proveedoresCache = null;
 }
 
-module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, partesNumero, normalizar };
+module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
