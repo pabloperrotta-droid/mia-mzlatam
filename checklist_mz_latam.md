@@ -1577,6 +1577,12 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Primer pago real (transferencia con retención de MO): Xubio rechazó la OP con "transaccionRItemId no puede ser nulo". Viendo OP existentes (solo lectura), cada retención y cada instrumento llevan su id; para renglones nuevos se manda `transaccionRItemId: 0` y `transaccionIPId: 0`. La OP con error se reintenta sola.
 - [x] Probado con datos simulados (transferencia con retención de MO → OP con transferencia + retención que suman el total; solo efectivo → sin OP; E-Cheq + efectivo → OP solo con el cheque).
 
+### 128. Órdenes de pago PAUSADAS (esperando respuesta de Xubio)
+
+- [x] 15/10/2026 12:56, pedido del usuario: "pausá orden de pago para no generar errores por el momento". En "prd" volvió `ops: false`. El centro de costo automático sigue funcionando.
+- [x] Motivo: la primera OP real (transferencia con retención de Ganancias) fue rechazada por Xubio con "transaccionRItemId no puede ser nulo", también enviando 0. El usuario consultó a soporte de Xubio qué valor mandar y si el número de certificado lo asigna Xubio. No se creó nada en Xubio.
+- [ ] Al reactivar: la fecha "desde" sigue siendo 15/10/2026, así que se harían las OP de lo pagado durante la pausa. Confirmar con el usuario si las quiere o si se mueve la fecha a la de reactivación (cambiar `opActivacion`).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

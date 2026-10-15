@@ -33,7 +33,9 @@ const AMBIENTES = [
   // Sección 126: órdenes de pago ACTIVADAS el 15/10/2026 con OK del usuario ("poné en producción el tema de las
   // órdenes de pago"). `opActivacion`: la fecha "desde" que quedó de la prueba del 30/09 se descarta; se toma
   // de nuevo la de hoy y todo lo que ya estaba pagado queda como "anterior" (esas OP ya se hicieron a mano).
-  { nombre: "prd", prefijo: "", automatico: true, opActivacion: Date.UTC(2026, 9, 15, 13, 0) },
+  // PAUSADAS el 15/10/2026 12:56 por pedido del usuario ("pausá orden de pago para no generar errores") hasta que
+  // Xubio responda cómo mandar la retención (transaccionRItemId). El centro de costo sigue automático.
+  { nombre: "prd", prefijo: "", automatico: true, ops: false, opActivacion: Date.UTC(2026, 9, 15, 13, 0) },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
