@@ -9,6 +9,6 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 1500));
   const ops = await db.collection("xubioOP").get();
   const e = {};
   ops.docs.forEach((d) => { const s = d.get("estado"); e[s] = (e[s] || 0) + 1; });
-  out("prd xubioOP por estado: " + JSON.stringify(e));
+  out("prd xubioOP total " + ops.size + " / " + Object.entries(e).map(([k, v]) => k.replace(/_/g, " ") + " = " + v).join(" / "));
   out("prd echeqs cargados: " + (await db.collection("echeqs").get()).size);
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
