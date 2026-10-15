@@ -1574,6 +1574,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - Transferencia → OP con Banco Santander Rio.
   - Retención de Ganancias (y su certificado, que numera Xubio) dentro de la OP: se descuenta de los cheques si hay E-Cheq, si no de la transferencia.
   - Efectivo y Diego Levy no van en la OP. Si el pago es solo efectivo y/o Levy no se arma OP ni aparece marca de OP en Pagos; si se mezclan con E-Cheq o transferencia, el detalle de la OP avisa lo que no fue.
+- [x] Primer pago real (transferencia con retención de MO): Xubio rechazó la OP con "transaccionRItemId no puede ser nulo". Viendo OP existentes (solo lectura), cada retención y cada instrumento llevan su id; para renglones nuevos se manda `transaccionRItemId: 0` y `transaccionIPId: 0`. La OP con error se reintenta sola.
 - [x] Probado con datos simulados (transferencia con retención de MO → OP con transferencia + retención que suman el total; solo efectivo → sin OP; E-Cheq + efectivo → OP solo con el cheque).
 
 ## 41. Pendientes / recomendaciones
