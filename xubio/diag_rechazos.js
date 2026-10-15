@@ -1,14 +1,13 @@
-// Diagnóstico SOLO LECTURA antes de activar las OP en Producción (sin datos de negocio).
+// Diagnóstico SOLO LECTURA de las OP de Producción (sin datos de negocio).
 const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 const out = (t) => console.log("::notice::" + String(t).slice(0, 1500));
 (async () => {
-  const c = await db.doc("xubioConfig/op").get();
-  out("prd xubioConfig/op existe: " + c.exists + " desde: " + (c.exists ? c.get("desde") : "-") + " activado: " + (c.exists && c.get("activado") ? new Date(c.get("activado")).toISOString() : "-"));
   const ops = await db.collection("xubioOP").get();
-  const e = {};
-  ops.docs.forEach((d) => { const s = d.get("estado"); e[s] = (e[s] || 0) + 1; });
-  out("prd xubioOP total " + ops.size + " / " + Object.entries(e).map(([k, v]) => k.replace(/_/g, " ") + " = " + v).join(" / "));
-  out("prd echeqs cargados: " + (await db.collection("echeqs").get()).size);
+  out("prd OP total " + ops.size);
+  ops.docs.forEach((d, i) => {
+    const x = d.data();
+    out("OP " + (i + 1) + " / estado " + x.estado + " / modo " + x.modo + " / tiene numero OP " + !!x.opNumero + " / retenciones " + ((x.retenciones || []).length) + " / mensaje: " + String(x.mensaje || "").replace(/[\d.,$]+/g, "#").slice(0, 200));
+  });
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
