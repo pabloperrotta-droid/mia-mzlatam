@@ -129,6 +129,7 @@ async function armarOP(lineas, cheques, estadosCentro) {
 
   const instrumentos = [
     ...cheques.map((c) => ({
+      transaccionIPId: 0,
       tipoCuenta: 4,
       cuenta: CUENTA_CHEQUES,
       moneda: PESOS,
@@ -142,15 +143,16 @@ async function armarOP(lineas, cheques, estadosCentro) {
   ];
   // Sección 127 (corregida, pedido del usuario): E-Cheq y transferencia llevan OP; efectivo y Diego Levy no.
   if (res.importes.transferencia > 0)
-    instrumentos.push({ tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
+    instrumentos.push({ transaccionIPId: 0, tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
   if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq ni Transferencia: no lleva orden de pago." };
 
+  // Xubio pide transaccionRItemId en cada retención ("no puede ser nulo"): 0 = renglón nuevo (15/10/2026).
   const retItems = [];
   if (retAplicada > 0) {
     if (ret.retMat > 0)
-      retItems.push({ tipoRetencion: "4", conceptoRetencion: CONCEPTO_MAT, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mat), importeRetenido: ret.retMat, importeMonPpal: ret.retMat, fechaComprobante: fecha });
+      retItems.push({ transaccionRItemId: 0, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MAT, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mat), importeRetenido: ret.retMat, importeMonPpal: ret.retMat, fechaComprobante: fecha });
     if (ret.retMo > 0)
-      retItems.push({ tipoRetencion: "4", conceptoRetencion: CONCEPTO_MO, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mo), importeRetenido: ret.retMo, importeMonPpal: ret.retMo, fechaComprobante: fecha });
+      retItems.push({ transaccionRItemId: 0, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MO, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mo), importeRetenido: ret.retMo, importeMonPpal: ret.retMo, fechaComprobante: fecha });
   }
   res.cuerpo = {
     circuitoContable: { ID: -2, id: -2 },
