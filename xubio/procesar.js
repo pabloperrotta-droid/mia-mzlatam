@@ -33,9 +33,9 @@ const AMBIENTES = [
   // Sección 126: órdenes de pago ACTIVADAS el 15/10/2026 con OK del usuario ("poné en producción el tema de las
   // órdenes de pago"). `opActivacion`: la fecha "desde" que quedó de la prueba del 30/09 se descarta; se toma
   // de nuevo la de hoy y todo lo que ya estaba pagado queda como "anterior" (esas OP ya se hicieron a mano).
-  // PAUSADAS el 15/10/2026 12:56 por pedido del usuario ("pausá orden de pago para no generar errores") hasta que
-  // Xubio responda cómo mandar la retención (transaccionRItemId). El centro de costo sigue automático.
-  { nombre: "prd", prefijo: "", automatico: true, ops: false, opActivacion: Date.UTC(2026, 9, 15, 13, 0) },
+  // Pausadas del 15/10 al 20/10/2026 (esperando a Xubio). REACTIVADAS el 20/10/2026 con OK del usuario ("las OP a
+  // partir de cuándo se despause"): nueva activación, todo lo pagado hasta ahora queda como "anterior".
+  { nombre: "prd", prefijo: "", automatico: true, opActivacion: Date.UTC(2026, 9, 20, 18, 0) },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
@@ -252,6 +252,10 @@ async function procesarOPs(amb) {
   const cheques = (await db.collection(amb.prefijo + "echeqs").get()).docs.map((d) => ({ id: d.id, ...d.data() }));
 
   if (primeraVez) {
+    // Las OP que hubieran quedado sin hacer de una activación anterior (ej. con error) también pasan a "anterior".
+    for (const [clave, prev] of Object.entries(previas))
+      if (!OP_HECHA.has(prev.estado) && prev.estado !== "anterior")
+        await colOP.doc(clave).set({ estado: "anterior", mensaje: "Pagada antes de reactivar las órdenes de pago: la OP se hace a mano.", actualizado: Date.now() }, { merge: true });
     for (const [clave, ls] of Object.entries(grupos))
       await colOP.doc(clave).set({
         estado: "anterior",

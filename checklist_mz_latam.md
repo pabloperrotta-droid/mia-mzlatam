@@ -1582,7 +1582,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 15/10/2026 12:56, pedido del usuario: "pausá orden de pago para no generar errores por el momento". En "prd" volvió `ops: false`. El centro de costo automático sigue funcionando.
 - [x] Motivo: la primera OP real (transferencia con retención de Ganancias) fue rechazada por Xubio con "transaccionRItemId no puede ser nulo", también enviando 0. El usuario consultó a soporte de Xubio qué valor mandar y si el número de certificado lo asigna Xubio. No se creó nada en Xubio.
 - [x] 20/10/2026: respuesta de Xubio con un ejemplo de POST /pagoBean con retención. Se corrigió: renglones nuevos con `transaccionRItemId: -1` y `transaccionIPId: -1`, y el número de certificado (`numeroComprobante`) lo manda MIA porque Xubio no lo asigna. Diagnóstico de solo lectura de las 585 retenciones existentes: formato 9999-99999999, sin repetidos; las actuales son 0002-0212xxxx. MIA usa el siguiente al último con el prefijo del más reciente (si una OP lleva MAT y MO, uno para cada uno). Probado con datos simulados. Las OP siguen pausadas hasta que el usuario confirme la numeración y la reactivación.
-- [ ] Al reactivar: la fecha "desde" sigue siendo 15/10/2026, así que se harían las OP de lo pagado durante la pausa. Confirmar con el usuario si las quiere o si se mueve la fecha a la de reactivación (cambiar `opActivacion`).
+- [x] 20/10/2026: el usuario confirmó la numeración de certificados ("está ok") y que las OP sean "a partir de cuándo se despause". Se reactivaron con `opActivacion` nueva: la fecha "desde" pasa a ser la de hoy y todo lo ya pagado (incluido lo de la pausa y la OP con error del 15/10) queda como "anterior" (a mano).
 
 ## 41. Pendientes / recomendaciones
 
