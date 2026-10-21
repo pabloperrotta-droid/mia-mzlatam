@@ -198,6 +198,13 @@
         .doc(e.key)
         .set({ nombre: e.nombre, ultimaVez: Date.now() })
         .catch(() => {});
+      // Sección 130: también por persona (ingreso con mail), para verlo en Herramientas → Usuarios.
+      sesion &&
+        dbRef.current
+          .collection("presencia")
+          .doc("mail:" + sesion.email)
+          .set({ nombre: sesion.nombre || sesion.email, email: sesion.email, rol: e.nombre, ultimaVez: Date.now() })
+          .catch(() => {});
     };
     t();
     const o = setInterval(t, 3e4);

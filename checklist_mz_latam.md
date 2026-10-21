@@ -1599,6 +1599,11 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] El usuario cargó al equipo en Herramientas → Usuarios (8 usuarios en Producción); entran de a poco con su mail.
 - [x] 21/10/2026 11:41: el usuario publicó `firestore.rules` en la consola. Verificado: una sesión anónima (como la de cualquiera con el link) recibe 403 en Pagos, usuarios, roles y QA; la cuenta de servicio (Xubio, respaldo) sigue leyendo.
 
+### 130. Usuarios: quién está en línea y la última vez que entró
+
+- [x] 21/10/2026, pedido del usuario ("como tenía en Roles, que veía quién está online y última vez; agregalo en Usuarios"). Cada pantalla con ingreso por mail avisa cada 30 segundos que la persona está activa (`presencia/mail:<mail>`). En Herramientas → Usuarios, columna **Actividad**: punto verde "En línea ahora" (activa en el último minuto y medio), la fecha y hora de la última vez, o "Todavía no entró". Roles sigue mostrando lo suyo como antes.
+- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -292,7 +292,7 @@ function AppConIngresoMail() {
   return React.createElement(App, { key: u.email + "|" + u.rol + "|" + (u.rolId || ""), sesion: u });
 }
 // Herramientas → Usuarios (solo Admin): quién entra a MIA y con qué rol.
-function UsuariosAdminPanel({ onClose, roles, miEmail }) {
+function UsuariosAdminPanel({ onClose, roles, miEmail, presencia }) {
   const [lista, setLista] = useState(null),
     [nuevo, setNuevo] = useState({ email: "", nombre: "", rol: "" }),
     [aviso, setAviso] = useState(null),
@@ -391,7 +391,7 @@ function UsuariosAdminPanel({ onClose, roles, miEmail }) {
                 React.createElement(
                   "tr",
                   null,
-                  ["Mail", "Nombre", "Rol", "Activo", ""].map((t) => React.createElement("th", { key: t, style: { ...celda, textAlign: "left", fontSize: 11.5, color: MUTED, fontWeight: 600 } }, t)),
+                  ["Mail", "Nombre", "Rol", "Activo", "Actividad", ""].map((t) => React.createElement("th", { key: t, style: { ...celda, textAlign: "left", fontSize: 11.5, color: MUTED, fontWeight: 600 } }, t)),
                 ),
               ),
               React.createElement(
@@ -424,6 +424,20 @@ function UsuariosAdminPanel({ onClose, roles, miEmail }) {
                       "td",
                       { style: celda },
                       React.createElement("input", { type: "checkbox", checked: u.activo !== false, disabled: yo, onChange: (e) => cambiar(u.email, { activo: e.target.checked }), title: yo ? "No te podés desactivar a vos mismo" : "Destildá para cortarle el acceso" }),
+                    ),
+                    React.createElement(
+                      "td",
+                      { style: { ...celda, whiteSpace: "nowrap" } },
+                      (() => {
+                        // Sección 130: en línea / última vez de cada persona (como en Roles).
+                        const a = estadoDeActividad((presencia || {})["mail:" + u.email]);
+                        return React.createElement(
+                          "span",
+                          { style: { display: "inline-flex", alignItems: "center", gap: 6, color: a.online ? "#1A7F37" : MUTED } },
+                          React.createElement("span", { style: { width: 8, height: 8, borderRadius: "50%", background: a.online ? "#3CB371" : "#C9C4B8", display: "inline-block" } }),
+                          a.online ? "En línea ahora" : a.texto === "Sin actividad registrada" ? "Todavía no entró" : a.texto.replace("Última vez: ", ""),
+                        );
+                      })(),
                     ),
                     React.createElement(
                       "td",

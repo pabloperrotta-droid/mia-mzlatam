@@ -1083,7 +1083,7 @@
           }),
         verUsuarios &&
           sesion &&
-          React.createElement(UsuariosAdminPanel, { onClose: () => setVerUsuarios(false), roles: roles, miEmail: sesion.email }),
+          React.createElement(UsuariosAdminPanel, { onClose: () => setVerUsuarios(false), roles: roles, miEmail: sesion.email, presencia: er }),
         $a && React.createElement(HistorialPanel, { onClose: () => ma(false), db: dbRef.current }),
         Go &&
           React.createElement(
