@@ -399,7 +399,10 @@ const ultimoCambio = async (amb) => {
   const d = await db.doc(amb.prefijo + "app/st_pagosSemanales").get();
   return d.exists && d.updateTime ? d.updateTime.toMillis() : 0;
 };
-const hayPedidos = async (amb) => !(await db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").limit(1).get()).empty;
+const hayPedidos = async (amb) =>
+  !(await db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").limit(1).get()).empty ||
+  // Sección 131: "Reintentar todas" / "Reintentar ahora" de Pagos (de a 40 por pasada, hasta terminar).
+  !(await db.collection(amb.prefijo + "xubioEstado").where("forzar", "==", true).limit(1).get()).empty;
 
 // Sección 122: GitHub no respeta el "cada 5 minutos" (corría cada 4-7 horas). Ahora cada corrida queda
 // VIGILANDO unas 5 horas y 45 minutos: cada 60 segundos mira si cambiaron los Pagos de Producción (1 lectura)

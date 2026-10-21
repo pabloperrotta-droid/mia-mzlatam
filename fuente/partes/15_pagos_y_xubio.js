@@ -494,8 +494,36 @@ function xubioLeerEcheqs(archivo) {
     lector.readAsArrayBuffer(archivo);
   });
 }
-function XubioBotonesOP({ esAdmin, puedeEditar }) {
+// Sección 131: líneas que "Reintentar todas" vuelve a mandar a Xubio: las que están en ❌ o ⚠️ y que el proceso
+// todavía atiende (sin Fecha Pagado, o pagadas desde que se activaron las OP). Las ✅ no se tocan (regla del usuario).
+function xubioParaReintentar(lineas, estados, desde) {
+  const iso = (s) => (/^\d{4}-\d{2}-\d{2}/.test(String(s || "")) ? String(s).slice(0, 10) : xubioFechaISO(s));
+  return (lineas || [])
+    .filter((l) => l && l.id && (!l.fechaPagado || (desde && iso(l.fechaPagado) >= desde)))
+    .filter((l) => {
+      const c = xubioClase(l, (estados || {})[l.id]);
+      return !c.falta && !c.bien && !c.espera;
+    })
+    .map((l) => String(l.id));
+}
+function XubioBotonesOP({ esAdmin, puedeEditar, lineas }) {
   const st = useXubio(),
+    [reintentando, setReintentando] = React.useState(false),
+    reintentarTodas = async () => {
+      const ids = xubioParaReintentar(lineas, st.estados, st.opCfg && st.opCfg.desde);
+      if (!ids.length) return window.alert("No hay líneas con ❌ o ⚠️ para reintentar en Xubio.");
+      if (!window.confirm("¿Volver a mandar a Xubio las " + ids.length + " líneas con ❌ o ⚠️? Las que están en ✅ no se tocan.\n\nSe procesan de a 40, en unos minutos.")) return;
+      const db = xubioDb();
+      if (!db) return window.alert("Sin conexión con la base de datos");
+      setReintentando(true);
+      try {
+        for (let i = 0; i < ids.length; i += 50)
+          await Promise.all(ids.slice(i, i + 50).map((id) => db.collection("xubioEstado").doc(id).set({ forzar: true }, { merge: true })));
+      } catch (e) {
+        window.alert("No se pudo pedir el reintento: " + ((e && e.message) || e));
+      }
+      setReintentando(false);
+    },
     ref = React.useRef(null),
     [subiendo, setSubiendo] = React.useState(false),
     subir = async (ev) => {
@@ -547,6 +575,17 @@ function XubioBotonesOP({ esAdmin, puedeEditar }) {
             "Subí el Excel de e-cheqs emitidos del banco (Consulta de E-cheques emitidos). Con esos cheques se arma la orden de pago de Xubio de cada proveedor cuando tildás la línea como pagada.",
         },
         subiendo ? "Cargando…" : "Subir e-cheqs del banco" + (st.echeqsCargados.size ? " (" + st.echeqsCargados.size + ")" : ""),
+      ),
+    puedeEditar &&
+      React.createElement(
+        "button",
+        {
+          onClick: reintentarTodas,
+          disabled: reintentando,
+          style: smallBtnGhost,
+          title: "Vuelve a mandar a Xubio (centro de costo) todas las líneas que están en ❌ o ⚠️. Las ✅ no se tocan.",
+        },
+        reintentando ? "Pidiendo…" : "↻ Reintentar todas en Xubio",
       ),
     APP_ENV === "qa" &&
       React.createElement(
@@ -2677,7 +2716,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           " ",
           oo ? "Generando..." : "Retenciones",
         ),
-        React.createElement(XubioBotonesOP, { esAdmin: Be, puedeEditar: ne }),
+        React.createElement(XubioBotonesOP, { esAdmin: Be, puedeEditar: ne, lineas: n }),
         React.createElement(
           "button",
           {

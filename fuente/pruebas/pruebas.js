@@ -118,6 +118,24 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Pagos: Reintentar todas en Xubio elige solo ❌/⚠️ que el proceso atiende", () => {
+  const base = { cuit: "30-71720122-8", cliente: "WU", importe: 100 };
+  const L = [
+    { ...base, id: "ok", factura: "A-1" },
+    { ...base, id: "rech", factura: "A-2" },
+    { ...base, id: "sinfac", factura: "" },
+    { ...base, id: "nuevo", factura: "A-4" },
+    { ...base, id: "pagviejo", factura: "A-5", fechaPagado: "01/10/2026" },
+    { ...base, id: "pagnuevo", factura: "A-6", fechaPagado: "21/10/2026" },
+  ];
+  const est = {
+    ok: { estado: "ok" },
+    rech: { estado: "rechazada", firma: f.xubioFirma(L[1]) },
+    pagviejo: { estado: "centro_no_encontrado", firma: f.xubioFirma(L[4]) },
+    pagnuevo: { estado: "centro_no_encontrado", firma: f.xubioFirma(L[5]) },
+  };
+  assert.deepStrictEqual(f.xubioParaReintentar(L, est, "2026-10-20"), ["rech", "pagnuevo"]);
+});
 prueba("Pagos: ordenar por la columna Xubio", () => {
   const base = { cuit: "30-71720122-8", cliente: "WU", centroCosto: "SAN MARTIN", importe: 100 };
   const lin = (id, factura) => ({ ...base, id, factura });
