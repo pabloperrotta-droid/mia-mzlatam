@@ -1,4 +1,5 @@
-function App() {
+function App({ sesion = null } = {}) {
+  // Sección 129: con ingreso por mail (`sesion` = { email, nombre, rol, rolId }) el rol viene del usuario, no del PIN.
   const [vista, setVista] = useState("obras"),
     [obras, setObras] = useState(SEED_OBRAS),
     [g, C] = useState(() => SEED_FACTURAS.map((e, t) => ({ ...e, id: t }))),
@@ -148,12 +149,13 @@ function App() {
     [Vt, st] = useState({}),
     [datosCargados, setDatosCargados] = useState(false),
     [Dt, ho] = useState(null),
-    [ct, ko] = useState("operaciones"),
+    [ct, ko] = useState(sesion ? sesion.rol : "operaciones"),
     [Go, $o] = useState(null),
     [cn, on] = useState(""),
     [En, kn] = useState(false),
     [roles, setRoles] = useState([]),
-    [ga, Kn] = useState(null),
+    [ga, Kn] = useState(sesion ? sesion.rolId : null),
+    [verUsuarios, setVerUsuarios] = useState(false),
     [Qa, fa] = useState(false),
     [$a, ma] = useState(false),
     [er, tr] = useState({}),
@@ -247,7 +249,8 @@ function App() {
     [avisoDeshacer, setAvisoDeshacer] = useState(null);
   puedeGuardarRef.current = puedeGuardar;
   // Rol actual para las notas de Fallas de guardado (las funciones que quedan de la primera carga veían el rol viejo).
-  rolActualRef.current = ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—";
+  rolActualRef.current =
+    (sesion ? (sesion.nombre || sesion.email) + " · " : "") + (ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—");
   function deshacerUltimoCambio() {
     if (historialDeshacer.length === 0) return;
     const e = historialDeshacer[historialDeshacer.length - 1],
@@ -303,6 +306,7 @@ function App() {
       });
   }, [ordenesCompraMap, costoSubobrasMap]);
   useEffect(() => {
+    if (sesion) return;
     try {
       const e = window.localStorage.getItem("obras-role");
       if (e === "admin" || e === "comercial") ko(e);
@@ -525,6 +529,9 @@ function App() {
       setCambiosFinancieros(e.cambiosFinancieros || []));
   }
   function lr() {
+    return (sesion ? (sesion.nombre || sesion.email) + " · " : "") + lrRol();
+  }
+  function lrRol() {
     return ct === "admin"
       ? "Admin"
       : ct === "comercial"

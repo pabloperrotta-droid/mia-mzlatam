@@ -1,5 +1,5 @@
 // (Continúa la función App: lo que se dibuja en pantalla.)
-  return ct === "operaciones"
+  return ct === "operaciones" && !sesion
     ? React.createElement(PinGateScreen, {
         pinInput: cn,
         onChangePin: (e) => {
@@ -653,8 +653,8 @@
                 React.createElement(
                   "button",
                   {
-                    onClick: Ia,
-                    title: "Cerrar sesión",
+                    onClick: sesion ? cerrarSesionMail : Ia,
+                    title: sesion ? "Cerrar sesión (" + sesion.email + ")" : "Cerrar sesión",
                     style: {
                       border: "1px solid " + GOLD,
                       background: "transparent",
@@ -665,7 +665,8 @@
                       cursor: "pointer",
                     },
                   },
-                  ct === "admin" ? "Admin ✓" : ct === "comercial" ? "Comercial ✓" : (so ? so.nombre : "Rol") + " ✓",
+                  (sesion ? (sesion.nombre || sesion.email) + " · " : "") +
+                    (ct === "admin" ? "Admin ✓" : ct === "comercial" ? "Comercial ✓" : (so ? so.nombre : "Rol") + " ✓"),
                 ),
               ),
             ),
@@ -772,6 +773,25 @@
                   },
                   React.createElement(Trash2, { size: 12 }),
                   " Papelera de facturas",
+                ),
+              fn &&
+                sesion &&
+                React.createElement(
+                  "button",
+                  {
+                    onClick: () => setVerUsuarios(true),
+                    title: "Quién entra a MIA (por mail) y con qué rol",
+                    style: {
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.8)",
+                      padding: "5px 9px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    },
+                  },
+                  "Usuarios",
                 ),
               fn &&
                 React.createElement(
@@ -1061,6 +1081,9 @@
             onDelete: sr,
             presencia: er,
           }),
+        verUsuarios &&
+          sesion &&
+          React.createElement(UsuariosAdminPanel, { onClose: () => setVerUsuarios(false), roles: roles, miEmail: sesion.email }),
         $a && React.createElement(HistorialPanel, { onClose: () => ma(false), db: dbRef.current }),
         Go &&
           React.createElement(

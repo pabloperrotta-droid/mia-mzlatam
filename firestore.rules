@@ -1,0 +1,39 @@
+rules_version = '2';
+// Reglas de seguridad de la base de MIA (Firestore, proyecto mzlatam-app).
+// Sección 129 (20/10/2026): ingreso con mail. En QA (colecciones qa_*) solo leen/escriben los mails
+// confirmados que estén en qa_usuarios y activos; qa_usuarios solo la maneja un Admin.
+// Producción (colecciones sin prefijo) sigue como estaba (cualquier sesión de la app) hasta pasar el
+// ingreso con mail a Producción con el OK del usuario.
+// Los procesos de GitHub (Xubio, respaldo) usan la cuenta de servicio y no pasan por estas reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function confirmado() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function miMail() {
+      return request.auth.token.email.lower();
+    }
+    function usuarioQA() {
+      return get(/databases/$(database)/documents/qa_usuarios/$(miMail())).data;
+    }
+    function habilitadoQA() {
+      return confirmado()
+        && exists(/databases/$(database)/documents/qa_usuarios/$(miMail()))
+        && usuarioQA().get('activo', true) != false;
+    }
+    function adminQA() {
+      return habilitadoQA() && usuarioQA().get('rol', '') == 'admin';
+    }
+
+    match /qa_usuarios/{email} {
+      allow get: if confirmado() && email == miMail();
+      allow read, write: if adminQA();
+    }
+
+    match /{coleccion}/{resto=**} {
+      allow read, write: if coleccion.matches('qa_.*')
+        ? (coleccion != 'qa_usuarios' && habilitadoQA())
+        : request.auth != null;
+    }
+  }
+}

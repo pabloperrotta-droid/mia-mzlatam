@@ -89,6 +89,7 @@ const simulada = `(function () {
   const firestore = () => db;
   firestore.FieldPath = FieldPath;
   firestore.FieldValue = { delete: () => BORRAR };
+  window.__MIA_SIN_LOGIN_MAIL__ = true;
   window.firebase = { apps: [], initializeApp() { this.apps.push({}); return {}; }, auth: () => ({ currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }), firestore };
   try { localStorage.setItem("obras-role", location.hash === "#lectura" ? "operaciones" : "admin"); } catch {}
 })();`;

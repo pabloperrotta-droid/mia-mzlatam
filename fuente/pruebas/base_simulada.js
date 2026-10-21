@@ -7,7 +7,9 @@
     id: String(path).split("/").pop(),
     onSnapshot(ok) {
       // El estado principal existe (vacío) para que la app use sus datos de ejemplo.
-      setTimeout(() => ok(docSnap(path, /app\/state$/.test(path) ? {} : undefined)), 0);
+      // Sección 129: el usuario de prueba del ingreso por mail.
+      const dato = /app\/state$/.test(path) ? {} : /usuarios\/admin@prueba\.com$/.test(path) ? { rol: "admin", nombre: "Prueba", activo: true } : undefined;
+      setTimeout(() => ok(docSnap(path, dato)), 0);
       return () => {};
     },
     get: async () => docSnap(path, undefined),
@@ -38,13 +40,35 @@
     this.partes = a;
   };
   firestore.FieldValue = { delete: () => ({ __borrar__: true }) };
+  // Sección 129: con #mail se prueba el ingreso con mail (usuario admin@prueba.com, contraseña clave123).
+  // Sin #mail la app de QA entra directo, como antes (sin pantalla de ingreso).
+  window.__MIA_SIN_LOGIN_MAIL__ = location.hash !== "#mail";
+  const avisos = [];
+  const authMail = {
+    currentUser: null,
+    onAuthStateChanged(cb) {
+      avisos.push(cb);
+      setTimeout(() => cb(authMail.currentUser), 0);
+      return () => {};
+    },
+    async signInWithEmailAndPassword(email, clave) {
+      if (email !== "admin@prueba.com" || clave !== "clave123") throw { code: "auth/invalid-credential" };
+      authMail.currentUser = { email, emailVerified: true, isAnonymous: false, getIdToken: async () => "t", reload: async () => {} };
+      avisos.forEach((cb) => cb(authMail.currentUser));
+    },
+    async signOut() {
+      authMail.currentUser = null;
+      avisos.forEach((cb) => cb(null));
+    },
+    async sendPasswordResetEmail() {},
+  };
   window.firebase = {
     apps: [],
     initializeApp() {
       this.apps.push({});
       return {};
     },
-    auth: () => ({ currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }),
+    auth: () => (location.hash === "#mail" ? authMail : { currentUser: { uid: "prueba" }, signInAnonymously: async () => ({}) }),
     firestore,
   };
   // Entra como Admin, salvo que la dirección termine en #pin (para ver la pantalla del PIN).

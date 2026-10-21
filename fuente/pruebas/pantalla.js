@@ -141,6 +141,26 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
       throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
   });
+  await control("Ingreso con mail (QA): pantalla de ingreso, contraseña mala, ingreso, Usuarios y salir", async () => {
+    await pagina.goto("file://" + archivo + "#mail");
+    await pagina.reload(); // cambiar solo el # no recarga la página
+    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 30000 });
+    if (await pagina.evaluate(() => document.body.innerText.includes("VENTA TOTAL"))) throw new Error("Muestra datos sin ingresar");
+    await pagina.fill('input[type="email"]', "admin@prueba.com");
+    await pagina.fill('input[type="password"]', "mala");
+    await clic("Ingresar");
+    await pagina.waitForFunction(() => document.body.innerText.includes("Mail o contraseña incorrectos"), null, { timeout: 5000 });
+    await pagina.fill('input[type="password"]', "clave123");
+    await clic("Ingresar");
+    await pagina.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
+    if (!(await pagina.evaluate(() => document.body.innerText.includes("Prueba · Admin ✓")))) throw new Error("No muestra el usuario y su rol arriba");
+    await clic("Herramientas");
+    await clic("Usuarios");
+    await pagina.waitForFunction(() => document.body.innerText.includes("Agregar usuario"), null, { timeout: 5000 });
+    await clic("✕");
+    await clic("Prueba · Admin ✓");
+    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 5000 });
+  });
   await navegador.close();
   console.log(fallas ? "\n" + fallas + " control(es) de pantalla fallaron" : "\nTodas las pantallas abren sin errores");
   process.exit(fallas ? 1 : 0);

@@ -474,4 +474,4 @@ function OperacionesView({
     )
   );
 }
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AppRaiz, null));
