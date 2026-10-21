@@ -144,23 +144,23 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
   await control("Ingreso con mail (QA): pantalla de ingreso, contraseña mala, ingreso, Usuarios y salir", async () => {
     await pagina.goto("file://" + archivo + "#mail");
     await pagina.reload(); // cambiar solo el # no recarga la página
-    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 30000 });
+    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 30000 }).catch(async () => { throw new Error("No apareció \"¿Olvidaste tu contraseña?\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
     if (await pagina.evaluate(() => document.body.innerText.includes("VENTA TOTAL"))) throw new Error("Muestra datos sin ingresar");
     await pagina.fill('input[type="email"]', "admin@prueba.com");
     await pagina.fill('input[type="password"]', "mala");
     await clic("Ingresar");
-    await pagina.waitForFunction(() => document.body.innerText.includes("Mail o contraseña incorrectos"), null, { timeout: 5000 });
+    await pagina.waitForFunction(() => document.body.innerText.includes("Mail o contraseña incorrectos"), null, { timeout: 5000 }).catch(async () => { throw new Error("No apareció \"Mail o contraseña incorrectos\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
     await pagina.fill('input[type="password"]', "clave123");
     await clic("Ingresar");
-    await pagina.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 });
+    await pagina.waitForFunction(() => document.body.innerText.includes("VENTA TOTAL"), null, { timeout: 30000 }).catch(async () => { throw new Error("No apareció \"VENTA TOTAL\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
     if (!(await pagina.evaluate(() => document.body.innerText.includes("Prueba · Admin ✓")))) throw new Error("No muestra el usuario y su rol arriba");
     await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^Herramientas/.test(b.textContent.trim())).click());
     await pagina.waitForTimeout(300);
     await clic("Usuarios");
-    await pagina.waitForFunction(() => document.body.innerText.includes("Agregar usuario"), null, { timeout: 5000 });
+    await pagina.waitForFunction(() => document.body.innerText.includes("Agregar usuario"), null, { timeout: 5000 }).catch(async () => { throw new Error("No apareció \"Agregar usuario\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
     await clic("✕");
     await clic("Prueba · Admin ✓");
-    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 5000 });
+    await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 5000 }).catch(async () => { throw new Error("No apareció \"¿Olvidaste tu contraseña?\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
   });
   await navegador.close();
   console.log(fallas ? "\n" + fallas + " control(es) de pantalla fallaron" : "\nTodas las pantallas abren sin errores");
