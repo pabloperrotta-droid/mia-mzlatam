@@ -98,6 +98,7 @@ async function asignarNumerosDeRecibo(ids) {
       }
     // merge: agrega los nuevos sin tocar los números que ya tenían las demás líneas.
     Object.keys(nuevos).length && tx.set(ref, { ultimo, porLinea: nuevos }, { merge: true });
+    Object.assign(RECIBOS_ST.porLinea, nuevos);
     return ids.map((id) => porLinea[id]);
   });
 }
@@ -144,4 +145,25 @@ async function descargarRecibosEfectivo(lineas) {
   const hoy = new Date();
   doc.save("Recibos efectivo " + String(hoy.getDate()).padStart(2, "0") + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + hoy.getFullYear() + ".pdf");
   return ls.length;
+}
+
+// Sección 134: números de recibo ya dados, en memoria (se escuchan de la base). Al poner una línea como pagada,
+// su número de recibo se agrega a Observaciones (pedido del usuario, 21/10/2026).
+const RECIBOS_ST = { porLinea: {}, iniciado: false };
+function recibosIniciar() {
+  if (RECIBOS_ST.iniciado || typeof firebase > "u" || !(firebase.apps && firebase.apps.length)) return;
+  RECIBOS_ST.iniciado = true;
+  firebase
+    .firestore()
+    .doc(COL_PREFIX + "app/recibos")
+    .onSnapshot(
+      (s) => (RECIBOS_ST.porLinea = ((s.exists && s.data()) || {}).porLinea || {}),
+      () => (RECIBOS_ST.iniciado = false),
+    );
+}
+// Observaciones con el número de recibo agregado (sin repetirlo si ya está): "Pago parcial" → "Pago parcial · Recibo 0003-00000001".
+function observacionesConRecibo(obs, numero) {
+  const t = String(obs || "").trim(),
+    r = "Recibo " + numeroDeRecibo(numero);
+  return t.includes(r) ? t : t ? t + " · " + r : r;
 }

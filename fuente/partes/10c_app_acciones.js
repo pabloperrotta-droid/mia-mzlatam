@@ -341,11 +341,14 @@
     zn(e, { registradoEnCostos: true, motivoError: "", alertaPresupuesto: D, restanteAntesPago: T });
   }
   function wr(e, t) {
-    const o = pagosSemanales.find((a) => a.id === e);
+    const o = pagosSemanales.find((a) => a.id === e),
+      // Sección 134: si la línea tiene recibo de efectivo, el número queda en Observaciones al ponerla pagada.
+      recibo = t && o && RECIBOS_ST.porLinea[String(e)];
     !o ||
       t === o.fechaPagado ||
       (o.registradoEnCostos && Ua(e),
       zn(e, {
+        ...(recibo ? { observaciones: observacionesConRecibo(o.observaciones, recibo.numero) } : {}),
         fechaPagado: t,
         registradoEnCostos: false,
         motivoError: "",

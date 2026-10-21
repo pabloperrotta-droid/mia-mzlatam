@@ -653,6 +653,7 @@ function PagosView({
     [w, Ne] = useState(null),
     [ordPag, setOrdPag] = useState(null),
     xubioSt = useXubio(),
+    _recibos = (useEffect(() => recibosIniciar(), []), null),
     [busqPag, setBusqPag] = useState(""),
     [Re, at] = useState(null),
     dt = useMemo(

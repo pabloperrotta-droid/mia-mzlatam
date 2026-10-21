@@ -139,6 +139,9 @@ prueba("Recibos de efectivo: importe en letras, obra y líneas", () => {
     { id: "d", sePaga: "SI", efectivo: 1000, fechaPagado: "21/10/2026" },
   ];
   assert.deepStrictEqual(f.lineasParaRecibo(L).map((l) => l.id), ["a"]);
+  assert.strictEqual(f.observacionesConRecibo("", 1), "Recibo 0003-00000001");
+  assert.strictEqual(f.observacionesConRecibo("Pago parcial", 12), "Pago parcial · Recibo 0003-00000012");
+  assert.strictEqual(f.observacionesConRecibo("Pago parcial · Recibo 0003-00000012", 12), "Pago parcial · Recibo 0003-00000012");
 });
 prueba("Pagos: Reintentar todas en Xubio elige solo ❌/⚠️ que el proceso atiende", () => {
   const base = { cuit: "30-71720122-8", cliente: "WU", importe: 100 };
