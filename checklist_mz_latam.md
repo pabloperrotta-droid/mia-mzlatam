@@ -1584,6 +1584,18 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 20/10/2026: respuesta de Xubio con un ejemplo de POST /pagoBean con retención. Se corrigió: renglones nuevos con `transaccionRItemId: -1` y `transaccionIPId: -1`, y el número de certificado (`numeroComprobante`) lo manda MIA porque Xubio no lo asigna. Diagnóstico de solo lectura de las 585 retenciones existentes: formato 9999-99999999, sin repetidos; las actuales son 0002-0212xxxx. MIA usa el siguiente al último con el prefijo del más reciente (si una OP lleva MAT y MO, uno para cada uno). Probado con datos simulados. Las OP siguen pausadas hasta que el usuario confirme la numeración y la reactivación.
 - [x] 20/10/2026: el usuario confirmó la numeración de certificados ("está ok") y que las OP sean "a partir de cuándo se despause". Se reactivaron con `opActivacion` nueva: la fecha "desde" pasa a ser la de hoy y todo lo ya pagado (incluido lo de la pausa y la OP con error del 15/10) queda como "anterior" (a mano).
 
+### 129. Ingreso con mail (o Google) en lugar del PIN — QA
+
+- [x] 20/10/2026, pedido del usuario ("que por más que tengan el link no puedan ingresar a la info"; "usaría mail y que cada uno ponga la contraseña que quiera"; "puede ser por Google o por mail y pass, la que quiera la persona"). Hallazgo previo: el PIN se controlaba solo en pantalla, los PIN de Admin y Comercial estaban dentro del código de la página y la base aceptaba cualquier sesión anónima de la app.
+- [x] Nueva pantalla de ingreso (solo QA por ahora): mail + contraseña, "Ingresar con Google", "Primera vez: crear mi contraseña" (con mail de confirmación de la casilla) y "¿Olvidaste tu contraseña?" (mail para poner una nueva). Mensajes en castellano.
+- [x] Herramientas → **Usuarios** (solo Admin): agregar mail + nombre + rol (Admin, Comercial o un rol de Herramientas → Roles), activar/desactivar, sacar, "Mandar mail para blanquear". Las contraseñas no las ve nadie.
+- [x] Arriba a la derecha se ve "Nombre · Rol ✓"; al tocarlo se cierra la sesión. La bitácora y las notas de fallas guardan el nombre de la persona además del rol.
+- [x] `firestore.rules` en el repo: en QA solo leen/escriben los mails confirmados que estén en `qa_usuarios` y activos; `qa_usuarios` solo la maneja un Admin; Producción sigue como estaba. Falta publicarlas en la consola de Firebase.
+- [x] El usuario habilitó en Firebase Authentication: mail/contraseña, Google y el dominio pabloperrotta-droid.github.io.
+- [x] Prueba de pantalla nueva (ingreso con contraseña mala, ingreso, Usuarios, salir) y todos los controles en verde.
+- [ ] Publicar `firestore.rules` en la consola (Firestore → Reglas).
+- [ ] Prueba del usuario en QA. Producción sigue con PIN hasta su OK (y hay que cargar los usuarios de Producción y avisar al equipo).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
