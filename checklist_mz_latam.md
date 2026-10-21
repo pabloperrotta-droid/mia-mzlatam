@@ -1628,7 +1628,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 134. Pagos: el número de recibo queda en Observaciones al poner la línea pagada
 
 - [x] 21/10/2026, pedido del usuario ("que en observaciones me guarde el número de recibo al poner pagada"). Cuando una línea que tiene recibo de efectivo (Sección 133) se marca como pagada —con el tilde, con la fecha o con "Cerrar pago semanal"—, se agrega a Observaciones "Recibo 0003-00000001" (después de lo que ya hubiera, separado con " · ", sin repetirlo si ya está). Las líneas sin recibo no cambian.
-- [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Prueba automática nueva. Publicado en QA y, con el OK del usuario ("sí por favor", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada). Recibos: el usuario confirmó dos por hoja A4.
 
 ## 41. Pendientes / recomendaciones
 
