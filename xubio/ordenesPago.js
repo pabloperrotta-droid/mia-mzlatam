@@ -16,7 +16,7 @@
  *   El resultado queda en `xubioOP/{cuit}_{fecha}` y MIA lo muestra en Pagos.
  *   En Producción la OP se crea en Xubio al tildar la línea como pagada (pedido del usuario: "es el
  *   mismo checkbox o el mismo campo de fecha de pagado"). En QA solo se muestra la vista previa.
- *   Xubio asigna solo el número de OP y el del certificado de retención. La OP no lleva observación:
+ *   Xubio asigna solo el número de OP; el del certificado de retención lo pone MIA (el siguiente al último). La OP no lleva observación:
  *   se aplica a las facturas a mano en Xubio y ahí queda el número de factura.
  */
 const { xubio, buscarFactura, buscarProveedor, comoLista, idDe } = require("./xubio");
@@ -129,7 +129,7 @@ async function armarOP(lineas, cheques, estadosCentro) {
 
   const instrumentos = [
     ...cheques.map((c) => ({
-      transaccionIPId: 0,
+      transaccionIPId: -1,
       tipoCuenta: 4,
       cuenta: CUENTA_CHEQUES,
       moneda: PESOS,
@@ -143,16 +143,17 @@ async function armarOP(lineas, cheques, estadosCentro) {
   ];
   // Sección 127 (corregida, pedido del usuario): E-Cheq y transferencia llevan OP; efectivo y Diego Levy no.
   if (res.importes.transferencia > 0)
-    instrumentos.push({ transaccionIPId: 0, tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
+    instrumentos.push({ transaccionIPId: -1, tipoCuenta: 2, cuenta: CUENTA_TRANSFERENCIA, moneda: PESOS, cotizacion: 1, importe: res.importes.transferencia, descripcion: "" });
   if (!instrumentos.length) return { ...res, estado: "sin_valores", mensaje: "La línea no tiene E-Cheq ni Transferencia: no lleva orden de pago." };
 
-  // Xubio pide transaccionRItemId en cada retención ("no puede ser nulo"): 0 = renglón nuevo (15/10/2026).
+  // Renglones nuevos: transaccionRItemId / transaccionIPId en -1 (ejemplo de soporte de Xubio, 20/10/2026; con 0
+  // respondía "transaccionRItemId no puede ser nulo"). El número de certificado lo pone MIA en crearOP().
   const retItems = [];
   if (retAplicada > 0) {
     if (ret.retMat > 0)
-      retItems.push({ transaccionRItemId: 0, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MAT, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mat), importeRetenido: ret.retMat, importeMonPpal: ret.retMat, fechaComprobante: fecha });
+      retItems.push({ transaccionRItemId: -1, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MAT, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mat), importeRetenido: ret.retMat, importeMonPpal: ret.retMat, fechaComprobante: fecha });
     if (ret.retMo > 0)
-      retItems.push({ transaccionRItemId: 0, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MO, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mo), importeRetenido: ret.retMo, importeMonPpal: ret.retMo, fechaComprobante: fecha });
+      retItems.push({ transaccionRItemId: -1, tipoRetencion: "4", conceptoRetencion: CONCEPTO_MO, descripcion: "", moneda: PESOS, cotizacion: 1, importeISAR: r2(ret.mo), importeRetenido: ret.retMo, importeMonPpal: ret.retMo, fechaComprobante: fecha });
   }
   res.cuerpo = {
     circuitoContable: { ID: -2, id: -2 },
@@ -175,6 +176,24 @@ async function armarOP(lineas, cheques, estadosCentro) {
 }
 
 // Crea la OP en Xubio. Antes se fija que no exista ya una del mismo proveedor, fecha e importe.
+// Último certificado de retención usado en Xubio: prefijo del más reciente y el mayor número con ese prefijo.
+async function ultimoCertificado(fecha) {
+  const hasta = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  for (const dias of [120, 400]) {
+    const desde = new Date(new Date(fecha + "T12:00:00Z").getTime() - dias * 86400000).toISOString().slice(0, 10);
+    const certs = [];
+    for (const op of comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta)))
+      for (const r of comoLista(op.transaccionRetencionItems)) {
+        const m = String(r.numeroComprobante || "").match(/^(\d+)-(\d+)$/);
+        m && certs.push({ fecha: String(op.fecha || ""), prefijo: m[1], numero: Number(m[2]) });
+      }
+    if (!certs.length) continue;
+    certs.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numero - b.numero);
+    const prefijo = certs[certs.length - 1].prefijo;
+    return { prefijo, numero: Math.max(...certs.filter((c) => c.prefijo === prefijo).map((c) => c.numero)) };
+  }
+  throw new Error("No se encontró ningún certificado de retención anterior en Xubio para saber qué número sigue.");
+}
 async function crearOP(cuerpo) {
   const total = r2(
     cuerpo.transaccionInstrumentoDePago.reduce((s, i) => s + num(i.importe), 0) +
@@ -207,8 +226,17 @@ async function crearOP(cuerpo) {
     );
     if (conCheque) return { estado: "ya_existia", numero: conCheque.numeroRecibo, id: conCheque.transaccionid, porCheque: true };
   }
+  // Número de certificado de retención: Xubio no lo asigna (hay que mandarlo). Se toma el siguiente al último
+  // usado en las OP de Xubio, con el mismo prefijo que el más reciente (ej. 0002-02120074 → 0002-02120075).
+  if (cuerpo.transaccionRetencionItems.length) {
+    let n = await ultimoCertificado(cuerpo.fecha);
+    for (const r of cuerpo.transaccionRetencionItems) {
+      n = { prefijo: n.prefijo, numero: n.numero + 1 };
+      r.numeroComprobante = n.prefijo + "-" + String(n.numero).padStart(8, "0");
+    }
+  }
   const creada = await xubio("POST", "/pagoBean", cuerpo);
   return { estado: "creada", numero: creada && creada.numeroRecibo, id: creada && creada.transaccionid };
 }
 
-module.exports = { armarOP, crearOP, claveGrupo, fechaISO, retencion };
+module.exports = { armarOP, crearOP, ultimoCertificado, claveGrupo, fechaISO, retencion };

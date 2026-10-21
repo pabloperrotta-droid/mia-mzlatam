@@ -1,17 +1,25 @@
-// SOLO LECTURA: OP de Producción con fecha de pago 21/10/2026 (estado y motivo; números enmascarados).
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
-const out = (t) => console.log("::notice::" + String(t).slice(0, 1500));
-const m = (s) => String(s || "").replace(/\d{3,}/g, "#");
+// SOLO LECTURA: cómo están cargados los instrumentos de pago de las OP hechas a mano (tipos y campos).
+const { xubio, comoLista, fechaXubio } = require("./xubio");
+const out = (t) => console.log("::notice::" + String(t).slice(0, 1200));
 (async () => {
-  const ops = (await db.collection("xubioOP").get()).docs.filter((d) => d.id.endsWith("_2026-10-21"));
-  out("OP del 21/10: " + ops.length);
-  for (const d of ops) {
-    const x = d.data();
-    out("estado " + x.estado + " / modo " + x.modo + " / proveedor " + (x.proveedorXubio || "-") + " / lineas " + (x.lineas || []).length + " / cheques " + (x.cheques || []).length + " / retenciones " + (x.retenciones || []).length + " / importes " + m(JSON.stringify(x.importes)) + " / aviso " + m(x.aviso));
-    out("mensaje: " + m(x.mensaje));
+  const hasta = new Date(), desde = new Date();
+  desde.setDate(desde.getDate() - 60);
+  const l = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta)));
+  const tipos = {};
+  for (const op of l)
+    for (const i of comoLista(op.transaccionInstrumentoDePago)) {
+      const k = "tipo " + i.tipoCuenta + " | " + (i.cuenta && i.cuenta.nombre) + " (id " + (i.cuenta && (i.cuenta.ID || i.cuenta.id)) + ")";
+      const t = (tipos[k] = tipos[k] || { n: 0, chPropio: 0, chTerceros: 0, venc: 0, banco: 0 });
+      t.n++;
+      i.chequePropio && t.chPropio++;
+      i.chequeTerceros && t.chTerceros++;
+      i.vencimientoCheque && t.venc++;
+      i.banco && i.banco.nombre && t.banco++;
+    }
+  Object.entries(tipos).sort((a, b) => b[1].n - a[1].n).slice(0, 12).forEach(([k, v]) => out(k + " → " + JSON.stringify(v)));
+  const conCheque = l.find((op) => comoLista(op.transaccionInstrumentoDePago).some((i) => i.chequePropio));
+  if (conCheque) {
+    const i = comoLista(conCheque.transaccionInstrumentoDePago).find((x) => x.chequePropio);
+    out("Ejemplo instrumento con cheque propio (campos): " + Object.entries(i).map(([k, v]) => k + "=" + (v && typeof v === "object" ? "{" + Object.keys(v).join(",") + (v.nombre ? ":" + v.nombre : "") + "}" : typeof v === "number" && k !== "tipoCuenta" ? "num" : typeof v === "string" && /\d{4,}/.test(v) ? "texto" : v)).join(" | "));
   }
-  const ch = (await db.collection("echeqs").get()).docs.map((d) => d.data());
-  out("e-cheqs cargados " + ch.length + ", con fecha de emision 21/10: " + ch.filter((c) => c.fechaEmision === "2026-10-21").length + ", fechas de emision: " + [...new Set(ch.map((c) => c.fechaEmision))].slice(0, 10).join(","));
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
