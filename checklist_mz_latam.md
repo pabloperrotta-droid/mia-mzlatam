@@ -1608,7 +1608,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] 21/10/2026, pedido del usuario ("un botón en Pagos para reintentar todos, para la conexión con Xubio del centro de costo"). Al lado de "Subir e-cheqs del banco": **↻ Reintentar todas en Xubio** (solo quien puede editar Pagos). Pide confirmación con la cantidad y marca para reintentar todas las líneas en ❌ o ⚠️ que el proceso atiende (sin Fecha Pagado, o pagadas desde que se activaron las OP). Las ✅ no se tocan (regla del usuario) y las que no tienen CUIT o factura tampoco.
 - [x] Proceso de Xubio: además de los cambios en Pagos, ahora mira cada minuto si hay líneas marcadas para reintentar (este botón o "Reintentar ahora") y las procesa enseguida, de a 40 por pasada hasta terminar (antes las que pasaban de 40 esperaban la pasada de cada 30 minutos).
-- [x] Prueba automática nueva. Publicado en QA. Producción (pantalla): pendiente del OK del usuario.
+- [x] Prueba automática nueva. Publicado en QA y, con el OK del usuario ("ok", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada).
 
 ## 41. Pendientes / recomendaciones
 
