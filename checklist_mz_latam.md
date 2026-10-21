@@ -1596,8 +1596,8 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Prueba del usuario en QA: ingresó con Google como Admin (21/10/2026 00:18).
 - [x] **Subido a Producción** (21/10/2026), con el OK del usuario ("pasalo a producción"): ingreso con mail o Google también en `MIA.prd.html`; se sacaron los PIN de Admin y Comercial del código (quedan en null) y el campo PIN de Roles (los roles ahora se asignan a cada mail en Usuarios). Lista de Producción: colección `usuarios` (el Admin inicial se cargó con la cuenta de servicio). Verónica sigue apagada.
 - [x] `firestore.rules` definitivas: Producción y QA, cada uno con su lista de usuarios.
-- [ ] El usuario carga al equipo en Herramientas → Usuarios y avisa que entren con su mail.
-- [ ] Después, publicar `firestore.rules` en la consola (Firestore → Reglas): recién ahí la base queda cerrada a quien no esté en la lista.
+- [x] El usuario cargó al equipo en Herramientas → Usuarios (8 usuarios en Producción); entran de a poco con su mail.
+- [x] 21/10/2026 11:41: el usuario publicó `firestore.rules` en la consola. Verificado: una sesión anónima (como la de cualquiera con el link) recibe 403 en Pagos, usuarios, roles y QA; la cuenta de servicio (Xubio, respaldo) sigue leyendo.
 
 ## 41. Pendientes / recomendaciones
 
