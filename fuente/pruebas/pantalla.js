@@ -159,7 +159,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await clic("Usuarios");
     await pagina.waitForFunction(() => document.body.innerText.includes("Agregar usuario"), null, { timeout: 5000 }).catch(async () => { throw new Error("No apareció \"Agregar usuario\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
     await clic("✕");
-    await clic("Prueba · Admin ✓");
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Prueba · Admin ✓").click());
     await pagina.waitForFunction(() => document.body.innerText.includes("¿Olvidaste tu contraseña?"), null, { timeout: 5000 }).catch(async () => { throw new Error("No apareció \"¿Olvidaste tu contraseña?\". En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 300)))); });
   });
   await navegador.close();
