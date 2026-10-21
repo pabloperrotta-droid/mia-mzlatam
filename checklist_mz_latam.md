@@ -1623,7 +1623,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Botón **Recibos efectivo (n)** en Pagos (quien puede editar Pagos), al lado de "Pagos Semanales": PDF A4 con dos recibos por hoja (línea de corte), uno por cada línea con Se Paga = SI, sin Fecha Pagado y con Efectivo. Cada recibo: MZ LATAM, RECIBO N° 0003-00000001…, fecha ("21 de octubre de 2026"), OBRA (Cliente + Centro de Costo; en WU la Sub Obra; en internos "GASTOS INTERNOS - rubro"), PROVEEDOR (a quién se le paga), MONTO PAGADO en letras ("UN MILLÓN QUINIENTOS CUARENTA Y TRES MIL PESOS", con centavos "CON 50/100"), SON en números, y línea de "Firma y aclaración (Recibí conforme)".
 - [x] Numeración propia de MIA, serie 0003- (para no chocar con la 0002- de los recibos a mano), guardada en la base (`app/recibos`) con transacción: si se descarga de nuevo, cada línea conserva su número y su fecha; dos personas a la vez nunca reciben el mismo número.
 - [x] Pruebas: importe en letras (UN PESO, CIEN, CIENTO UN, VEINTIÚN MIL, DOS MILLONES DE PESOS, MIL DOSCIENTOS MILLONES, centavos), obra, qué líneas llevan recibo; y prueba de pantalla que arma el PDF real (3 recibos en 2 hojas, con los textos esperados).
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("subilo a producción", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada).
 
 ## 41. Pendientes / recomendaciones
 
