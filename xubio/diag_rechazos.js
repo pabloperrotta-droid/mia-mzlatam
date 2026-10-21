@@ -10,7 +10,7 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 4000));
   out("release status " + rel.st + " " + (rel.j.rulesetName || JSON.stringify(rel.j).slice(0, 300)));
   if (rel.j.rulesetName) {
     const rs = await g(rel.j.rulesetName);
-    (rs.j.source && rs.j.source.files || []).forEach((f) => out("ARCHIVO " + f.name + ":\n" + f.content));
+    (rs.j.source && rs.j.source.files || []).forEach((f) => out("ARCHIVO " + f.name + ": " + f.content.replace(/\n/g, " ⏎ ")));
   }
   const auth = await fetch("https://identitytoolkit.googleapis.com/admin/v2/projects/" + pid + "/config", { headers: { Authorization: "Bearer " + tok } });
   const a = await auth.json();
