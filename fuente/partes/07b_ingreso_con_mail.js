@@ -2,6 +2,7 @@
 // Pedido del usuario (20/10/2026): "que por más que tengan el link no puedan ingresar a la info".
 //   - El Admin carga en Herramientas → Usuarios el mail de cada persona y su rol (colección `usuarios`).
 //   - Cada persona elige su contraseña la primera vez y confirma su mail (Firebase le manda un link).
+//   - También se puede entrar con la cuenta de Google del mismo mail (la que prefiera cada persona).
 //   - "¿Olvidaste tu contraseña?" manda un mail para poner una nueva (también lo puede mandar el Admin).
 //   - Las reglas de la base solo dejan leer/escribir a mails confirmados que estén en `usuarios` y activos
 //     (ver firestore.rules). Sacar a alguien de la lista le corta el acceso al instante.
@@ -25,6 +26,8 @@ const ERRORES_INGRESO = {
   "auth/network-request-failed": "Sin conexión. Revisá internet y probá de nuevo.",
   "auth/operation-not-allowed": "El ingreso con mail todavía no está habilitado en Firebase.",
   "auth/missing-password": "Escribí la contraseña.",
+  "auth/unauthorized-domain": "Falta autorizar esta página en Firebase (Authentication → Configuración → Dominios autorizados).",
+  "auth/account-exists-with-different-credential": "Ese mail ya entra de otra forma: usá mail y contraseña.",
 };
 function textoErrorIngreso(e) {
   return ERRORES_INGRESO[e && e.code] || "No se pudo: " + ((e && e.message) || e);
@@ -157,6 +160,16 @@ function PantallaIngresoMail({ sesion }) {
         const r = await auth.createUserWithEmailAndPassword(mailNormal(email), clave);
         await r.user.sendEmailVerification();
       }),
+    conGoogle = () =>
+      hacer(async () => {
+        const prov = new firebase.auth.GoogleAuthProvider();
+        prov.setCustomParameters({ prompt: "select_account" });
+        await auth.signInWithPopup(prov).catch((e) => {
+          if (e && e.code === "auth/popup-blocked") return auth.signInWithRedirect(prov);
+          if (e && ["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(e.code)) return;
+          throw e;
+        });
+      }),
     olvide = () =>
       hacer(async () => {
         if (!mailValido(email)) return setAviso({ error: true, texto: "Escribí tu mail." });
@@ -221,6 +234,12 @@ function PantallaIngresoMail({ sesion }) {
       campo({ type: "email", placeholder: "Mail", value: email, onChange: (e) => setEmail(e.target.value), autoComplete: "username", autoFocus: !email }),
       campo({ type: "password", placeholder: "Contraseña", value: clave, onChange: (e) => setClave(e.target.value), onKeyDown: enter(ingresar), autoComplete: "current-password", autoFocus: !!email }),
       boton("Ingresar", ingresar),
+      React.createElement(
+        "button",
+        { onClick: conGoogle, disabled: ocupado, style: { ...estiloIngreso.boton, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } },
+        React.createElement("span", { style: { fontWeight: 800, color: "#4285F4" } }, "G"),
+        "Ingresar con Google",
+      ),
       link("¿Olvidaste tu contraseña?", () => (setModo("olvide"), setAviso(null))),
       link("Primera vez: crear mi contraseña", () => (setModo("crear"), setAviso(null), setClave(""), setClave2(""))),
     ];
