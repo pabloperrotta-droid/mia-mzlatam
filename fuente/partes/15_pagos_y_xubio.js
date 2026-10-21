@@ -2696,6 +2696,24 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           React.createElement(
             "button",
             {
+              onClick: async () => {
+                if (!lineasParaRecibo(n).length) return window.alert("No hay líneas con Se Paga = SI, sin Fecha Pagado y con Efectivo.");
+                try {
+                  await descargarRecibosEfectivo(n);
+                } catch (e) {
+                  window.alert("No se pudieron armar los recibos: " + ((e && e.message) || e));
+                }
+              },
+              style: smallBtnGhost,
+              title: "Sección 133: un recibo por cada pago en EFECTIVO de las líneas con Se Paga = SI y sin Fecha Pagado (número, fecha, obra, proveedor, importe en letras y números y lugar para firmar). Si se vuelve a descargar, cada línea conserva su número.",
+            },
+            React.createElement(Download, { size: 13, style: { verticalAlign: "-2px" } }),
+            " Recibos efectivo (" + lineasParaRecibo(n).length + ")",
+          ),
+        ne &&
+          React.createElement(
+            "button",
+            {
               onClick: abrirCierre,
               style: { ...smallBtnGhost, background: "#C9A227", borderColor: "#C9A227", color: "#1A1A1A", fontWeight: 700 },
               title:

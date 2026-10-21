@@ -118,6 +118,28 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Recibos de efectivo: importe en letras, obra y líneas", () => {
+  assert.strictEqual(f.importeEnLetras(1543000), "UN MILLÓN QUINIENTOS CUARENTA Y TRES MIL PESOS");
+  assert.strictEqual(f.importeEnLetras(1250.5), "MIL DOSCIENTOS CINCUENTA PESOS CON 50/100");
+  assert.strictEqual(f.importeEnLetras(21000), "VEINTIÚN MIL PESOS");
+  assert.strictEqual(f.importeEnLetras(101), "CIENTO UN PESOS");
+  assert.strictEqual(f.importeEnLetras(100), "CIEN PESOS");
+  assert.strictEqual(f.importeEnLetras(2000000), "DOS MILLONES DE PESOS");
+  assert.strictEqual(f.importeEnLetras(1), "UN PESO");
+  assert.strictEqual(f.importeEnLetras(31416), "TREINTA Y UN MIL CUATROCIENTOS DIECISÉIS PESOS");
+  assert.strictEqual(f.importeEnLetras(1200000000), "MIL DOSCIENTOS MILLONES DE PESOS");
+  assert.strictEqual(f.obraDeRecibo({ cliente: "Natura", centroCosto: "Santa Fe" }), "NATURA SANTA FE");
+  assert.strictEqual(f.obraDeRecibo({ cliente: "NATURA", centroCosto: "NATURA CABILDO" }), "NATURA CABILDO");
+  assert.strictEqual(f.obraDeRecibo({ cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORON" }), "WU MORON");
+  assert.strictEqual(f.numeroDeRecibo(7), "0003-00000007");
+  const L = [
+    { id: "a", sePaga: "SI", efectivo: 1000 },
+    { id: "b", sePaga: "SI", efectivo: 0, transferencia: 5 },
+    { id: "c", sePaga: "NO", efectivo: 1000 },
+    { id: "d", sePaga: "SI", efectivo: 1000, fechaPagado: "21/10/2026" },
+  ];
+  assert.deepStrictEqual(f.lineasParaRecibo(L).map((l) => l.id), ["a"]);
+});
 prueba("Pagos: Reintentar todas en Xubio elige solo ❌/⚠️ que el proceso atiende", () => {
   const base = { cuit: "30-71720122-8", cliente: "WU", importe: 100 };
   const L = [

@@ -141,6 +141,22 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
       throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
   });
+  await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
+    const espera = pagina.waitForEvent("download", { timeout: 15000 });
+    const n = await pagina.evaluate(() =>
+      descargarRecibosEfectivo([
+        { id: "r1", sePaga: "SI", efectivo: 1543000, cliente: "NATURA", centroCosto: "SANTA FE", proveedor: "LUCIO GONZALEZ" },
+        { id: "r2", sePaga: "SI", efectivo: 1250.5, cliente: "WU", centroCosto: "WU CIVIL WORK", subObra: "WU MORON", proveedor: "PROVEEDOR CON UN NOMBRE MUY LARGO PARA PROBAR QUE ENTRA" },
+        { id: "r3", sePaga: "SI", efectivo: 20000, cliente: "INTERNO", centroCosto: "MKT", proveedor: "OTRO" },
+        { id: "r4", sePaga: "SI", efectivo: 0, transferencia: 100, cliente: "NATURA", proveedor: "SIN EFECTIVO" },
+      ]),
+    );
+    const pdf = fs.readFileSync(await (await espera).path()).toString("latin1");
+    const paginas = (pdf.match(/\/Type \/Page\b/g) || []).length;
+    if (n !== 3 || paginas !== 2) throw new Error("Esperaba 3 recibos en 2 hojas y salieron " + n + " en " + paginas);
+    for (const t of ["MZ LATAM", "RECIBO", "0003-00000001", "NATURA SANTA FE", "LUCIO GONZALEZ", "QUINIENTOS CUARENTA Y TRES MIL PESOS", "Firma y aclar"])
+      if (!pdf.includes(t)) throw new Error("El PDF no tiene: " + t);
+  });
   await control("Ingreso con mail (QA): pantalla de ingreso, contraseña mala, ingreso, Usuarios y salir", async () => {
     await pagina.goto("file://" + archivo + "#mail");
     await pagina.reload(); // cambiar solo el # no recarga la página
