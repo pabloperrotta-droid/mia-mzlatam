@@ -1610,6 +1610,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Proceso de Xubio: además de los cambios en Pagos, ahora mira cada minuto si hay líneas marcadas para reintentar (este botón o "Reintentar ahora") y las procesa enseguida, de a 40 por pasada hasta terminar (antes las que pasaban de 40 esperaban la pasada de cada 30 minutos).
 - [x] Prueba automática nueva. Publicado en QA y, con el OK del usuario ("ok", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada).
 
+### 132. Órdenes de pago PAUSADAS otra vez (tipo de cuenta del cheque)
+
+- [x] 21/10/2026: primera OP con e-cheq (AGROREDES, pagada el 21/10, 2 e-cheqs + retención) rechazada por Xubio: "Tipo de cuenta acepta valores 1, 2 ó 5". MIA manda los cheques con `tipoCuenta: 4`, que es como figuran las 259 OP con cheque hechas a mano al leerlas (GET), pero el POST no lo acepta. La retención (ids -1 y número de certificado) ya no dio error. No se creó nada en Xubio.
+- [x] No se adivinó el valor (si fuera otro tipo, Xubio podría crear una OP mal armada). Se preparó la consulta a soporte de Xubio.
+- [x] 14:25, pedido del usuario ("pausalo todo"): `ops: false` en "prd". El centro de costo automático sigue funcionando. La OP de AGROREDES se hace a mano; al reactivar, MIA la reconoce por los números de e-cheq y no la duplica.
+- [ ] Con la respuesta de Xubio: corregir `tipoCuenta` del cheque y reactivar (decidir con el usuario desde qué fecha).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

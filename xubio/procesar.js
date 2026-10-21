@@ -35,7 +35,9 @@ const AMBIENTES = [
   // de nuevo la de hoy y todo lo que ya estaba pagado queda como "anterior" (esas OP ya se hicieron a mano).
   // Pausadas del 15/10 al 20/10/2026 (esperando a Xubio). REACTIVADAS el 20/10/2026 con OK del usuario ("las OP a
   // partir de cuándo se despause"): nueva activación, todo lo pagado hasta ahora queda como "anterior".
-  { nombre: "prd", prefijo: "", automatico: true, opActivacion: Date.UTC(2026, 9, 20, 18, 0) },
+  // PAUSADAS de nuevo el 21/10/2026 14:25 (pedido del usuario: "pausalo todo") hasta que Xubio confirme qué
+  // tipoCuenta va para el cheque propio diferido ("Tipo de cuenta acepta valores 1, 2 ó 5"; manda 4).
+  { nombre: "prd", prefijo: "", automatico: true, ops: false, opActivacion: Date.UTC(2026, 9, 20, 18, 0) },
 ];
 const MAX_PEDIDOS = 40;
 const MAX_LINEAS = 40;
