@@ -1602,7 +1602,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 130. Usuarios: quién está en línea y la última vez que entró
 
 - [x] 21/10/2026, pedido del usuario ("como tenía en Roles, que veía quién está online y última vez; agregalo en Usuarios"). Cada pantalla con ingreso por mail avisa cada 30 segundos que la persona está activa (`presencia/mail:<mail>`). En Herramientas → Usuarios, columna **Actividad**: punto verde "En línea ahora" (activa en el último minuto y medio), la fecha y hora de la última vez, o "Todavía no entró". Roles sigue mostrando lo suyo como antes.
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("si", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada).
 
 ## 41. Pendientes / recomendaciones
 
