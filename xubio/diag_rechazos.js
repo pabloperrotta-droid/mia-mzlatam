@@ -1,15 +1,16 @@
-// Alta del primer Admin en la lista de usuarios de QA (qa_usuarios), pedido del usuario 20/10/2026.
-// El mail llega por variable de entorno del paso (no queda en el código).
+// SOLO LECTURA: ¿se usó el ingreso por mail en QA? (cantidad de cuentas, confirmadas, último ingreso; sin mails)
 const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
-const out = (t) => console.log("::notice::" + String(t).slice(0, 300));
+const out = (t) => console.log("::notice::" + String(t).slice(0, 600));
 (async () => {
-  const email = String(process.env.MAIL_ADMIN || "").trim().toLowerCase();
-  if (!email.includes("@")) return out("falta el mail");
-  const ref = db.collection("qa_usuarios").doc(email);
-  const ya = await ref.get();
-  if (ya.exists) return out("ya estaba: rol " + ya.get("rol"));
-  await ref.set({ nombre: "Pablo", rol: "admin", activo: true, alta: Date.now(), altaPor: "inicial" });
-  out("Admin de QA cargado");
+  const l = await admin.auth().listUsers(1000);
+  const conMail = l.users.filter((u) => u.email);
+  out("Cuentas con mail: " + conMail.length + " / confirmadas " + conMail.filter((u) => u.emailVerified).length + " / proveedores " + JSON.stringify([...new Set(conMail.flatMap((u) => u.providerData.map((p) => p.providerId)))]) + " / ultimo ingreso " + (conMail.map((u) => u.metadata.lastSignInTime).filter(Boolean).sort().pop() || "-"));
+  const us = await db.collection("qa_usuarios").get();
+  out("qa_usuarios: " + us.size + " (roles: " + us.docs.map((d) => d.get("rol") + (d.get("activo") === false ? " inactivo" : "")).join(", ") + ")");
+  const admins = await db.collection("qa_usuarios").where("rol", "==", "admin").get();
+  const mailAdmin = admins.docs.map((d) => d.id);
+  out("El Admin de QA ya ingresó: " + conMail.some((u) => mailAdmin.includes(String(u.email).toLowerCase()) && u.emailVerified));
+  out("roles definidos en prd: " + (await db.collection("roles").get()).size + ", usuarios prd: " + (await db.collection("usuarios").get()).size);
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
