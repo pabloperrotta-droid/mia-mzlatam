@@ -1593,8 +1593,11 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] `firestore.rules` en el repo: en QA solo leen/escriben los mails confirmados que estén en `qa_usuarios` y activos; `qa_usuarios` solo la maneja un Admin; Producción sigue como estaba. Falta publicarlas en la consola de Firebase.
 - [x] El usuario habilitó en Firebase Authentication: mail/contraseña, Google y el dominio pabloperrotta-droid.github.io.
 - [x] Prueba de pantalla nueva (ingreso con contraseña mala, ingreso, Usuarios, salir) y todos los controles en verde.
-- [ ] Publicar `firestore.rules` en la consola (Firestore → Reglas).
-- [ ] Prueba del usuario en QA. Producción sigue con PIN hasta su OK (y hay que cargar los usuarios de Producción y avisar al equipo).
+- [x] Prueba del usuario en QA: ingresó con Google como Admin (21/10/2026 00:18).
+- [x] **Subido a Producción** (21/10/2026), con el OK del usuario ("pasalo a producción"): ingreso con mail o Google también en `MIA.prd.html`; se sacaron los PIN de Admin y Comercial del código (quedan en null) y el campo PIN de Roles (los roles ahora se asignan a cada mail en Usuarios). Lista de Producción: colección `usuarios` (el Admin inicial se cargó con la cuenta de servicio). Verónica sigue apagada.
+- [x] `firestore.rules` definitivas: Producción y QA, cada uno con su lista de usuarios.
+- [ ] El usuario carga al equipo en Herramientas → Usuarios y avisa que entren con su mail.
+- [ ] Después, publicar `firestore.rules` en la consola (Firestore → Reglas): recién ahí la base queda cerrada a quien no esté en la lista.
 
 ## 41. Pendientes / recomendaciones
 
