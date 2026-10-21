@@ -261,8 +261,9 @@ const aUsd = (n, d) => {
     "UNAMA",
     "VOLQUETES",
   ],
-  ADMIN_PIN = "4237",
-  COMERCIAL_PIN = "1234",
+  // Sección 129: ya no hay PIN de Admin ni de Comercial (se entra con mail); quedan en null para que nunca coincidan.
+  ADMIN_PIN = null,
+  COMERCIAL_PIN = null,
   obraKey = (n, d) => n + "|" + d,
   subCostoKey = (n, d) => n + "::subCosto::" + d;
 function nuevoSubCostoId() {

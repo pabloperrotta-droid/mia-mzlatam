@@ -440,7 +440,7 @@ function App({ sesion = null } = {}) {
       // Sin distinguir mayúsculas ni espacios de más (en el celular el teclado suele poner la primera
       // letra en mayúscula: "Vero" tiene que entrar igual que "vero").
       const pinEscrito = String(cn || "").trim().toLowerCase(),
-        e = roles.find((t) => String(t.pin || "").trim().toLowerCase() === pinEscrito);
+        e = pinEscrito && roles.find((t) => String(t.pin || "").trim().toLowerCase() === pinEscrito);
       if (e) {
         (ko("custom"), Kn(e.id), on(""), kn(false));
         try {

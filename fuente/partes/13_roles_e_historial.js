@@ -107,7 +107,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
           vt = k.filter((y) => Re.herramientasAdmin && Re.herramientasAdmin[y]).map(L);
         return {
           Rol: Re.nombre,
-          PIN: Re.pin,
+          ...(LOGIN_CON_MAIL ? {} : { PIN: Re.pin }),
           "Secciones y permiso": dt || "—",
           "Alcance en Obras": Gt || "—",
           "Tipo de Cambio": Re.puedeFijarTipoCambio ? "Puede fijar" : "No",
@@ -193,11 +193,11 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
     });
   }
   async function Oo() {
-    if (!P.nombre.trim() || !P.pin.trim()) {
-      Ye("Completá nombre del rol y PIN.");
+    if (!P.nombre.trim() || (!LOGIN_CON_MAIL && !P.pin.trim())) {
+      Ye(LOGIN_CON_MAIL ? "Completá el nombre del rol." : "Completá nombre del rol y PIN.");
       return;
     }
-    if (d.some((w) => w.pin === P.pin.trim() && w.id !== ee)) {
+    if (!LOGIN_CON_MAIL && d.some((w) => w.pin === P.pin.trim() && w.id !== ee)) {
       Ye("Ya existe un rol con ese PIN. Usá uno distinto.");
       return;
     }
@@ -312,8 +312,8 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
             onChange: (w) => M({ ...P, nombre: w.target.value }),
             placeholder: "Ej: Contador",
           }),
-          React.createElement("label", { style: labelStyle }, "PIN"),
-          React.createElement("input", {
+          !LOGIN_CON_MAIL && React.createElement("label", { style: labelStyle }, "PIN"),
+          !LOGIN_CON_MAIL && React.createElement("input", {
             style: { ...inputStyle, width: "100%", marginBottom: 14 },
             value: P.pin,
             onChange: (w) => M({ ...P, pin: w.target.value }),
@@ -712,12 +712,13 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
                     { style: { fontWeight: 700, color: NAVY, fontSize: 13.5 } },
                     w.nombre,
                     " ",
-                    React.createElement(
-                      "span",
-                      { style: { color: MUTED, fontWeight: 400, fontSize: 12 } },
-                      "· PIN ",
-                      w.pin,
-                    ),
+                    !LOGIN_CON_MAIL &&
+                      React.createElement(
+                        "span",
+                        { style: { color: MUTED, fontWeight: 400, fontSize: 12 } },
+                        "· PIN ",
+                        w.pin,
+                      ),
                   ),
                   React.createElement(
                     "div",

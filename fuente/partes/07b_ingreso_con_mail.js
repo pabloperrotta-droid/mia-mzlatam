@@ -6,8 +6,8 @@
 //   - "¿Olvidaste tu contraseña?" manda un mail para poner una nueva (también lo puede mandar el Admin).
 //   - Las reglas de la base solo dejan leer/escribir a mails confirmados que estén en `usuarios` y activos
 //     (ver firestore.rules). Sacar a alguien de la lista le corta el acceso al instante.
-// Por ahora solo en QA; Producción sigue con PIN hasta que el usuario lo apruebe.
-const LOGIN_CON_MAIL = APP_ENV === "qa" && !(typeof window < "u" && window.__MIA_SIN_LOGIN_MAIL__);
+// En QA desde el 20/10/2026 y en Producción desde el 21/10/2026 (OK del usuario: "pasalo a producción").
+const LOGIN_CON_MAIL = !(typeof window < "u" && window.__MIA_SIN_LOGIN_MAIL__);
 function mailNormal(m) {
   return String(m || "").trim().toLowerCase();
 }

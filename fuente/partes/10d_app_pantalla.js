@@ -798,7 +798,7 @@
                   "button",
                   {
                     onClick: () => fa(true),
-                    title: "Crear roles con PIN propio: qué pueden editar y qué secciones ven",
+                    title: "Roles: qué puede editar y qué secciones ve cada uno (se asignan a cada mail en Usuarios)",
                     style: {
                       border: "1px solid rgba(255,255,255,0.25)",
                       background: "transparent",

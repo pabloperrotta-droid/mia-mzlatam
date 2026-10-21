@@ -1,9 +1,8 @@
 rules_version = '2';
-// Reglas de seguridad de la base de MIA (Firestore, proyecto mzlatam-app).
-// Sección 129 (20/10/2026): ingreso con mail. En QA (colecciones qa_*) solo leen/escriben los mails
-// confirmados que estén en qa_usuarios y activos; qa_usuarios solo la maneja un Admin.
-// Producción (colecciones sin prefijo) sigue como estaba (cualquier sesión de la app) hasta pasar el
-// ingreso con mail a Producción con el OK del usuario.
+// Reglas de seguridad de la base de MIA (Firestore, proyecto mzlatam-app). Sección 129.
+// Solo leen/escriben los mails confirmados que estén en la lista de usuarios y activos:
+//   Producción → colección `usuarios`; QA → `qa_usuarios` (cada ambiente con su lista).
+// La lista de usuarios solo la maneja un Admin; cada persona puede leer solo su propia ficha.
 // Los procesos de GitHub (Xubio, respaldo) usan la cuenta de servicio y no pasan por estas reglas.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,27 +12,29 @@ service cloud.firestore {
     function miMail() {
       return request.auth.token.email.lower();
     }
-    function usuarioQA() {
-      return get(/databases/$(database)/documents/qa_usuarios/$(miMail())).data;
+    function prefijo(coleccion) {
+      return coleccion.matches('qa_.*') ? 'qa_' : '';
     }
-    function habilitadoQA() {
-      return confirmado()
-        && exists(/databases/$(database)/documents/qa_usuarios/$(miMail()))
-        && usuarioQA().get('activo', true) != false;
+    function ficha(p) {
+      return /databases/$(database)/documents/$(p + 'usuarios')/$(miMail());
     }
-    function adminQA() {
-      return habilitadoQA() && usuarioQA().get('rol', '') == 'admin';
+    function habilitado(p) {
+      return confirmado() && exists(ficha(p)) && get(ficha(p)).data.get('activo', true) != false;
+    }
+    function esAdmin(p) {
+      return habilitado(p) && get(ficha(p)).data.get('rol', '') == 'admin';
     }
 
+    match /usuarios/{email} {
+      allow get: if confirmado() && email == miMail();
+      allow read, write: if esAdmin('');
+    }
     match /qa_usuarios/{email} {
       allow get: if confirmado() && email == miMail();
-      allow read, write: if adminQA();
+      allow read, write: if esAdmin('qa_');
     }
-
     match /{coleccion}/{resto=**} {
-      allow read, write: if coleccion.matches('qa_.*')
-        ? (coleccion != 'qa_usuarios' && habilitadoQA())
-        : request.auth != null;
+      allow read, write: if !coleccion.matches('(qa_)?usuarios') && habilitado(prefijo(coleccion));
     }
   }
 }
