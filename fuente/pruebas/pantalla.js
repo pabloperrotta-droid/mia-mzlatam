@@ -23,7 +23,7 @@ const html = head.slice(0, i) + "<script>" + simulada + "</script>\n" + head.sli
 const archivo = path.join(os.tmpdir(), "mia_prueba_pantalla.html");
 fs.writeFileSync(archivo, html);
 
-const PESTANAS = ["Obras", "Facturación", "Proveedores", "Cashflow", "Pagos", "EERR", "Operaciones", "Verónica"];
+const PESTANAS = ["Obras", "Facturación", "Proveedores", "Cashflow", "Pagos", "EERR", "Operaciones"];
 const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
 
 (async () => {
@@ -108,39 +108,6 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /^Cargar 1 factura$/.test(b.textContent.trim())).click());
     await pagina.waitForFunction(() => document.body.innerText.includes("Facturas PDF cargadas"), null, { timeout: 30000 });
   });
-  // Sección 99: el Excel de Verónica sale con las 20 columnas de su planilla, fechas como fecha.
-  await control("Verónica → planilla importada y Descargar Excel (20 columnas, fechas)", async () => {
-    await pagina.evaluate(() => {
-      VERO_ST.iniciado = true;
-      VERO_ST.cargado = true;
-      const v = Array(20).fill("");
-      Object.assign(v, { 0: "05/10/2026", 1: "CLIENTE SA", 2: "10/09/2026", 3: "WC X999901234567", 4: "0001A00000001", 6: "Producto", 7: 100.5, 8: 121.6, 9: "Sucursal" });
-      const v2 = Array(20).fill("");
-      Object.assign(v2, { 1: "CLIENTE SA", 3: "WH X999901234568", 8: 50 });
-      VERO_ST.planilla = { archivo: "prueba.xlsx", filas: [{ id: "f1", v, pdf: { 4: "a.pdf" } }, { id: "f2", v: v2, pdf: {} }] };
-      VERO_ST.subs.forEach((f) => f());
-    });
-    await clic("Verónica");
-    const todas = await pagina.evaluate(() => document.body.innerText.includes("WC X999901234567") && document.body.innerText.includes("WH X999901234568"));
-    if (!todas) throw new Error("Al entrar no se ven todas las filas de la planilla");
-    await clic("Completas (1)");
-    const comp = await pagina.evaluate(() => document.body.innerText.includes("WC X999901234567") && !document.body.innerText.includes("WH X999901234568"));
-    await clic("Por completar — falta PDF (1)");
-    const pend = await pagina.evaluate(() => !document.body.innerText.includes("WC X999901234567") && document.body.innerText.includes("WH X999901234568"));
-    if (!comp || !pend) throw new Error("Los filtros Completas / Por completar no separan bien las filas");
-    await clic("Todas (2)");
-    const espera = pagina.waitForEvent("download", { timeout: 15000 });
-    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Descargar Excel/.test(b.textContent)).click());
-    const archivo = await (await espera).path();
-    const r = await pagina.evaluate((b64) => {
-      const wb = XLSX.read(b64, { type: "base64" }),
-        ws = wb.Sheets[wb.SheetNames[0]],
-        filas = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      return { columnas: filas[0].length, snc: filas[1][3], fecha: ws.C2 && ws.C2.w, subtotal: filas[1][7] };
-    }, fs.readFileSync(archivo).toString("base64"));
-    if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
-      throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
-  });
   await control("Cashflow → Salidas: un Excel guardado desde Excel (títulos con espacios) se lee con importes", async () => {
     // Copia anónima (nombres e importes inventados) de un Excel real guardado desde Excel: los títulos de las
     // semanas quedan " 30/10/2026 " y antes no se reconocían (Sección 136).
@@ -186,6 +153,20 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     }, [despues, r.fila[0]]);
     if (!seve)
       throw new Error("Después de importar no se ven los importes. Mensaje: " + msg + " / fila " + JSON.stringify(r.fila) + " semanas " + JSON.stringify(r.semanas) + " / al volver a exportar la fila trae: " + JSON.stringify(celdas));
+  });
+  await control("Cashflow → importar un Excel sin semanas reconocibles: no toca nada y avisa", async () => {
+    await clic("Cashflow");
+    await clic("Salidas Semanales");
+    const b64 = await pagina.evaluate(() => {
+      const ws = XLSX.utils.aoa_to_sheet([["ID", "Cliente", "Centro de Costo", "Proveedor", "Saldo", "Semana 1"], ["x", "A", "B", "C", 1, 999]]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Salidas Semanales");
+      return XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+    });
+    const tmp = path.join(os.tmpdir(), "cashflow_sin_semanas.xlsx");
+    fs.writeFileSync(tmp, Buffer.from(b64, "base64"));
+    await pagina.setInputFiles('input[type="file"][accept=".xlsx,.xls,.csv"]', tmp);
+    await pagina.waitForFunction(() => /no se reconoció ninguna semana/.test(document.body.innerText), null, { timeout: 10000 });
   });
   await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
     const espera = pagina.waitForEvent("download", { timeout: 15000 });

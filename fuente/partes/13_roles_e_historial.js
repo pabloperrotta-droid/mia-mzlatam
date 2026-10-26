@@ -22,7 +22,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         w
       );
     }, [c]),
-    f = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", ...(VERONICA_HABILITADA ? ["veronica"] : [])];
+    f = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones"];
   function F(w) {
     return w === "obras"
       ? "Obras"
@@ -36,9 +36,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
               ? "Pagos"
               : w === "eerr"
                 ? "EERR"
-                : w === "veronica"
-                  ? "Verónica"
-                  : "Operaciones";
+                : "Operaciones";
   }
   function A(w, Ne) {
     return (w.permisosPorSeccion && w.permisosPorSeccion[Ne]) || w.permiso || "lectura";
@@ -69,7 +67,6 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         pagos: false,
         eerr: false,
         operaciones: false,
-        veronica: false,
       },
       permisosPorSeccion: {
         obras: "lectura",
@@ -79,7 +76,6 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         pagos: "lectura",
         eerr: "lectura",
         operaciones: "lectura",
-        veronica: "lectura",
       },
       obrasScope: { modo: "todos", items: [] },
       puedeFijarTipoCambio: false,
@@ -143,7 +139,6 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         pagos: Ne,
         eerr: Ne,
         operaciones: Ne,
-        veronica: Ne,
         ...(w.permisosPorSeccion || {}),
       },
       obrasScope: {

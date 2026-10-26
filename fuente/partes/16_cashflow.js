@@ -808,7 +808,21 @@ function CashflowView({
         It = 0,
         et = 0,
         gt = 0;
-      if (R.SheetNames.includes("Ingresos")) {
+      // Sección 140: si una hoja no trae ninguna semana que MIA reconozca, no se toca (antes se cargaba todo
+      // vacío) y se avisa. También se avisa de columnas con fecha que no son el viernes de una semana.
+      const avisosHojas = [],
+        hojaConSemanas = (nombre) => {
+          const ws = R.Sheets[nombre],
+            tit = (XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })[0] || []).map((x) => String(x).trim()),
+            fechas = tit.filter((x) => Q(x)),
+            ok = fechas.filter((x) => J.has(x));
+          fechas.length > ok.length &&
+            avisosHojas.push(nombre + ": " + (fechas.length - ok.length) + " columna(s) con fecha que no es el viernes de la semana (no se cargaron)");
+          if (ok.length) return true;
+          avisosHojas.push(nombre + ": no se reconoció ninguna semana en los títulos de las columnas, no se cambió nada en esa hoja");
+          return false;
+        };
+      if (R.SheetNames.includes("Ingresos") && hojaConSemanas("Ingresos")) {
         const Ut = filasDeHojaCashflow(R.Sheets.Ingresos),
           Yt = { ...FRaw };
         (Ut.forEach((Dt) => {
@@ -895,7 +909,7 @@ function CashflowView({
         }
         L(Qo);
       }
-      if (R.SheetNames.includes("Egresos")) {
+      if (R.SheetNames.includes("Egresos") && hojaConSemanas("Egresos")) {
         const Ut = filasDeHojaCashflow(R.Sheets.Egresos),
           Yt = [],
           Tt = { ...eeRaw };
@@ -940,7 +954,7 @@ function CashflowView({
         }
         Be(xo);
       }
-      if (R.SheetNames.includes("Salidas Semanales")) {
+      if (R.SheetNames.includes("Salidas Semanales") && hojaConSemanas("Salidas Semanales")) {
         const Ut = filasDeHojaCashflow(R.Sheets["Salidas Semanales"]),
           Yt = { ...LeRaw };
         (Ut.forEach((Tt) => {
@@ -1002,7 +1016,8 @@ function CashflowView({
             ? " " +
               It +
               " fila(s) del Excel no se pudieron ubicar (revisá que el Cliente/Centro de Costo/Proveedor sigan existiendo tal cual)."
-            : ""),
+            : "") +
+          (avisosHojas.length ? " ⚠️ " + avisosHojas.join(" · ") + "." : ""),
       );
     } catch {
       sn("No se pudo leer el archivo.");

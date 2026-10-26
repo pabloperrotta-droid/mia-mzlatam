@@ -196,14 +196,12 @@ function App({ sesion = null } = {}) {
           pagos: true,
           eerr: true,
           operaciones: true,
-          // Sección "Verónica": solo Admin (de los roles fijos); en los roles creados, si se la habilita.
-          veronica: fn,
         },
-    // En Producción la sección Verónica está apagada (ver VERONICA_EN_PRODUCCION en 20_veronica.js).
-    Jn = VERONICA_HABILITADA ? Jn0 : { ...Jn0, veronica: false };
+    // Sección 140: la sección Verónica se eliminó (pedido del usuario, 26/10/2026).
+    Jn = Jn0;
   (useEffect(() => {
     if (!Jn[vista]) {
-      const e = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones", "veronica"].find((t) => Jn[t]);
+      const e = ["obras", "facturacion", "proveedores", "cashflow", "pagos", "eerr", "operaciones"].find((t) => Jn[t]);
       e && setVista(e);
     }
   }, [ct, so && so.id]),

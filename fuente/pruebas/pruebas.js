@@ -212,30 +212,6 @@ prueba("Búsqueda en la tabla de proveedores de Pagos", () => {
   assert.strictEqual(f.coincideBusquedaProveedor({ proveedor: "" }, "lucio"), true); // recién agregado
   assert.strictEqual(f.coincideBusquedaProveedor(fila, ""), true);
 });
-prueba("Verónica: importar la planilla y completar las amarillas con el PDF por SNC (datos inventados)", () => {
-  const tit = ["Fecha de Recepcion ", "Cliente", "FechaSNC", "SNC", "N° Comp, Asoc", "Concepto de SNC ", "Descripcion", "Subtotal", "Monto Final", "Sucursal", "Estado ", "OP", "Lote", "ND Interna", "Fecha NC", "Nro, NC Emitida", "Monto Neto", "Monto Final", "Observaciones", "Cargada en BI"];
-  const vacia = () => Array(20).fill("");
-  const r1 = vacia(); Object.assign(r1, { 0: new Date(Date.UTC(2026, 8, 21)), 1: "CLIENTE SA", 2: "07/09/2026", 3: "WH X999900000001", 5: "Diferencia", 8: 1000, 10: "En revisión" });
-  const r2 = vacia(); Object.assign(r2, { 0: 46286, 1: "CLIENTE SA", 2: "08/09/2026", 3: "WC X999900000002", 6: "Producto viejo", 7: 50, 8: 60, 9: "Local 1" });
-  const filas = JSON.parse(JSON.stringify(f.veroLeerPlanilla([[], tit, r1, vacia(), r2])));
-  assert.strictEqual(filas.length, 2);
-  assert.strictEqual(filas[0].v[0], "21/09/2026");
-  assert.strictEqual(filas[1].v[0], "21/09/2026"); // número de serie de Excel
-  assert.strictEqual(filas[0].v[3], "WH X999900000001");
-  assert.strictEqual(f.veroClaveSnc(" X999900000001"), f.veroClaveSnc("WH X999900000001"));
-  const pdf = { snc: "WH X999900000001", comprobante: "0001A00000001", descripcion: "Producto con más cantidad", subtotal: 800.5, sucursal: "Sucursal Uno" };
-  const r = JSON.parse(JSON.stringify(f.veroCompletarConPdf(filas, pdf, "solicitud.pdf")));
-  assert.strictEqual(r.estado, "completado");
-  assert.deepStrictEqual([r.filas[0].v[4], r.filas[0].v[6], r.filas[0].v[7], r.filas[0].v[9]], ["0001A00000001", "Producto con más cantidad", 800.5, "Sucursal Uno"]);
-  assert.strictEqual(r.filas[0].v[8], 1000); // el Monto Final del Excel no se toca
-  assert.deepStrictEqual(r.filas[1], filas[1]); // otra SNC: sin cambios
-  assert.strictEqual(f.veroCompletarConPdf(r.filas, pdf).estado, "ya_estaba");
-  assert.strictEqual(f.veroCompletarConPdf(filas, { ...pdf, snc: "WC X999911111111" }).estado, "no_esta");
-  // Reimportar el Excel sin esos datos: lo completado con el PDF se conserva.
-  const de_nuevo = JSON.parse(JSON.stringify(f.veroConservarCompletados(f.veroLeerPlanilla([tit, r1, r2]), r.filas)));
-  assert.strictEqual(de_nuevo[0].v[7], 800.5);
-  assert.strictEqual(de_nuevo[1].v[6], "Producto viejo");
-});
 prueba("Factura con solo \"NETO :\" (sin gravado ni subtotal): el Importe Bruto se toma del neto (datos inventados)", () => {
   const it = (s, x, y) => ({ s, x, y, w: 30, h: 8 });
   const items = [
@@ -491,36 +467,6 @@ prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13000/"), null);
   assert.strictEqual(f.evaluarCuenta("=alert(1)"), null);
   assert.ok(f.esCuenta("=5") && f.esCuenta("13.000/4") && f.esCuenta("100-20") && !f.esCuenta("-1000") && !f.esCuenta("13.000"));
-});
-
-// Sección 99 (Verónica): solicitud de Nota de Crédito con el diseño de Cencosud (datos inventados).
-prueba("Verónica: N° de solicitud, descripción del producto con más cantidad, sucursal, comprobante y subtotal", () => {
-  const it = (s, x, y, w = 30) => ({ s, x, y, w, h: 8 });
-  const pag = [
-    it("SOLICITUD NOTA DE CREDITO", 366, 789, 153), it("POR AJUSTE DEVOLUCION", 402, 778, 94), it("CENCOSUD S.A.", 97, 767, 82),
-    it("Nº", 421, 763, 8), it("9999", 431, 763, 17), it("-", 451, 763, 3), it("01234567", 455, 763, 34),
-    it("Fecha:", 339, 745, 24), it("10-09-2026", 433, 745, 44),
-    it("Comprobante Asoc:", 324, 612, 59), it("0001A00000001 10.09.2026", 388, 612, 86),
-    it("Codigo", 30, 564, 21), it("Descripcion", 140, 564, 34), it("Sec", 249, 564, 11), it("Sucursal", 277, 564, 25),
-    it("Referencia", 330, 564, 30), it("Cantidad", 395, 564, 28), it("UM", 440, 564, 10), it("P. Unitario", 470, 564, 30), it("Importe", 544, 564, 22),
-    it("7790000000001", 14, 553, 37), it("Producto A 500g", 67, 552, 110), it("Sucursal Uno", 264, 552, 38), it("000000003.00", 390, 552, 38), it("100,00", 470, 552, 23), it("0.00", 554, 552, 12),
-    it("7790000000002", 14, 545, 37), it("Producto B 190g", 67, 545, 110), it("Sucursal Uno", 264, 545, 38), it("000000087.00", 390, 545, 38), it("50,00", 470, 545, 23), it("0.00", 554, 545, 12),
-    it("SON PESOS: MIL", 20, 300, 120), it("Sub-Total", 400, 300, 40), it("$ 4.650,00", 500, 300, 50), it("Total", 420, 270, 20), it("$ 5.626,50", 500, 270, 50),
-  ];
-  const r = JSON.parse(JSON.stringify(f.leerSolicitudNC([pag])));
-  assert.strictEqual(r.numero, "9999-01234567");
-  assert.strictEqual(r.tipo, "POR AJUSTE DEVOLUCION");
-  assert.strictEqual(r.fecha, "10/09/2026");
-  assert.strictEqual(r.comprobante, "0001A00000001");
-  assert.strictEqual(r.descripcion, "Producto B 190g");
-  assert.strictEqual(r.cantidad, 87);
-  assert.strictEqual(r.sucursal, "Sucursal Uno");
-  assert.strictEqual(r.subtotal, 4650);
-  assert.strictEqual(r.total, 5626.5);
-  assert.strictEqual(r.cliente, "CENCOSUD SA");
-  assert.strictEqual(r.snc, "X999901234567");
-  const conInterno = JSON.parse(JSON.stringify(f.leerSolicitudNC([[...pag, it("WC-0195549447", 433, 702, 62)]])));
-  assert.strictEqual(conInterno.snc, "WC X999901234567");
 });
 
 console.log("Foto del comportamiento actual (" + Object.keys(casos).length + " funciones):");
