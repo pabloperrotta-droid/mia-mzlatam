@@ -94,6 +94,16 @@ function generarSemanas(n, d) {
   }
   return p;
 }
+// Sección 135: cuántas semanas muestra Cashflow desde la semana `n`: como mínimo 26, y siempre hasta el
+// 31/12 del año al que se llega con esas 26 (pedido del usuario: "poner la estructura de todo 2027").
+// Ej.: desde el 30/10/2026 → hasta el 31/12/2027 (62 semanas).
+function semanasDeCashflow(n) {
+  const c = viernesDeLaSemana(fechaAObjetoDate(n) || /* @__PURE__ */ new Date()),
+    lim = new Date(c);
+  lim.setDate(lim.getDate() + 25 * 7);
+  const fin = new Date(lim.getFullYear(), 11, 31);
+  return Math.max(26, Math.floor((fin - c) / (7 * 864e5)) + 1);
+}
 function moverSemanas(n, d) {
   const c = fechaAObjetoDate(n) || /* @__PURE__ */ new Date(),
     p = new Date(c);

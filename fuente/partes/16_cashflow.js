@@ -349,7 +349,7 @@ function CashflowView({
   }
   const [Ot, no] = useState(false),
     Kt = useRef(Array.from({ length: 5 }, () => React.createRef())).current,
-    ae = useMemo(() => generarSemanas(oo, 26), [oo]),
+    ae = useMemo(() => generarSemanas(oo, semanasDeCashflow(oo)), [oo]),
     regMap = useMemo(() => regaliasPorSemana(d, ae), [d, ae]),
     Qt = useMemo(() => {
       const s = fechaAObjetoDate(fechaHoyArgentinaDDMMAAAA());

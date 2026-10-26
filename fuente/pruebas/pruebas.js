@@ -118,6 +118,12 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Cashflow: semanas hasta fin de 2027 (mínimo 26)", () => {
+  const ult = (d) => { const s = f.generarSemanas(d, f.semanasDeCashflow(d)); return [s.length, s[s.length - 1]]; };
+  assert.deepStrictEqual(ult("30/10/2026"), [62, "31/12/2027"]);
+  assert.deepStrictEqual(ult("01/01/2027"), [53, "31/12/2027"]);
+  assert.ok(f.semanasDeCashflow("02/07/2027") >= 26);
+});
 prueba("Recibos de efectivo: importe en letras, obra y líneas", () => {
   assert.strictEqual(f.importeEnLetras(1543000), "UN MILLÓN QUINIENTOS CUARENTA Y TRES MIL PESOS");
   assert.strictEqual(f.importeEnLetras(1250.5), "MIL DOSCIENTOS CINCUENTA PESOS CON 50/100");

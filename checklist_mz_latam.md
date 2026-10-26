@@ -1630,6 +1630,11 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 21/10/2026, pedido del usuario ("que en observaciones me guarde el número de recibo al poner pagada"). Cuando una línea que tiene recibo de efectivo (Sección 133) se marca como pagada —con el tilde, con la fecha o con "Cerrar pago semanal"—, se agrega a Observaciones "Recibo 0003-00000001" (después de lo que ya hubiera, separado con " · ", sin repetirlo si ya está). Las líneas sin recibo no cambian.
 - [x] Prueba automática nueva. Publicado en QA y, con el OK del usuario ("sí por favor", 21/10/2026), en `MIA.prd.html` (Verónica sigue apagada). Recibos: el usuario confirmó dos por hoja A4.
 
+### 135. Cashflow: semanas hasta fin de 2027
+
+- [x] 26/10/2026, pedido del usuario ("cuando cargo masivos de egresos solo me cuenta hasta abril, y quiero poner la estructura de todo 2027"). Cashflow mostraba siempre 26 semanas desde la elegida (hoy: hasta el 23/04/2027), y el pegado masivo y el Importar Excel solo toman las semanas que se muestran. Ahora muestra como mínimo 26 semanas y siempre hasta el 31/12 del año al que se llega con esas 26: desde el 30/10/2026, 62 semanas hasta el 31/12/2027 (en Ingresos, Egresos y Salidas Semanales, y en el Exportar/Importar Excel). Los botones de ±26 semanas siguen igual.
+- [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
