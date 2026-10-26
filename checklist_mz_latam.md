@@ -1647,7 +1647,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 26/10/2026, pedido del usuario: "los cálculos son con los datos que están, no importa en qué semana estoy parado… si la semana que viene tengo −100 millones, esta semana lo voy a seguir contemplando hasta que no lo modifique o lo borre". Antes el saldo acumulado arrancaba del Saldo inicial en la primera semana visible y lo cargado en semanas anteriores dejaba de contar (y el saldo cambiaba según la semana que se mirara).
 - [x] Ahora el saldo de cada semana = Saldo inicial + todo lo cargado hasta esa semana, incluidas las semanas pasadas (Ingresos de facturas/pendiente de facturar y categorías, Egresos y Salidas Semanales de las filas que siguen existiendo). Es el mismo mirando desde cualquier semana. Debajo del Saldo inicial se ve cuánto se arrastra de semanas anteriores (ingresos y egresos), con el detalle de las semanas al pasar el mouse. El Saldo inicial pasa a ser "lo que hay hoy en caja y bancos". Lo mismo en el resumen de Cash de la presentación.
 - [x] Las regalías automáticas de semanas pasadas no se arrastran (no las carga el usuario).
-- [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Prueba automática nueva. Publicado en QA. Con el OK del usuario ("sí, pasar a producción", 26/10/2026) subido a `MIA.prd.html` (Secciones 137, 138 y 139; Verónica sigue apagada).
 
 ### 138. Cashflow: tilde "pagado" en cada importe
 
@@ -1656,7 +1656,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 139. Cashflow: exportar e importar todas las semanas con datos
 
 - [x] 26/10/2026, pedido del usuario ("al exportar o importar, que me exporte todas las semanas que tengan datos; desde hoy en adelante y de hoy para atrás si hay datos"). Exportar Excel trae, además de las semanas que se ven (hasta fin de 2027), las semanas anteriores que tengan algo cargado. Importar Excel acepta cualquier semana del archivo (pasada o futura), aunque no esté a la vista, siempre que el título sea el viernes de la semana (como las exporta MIA).
-- [x] Pruebas automáticas nuevas y todos los controles en verde (también con dos pantallas). Publicado en QA (junto con la Sección 137). Producción: pendiente del OK del usuario.
+- [x] Pruebas automáticas nuevas y todos los controles en verde (también con dos pantallas). Publicado en QA (junto con la Sección 137). Con el OK del usuario ("sí, pasar a producción", 26/10/2026) subido a `MIA.prd.html` (Secciones 137, 138 y 139; Verónica sigue apagada).
 
 ## 41. Pendientes / recomendaciones
 
