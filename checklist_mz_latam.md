@@ -1642,6 +1642,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Pruebas nuevas: lectura de la copia anónima; exportar → cambiar importes → importar en la pantalla; y con dos pantallas, que el import quede guardado en la base.
 - [x] Publicado en QA y, con el OK del usuario ("subilo a producción", 26/10/2026), en `MIA.prd.html` junto con la Sección 135 (Verónica sigue apagada). El usuario tiene que volver a subir el Excel.
 
+### 137. Cashflow: lo cargado en semanas pasadas sigue contando en el saldo
+
+- [x] 26/10/2026, pedido del usuario: "los cálculos son con los datos que están, no importa en qué semana estoy parado… si la semana que viene tengo −100 millones, esta semana lo voy a seguir contemplando hasta que no lo modifique o lo borre". Antes el saldo acumulado arrancaba del Saldo inicial en la primera semana visible y lo cargado en semanas anteriores dejaba de contar (y el saldo cambiaba según la semana que se mirara).
+- [x] Ahora el saldo de cada semana = Saldo inicial + todo lo cargado hasta esa semana, incluidas las semanas pasadas (Ingresos de facturas/pendiente de facturar y categorías, Egresos y Salidas Semanales de las filas que siguen existiendo). Es el mismo mirando desde cualquier semana. Debajo del Saldo inicial se ve cuánto se arrastra de semanas anteriores (ingresos y egresos), con el detalle de las semanas al pasar el mouse. El Saldo inicial pasa a ser "lo que hay hoy en caja y bancos". Lo mismo en el resumen de Cash de la presentación.
+- [x] Las regalías automáticas de semanas pasadas no se arrastran (no las carga el usuario).
+- [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

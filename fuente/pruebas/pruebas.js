@@ -118,6 +118,12 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Cashflow: semanas pasadas con algo cargado (siguen pendientes)", () => {
+  const ing = { "f1|16/10/2026": 100, "f1|30/10/2026": 50, "f2|23/10/2026": "" };
+  const egr = { "SUELDOS|09/10/2026": 0, "SUELDOS|23/10/2026": 100000000 };
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.semanasAnterioresConDatos([ing, egr], "30/10/2026"))), ["16/10/2026", "23/10/2026"]);
+  assert.strictEqual(f.semanasAnterioresConDatos([ing, egr], "16/10/2026").length, 0);
+});
 prueba("Cashflow: semanas hasta fin de 2027 (mínimo 26)", () => {
   const ult = (d) => { const s = f.generarSemanas(d, f.semanasDeCashflow(d)); return [s.length, s[s.length - 1]]; };
   assert.deepStrictEqual(ult("30/10/2026"), [62, "31/12/2027"]);

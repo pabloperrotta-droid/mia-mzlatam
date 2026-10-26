@@ -1085,7 +1085,14 @@
             Pt = wo + To + regaliaPendiente(regMapApp, cfRegPag, W);
           return { semana: W, ingresos: io, egresos: Pt, neto: io - Pt };
         });
+      // Sección 137: lo cargado en semanas anteriores sigue pendiente y entra en el saldo (como en Cashflow).
       let Po = Number(cfSaldoInicial) || 0;
+      for (const W of semanasAnterioresConDatos([cfIngresosValores, cfIngresosCategoriasValores, cfEgresosValores, cfSalidasValores], tt[0])) {
+        const pe = Xo.reduce((mo, _o) => mo + (Number(cfIngresosValores[_o.id + "|" + W]) || 0), 0) +
+            cfIngresosCategorias.reduce((mo, _o) => mo + (Number(cfIngresosCategoriasValores[_o + "|" + W]) || 0), 0),
+          Mt = cfEgresosCategorias.reduce((mo, _o) => mo + (Number(cfEgresosValores[_o + "|" + W]) || 0), 0) + Je.reduce((mo, _o) => mo + bt(_o, W), 0);
+        Po += pe - Mt;
+      }
       const Co = Et.map((W) => ((Po += W.neto), Po)),
         $ = Et.map((W, pe) => [semanaLabelCorta(W.semana), fmt(W.ingresos), fmt(W.egresos), fmt(W.neto), fmt(Co[pe])]),
         ze = Et.map((W, pe) => ({ semana: semanaLabelCorta(W.semana), saldo: Co[pe] })),

@@ -540,10 +540,22 @@ function CashflowView({
         }),
       [ae, Wt, F, oe, P, Z, ee, re, Le, regMap, regPag],
     ),
+    // Sección 137: lo cargado en semanas anteriores a la primera que se ve sigue pendiente (hasta que se borre)
+    // y entra en el saldo. Así el saldo de cada semana es el mismo mirando desde cualquier semana.
+    previas = useMemo(() => {
+      const ss = semanasAnterioresConDatos([F, P, ee, Le], ae[0]);
+      let ingresos = 0,
+        egresos = 0;
+      for (const s of ss) {
+        ingresos += Wt.reduce((ke, We) => ke + (Number(F[We.id + "|" + s]) || 0), 0) + oe.reduce((ke, We) => ke + (Number(P[We + "|" + s]) || 0), 0);
+        egresos += Z.reduce((ke, We) => ke + (Number(ee[We + "|" + s]) || 0), 0) + re.reduce((ke, We) => ke + Do(We, s), 0);
+      }
+      return { semanas: ss, ingresos, egresos, neto: ingresos - egresos };
+    }, [ae, Wt, F, oe, P, Z, ee, re, Le]),
     vo = useMemo(() => {
-      let s = Number(nt) || 0;
+      let s = (Number(nt) || 0) + previas.neto;
       return eo.map((b) => ((s += b.neto), s));
-    }, [eo, nt]),
+    }, [eo, nt, previas]),
     qo = useMemo(() => Ee.reduce((s, b) => s + (Number(b.acuerdo) || 0), 0), [Ee]),
     ao = useMemo(() => Ee.reduce((s, b) => s + (Number(b.utilizado) || 0), 0), [Ee]),
     Fo = useMemo(() => qo - ao, [qo, ao]);
@@ -2899,7 +2911,7 @@ function CashflowView({
             React.createElement(
               "span",
               { style: { color: MUTED } },
-              "Saldo inicial (antes de la primera semana visible, puede ser negativo):",
+              "Saldo inicial (lo que hay hoy en caja y bancos, puede ser negativo):",
             ),
             g
               ? React.createElement(MilesInput, {
@@ -2920,6 +2932,16 @@ function CashflowView({
             ),
             React.createElement("b", null, fmt(Fo)),
           ),
+          previas.semanas.length > 0 &&
+            React.createElement(
+              "div",
+              {
+                style: { fontSize: 11.5, fontWeight: 400, color: previas.neto < 0 ? RED : MUTED },
+                title:
+                  "Lo cargado en semanas anteriores a " + semanaLabelCorta(ae[0]) + " sigue pendiente hasta que lo borres o lo cambies, y ya está sumado en el saldo acumulado. Semanas: " + previas.semanas.map(semanaLabelCorta).join(", "),
+              },
+              "Incluye lo cargado en semanas anteriores: ingresos " + fmt(previas.ingresos) + " · egresos " + fmt(previas.egresos),
+            ),
         ),
       ),
       React.createElement(
