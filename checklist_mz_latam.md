@@ -1635,6 +1635,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 26/10/2026, pedido del usuario ("cuando cargo masivos de egresos solo me cuenta hasta abril, y quiero poner la estructura de todo 2027"). Cashflow mostraba siempre 26 semanas desde la elegida (hoy: hasta el 23/04/2027), y el pegado masivo y el Importar Excel solo toman las semanas que se muestran. Ahora muestra como mínimo 26 semanas y siempre hasta el 31/12 del año al que se llega con esas 26: desde el 30/10/2026, 62 semanas hasta el 31/12/2027 (en Ingresos, Egresos y Salidas Semanales, y en el Exportar/Importar Excel). Los botones de ±26 semanas siguen igual.
 - [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
 
+### 136. Cashflow: importar un Excel guardado desde Excel cargaba todo vacío
+
+- [x] 26/10/2026, aviso del usuario ("estoy subiendo esto y no lo carga bien… no muestra datos", Salidas Semanales en $0). Diagnóstico de solo lectura: la subida de las 13:36 dejó las 60 filas con las 26 semanas vacías. Con una copia anónima del archivo (nombres e importes inventados, `fuente/pruebas/archivos/salidas_excel_guardado_anonimo.xlsx`) se vio la causa: al guardar desde Excel, los títulos de las semanas quedan " 30/10/2026 " (con espacios, por el formato de número de la columna) y MIA comparaba la fecha exacta, así que no reconocía ninguna semana.
+- [x] Arreglo: al importar (Ingresos, Egresos y Salidas Semanales) los títulos de columna se toman sin espacios de más (`filasDeHojaCashflow`).
+- [x] Pruebas nuevas: lectura de la copia anónima; exportar → cambiar importes → importar en la pantalla; y con dos pantallas, que el import quede guardado en la base.
+- [x] Publicado en QA (junto con la Sección 135). Producción: pendiente del OK del usuario. Hay que volver a subir el Excel después de pasarlo.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

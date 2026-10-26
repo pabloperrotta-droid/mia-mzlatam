@@ -97,6 +97,16 @@ function generarSemanas(n, d) {
 // Sección 135: cuántas semanas muestra Cashflow desde la semana `n`: como mínimo 26, y siempre hasta el
 // 31/12 del año al que se llega con esas 26 (pedido del usuario: "poner la estructura de todo 2027").
 // Ej.: desde el 30/10/2026 → hasta el 31/12/2027 (62 semanas).
+// Sección 136: filas de una hoja del Excel de Cashflow con los títulos de columna sin espacios de más.
+// Excel, al guardar, deja los títulos de las semanas como " 30/10/2026 " (por el formato de número de la
+// columna) y antes no se reconocía ninguna semana: se importaba todo vacío.
+function filasDeHojaCashflow(ws) {
+  return XLSX.utils.sheet_to_json(ws, { defval: null }).map((f) => {
+    const o = {};
+    for (const [k, v] of Object.entries(f)) o[String(k).trim()] = v;
+    return o;
+  });
+}
 function semanasDeCashflow(n) {
   const c = viernesDeLaSemana(fechaAObjetoDate(n) || /* @__PURE__ */ new Date()),
     lim = new Date(c);

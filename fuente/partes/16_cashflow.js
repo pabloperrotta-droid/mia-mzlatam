@@ -750,7 +750,7 @@ function CashflowView({
         et = 0,
         gt = 0;
       if (R.SheetNames.includes("Ingresos")) {
-        const Ut = XLSX.utils.sheet_to_json(R.Sheets.Ingresos, { defval: null }),
+        const Ut = filasDeHojaCashflow(R.Sheets.Ingresos),
           Yt = { ...F };
         (Ut.forEach((Dt) => {
           const ho = Dt.ID != null ? String(Dt.ID).trim() : "";
@@ -837,7 +837,7 @@ function CashflowView({
         L(Qo);
       }
       if (R.SheetNames.includes("Egresos")) {
-        const Ut = XLSX.utils.sheet_to_json(R.Sheets.Egresos, { defval: null }),
+        const Ut = filasDeHojaCashflow(R.Sheets.Egresos),
           Yt = [],
           Tt = { ...ee };
         (Ut.forEach((Vt) => {
@@ -882,7 +882,7 @@ function CashflowView({
         Be(xo);
       }
       if (R.SheetNames.includes("Salidas Semanales")) {
-        const Ut = XLSX.utils.sheet_to_json(R.Sheets["Salidas Semanales"], { defval: null }),
+        const Ut = filasDeHojaCashflow(R.Sheets["Salidas Semanales"]),
           Yt = { ...Le };
         (Ut.forEach((Tt) => {
           const ue = Tt.ID != null ? String(Tt.ID).trim() : "",
