@@ -1662,7 +1662,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 
 - [x] 26/10/2026, pedido del usuario ("Verónica lo podés eliminar totalmente"). Se borró `fuente/partes/20_veronica.js` y todas sus referencias (pestaña, permisos de roles, pruebas). Estaba solo en QA; en Producción nunca se mostró. Los datos que hubiera en `qa_veronicaPlanilla` quedan sin uso.
 - [x] Cashflow → Importar Excel: si una hoja no trae ninguna columna de semana que MIA reconozca, esa hoja no se toca (antes se cargaba todo vacío, como pasó el 26/10) y el mensaje lo avisa con ⚠️. También avisa cuántas columnas con fecha no se cargaron por no ser el viernes de la semana. Prueba de pantalla nueva.
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("sí", 26/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
