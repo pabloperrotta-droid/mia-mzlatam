@@ -164,12 +164,18 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.waitForFunction(() => /Importado:|No se pudo leer/.test(document.body.innerText), null, { timeout: 10000 });
     const msg = await pagina.evaluate(() => (document.body.innerText.match(/(Importado:[^\n]*|No se pudo leer[^\n]*)/) || [""])[0]);
     await pagina.waitForTimeout(3000);
-    const total = await pagina.evaluate(() => {
-      const t = [...document.querySelectorAll("div")].find((d) => d.children.length > 3 && /^TOTAL SALIDAS SEMANALES/.test(d.innerText.trim()));
-      return t ? t.innerText.replace(/\s+/g, " ").slice(0, 200) : "(no encontré la fila TOTAL)";
-    });
-    if (!/12\.345/.test(total) || !/23\.45[67]/.test(total))
-      throw new Error("Después de importar no se ven los importes. Mensaje: " + msg + " / fila " + JSON.stringify(r.fila) + " semanas " + JSON.stringify(r.semanas) + " / TOTAL: " + total);
+    const seve = await pagina.evaluate(() => /\$12\.345\b/.test(document.body.innerText) && /\$23\.45[67]\b/.test(document.body.innerText));
+    // Lo que MIA tiene guardado: se vuelve a exportar y se mira la misma celda.
+    const espera2 = pagina.waitForEvent("download", { timeout: 15000 });
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Exportar Excel/.test(b.textContent)).click());
+    const despues = fs.readFileSync(await (await espera2).path()).toString("base64");
+    const celdas = await pagina.evaluate(([b64, id]) => {
+      const filas = XLSX.utils.sheet_to_json(XLSX.read(b64, { type: "base64" }).Sheets["Salidas Semanales"], { header: 1, defval: "" });
+      const f = filas.find((x) => x[0] === id);
+      return f ? f.slice(5, 7) : "fila no encontrada";
+    }, [despues, r.fila[0]]);
+    if (!seve)
+      throw new Error("Después de importar no se ven los importes. Mensaje: " + msg + " / fila " + JSON.stringify(r.fila) + " semanas " + JSON.stringify(r.semanas) + " / al volver a exportar la fila trae: " + JSON.stringify(celdas));
   });
   await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
     const espera = pagina.waitForEvent("download", { timeout: 15000 });
