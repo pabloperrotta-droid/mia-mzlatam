@@ -141,6 +141,17 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
       throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
   });
+  await control("Cashflow → Salidas: un Excel guardado desde Excel (copia anónima del del usuario) se lee con importes", async () => {
+    const b64 = fs.readFileSync(path.join(__dirname, "archivos", "salidas_excel_guardado_anonimo.xlsx")).toString("base64");
+    const r = await pagina.evaluate((b) => {
+      const wb = XLSX.read(b, { type: "array" === "x" ? "array" : "base64" });
+      const filas = XLSX.utils.sheet_to_json(wb.Sheets["Salidas Semanales"], { defval: null });
+      const f = filas[1] || {};
+      const claves = Object.keys(f);
+      return { hojas: wb.SheetNames, claves: claves.slice(0, 8), valor: f["30/10/2026"], tipo: typeof f["30/10/2026"], n: filas.length };
+    }, b64);
+    if (typeof r.valor !== "number") throw new Error("SheetJS no ve el importe: " + JSON.stringify(r));
+  });
   await control("Cashflow → Salidas Semanales: exportar, cambiar importes en el Excel e importar", async () => {
     await clic("Cashflow");
     await clic("Salidas Semanales");
