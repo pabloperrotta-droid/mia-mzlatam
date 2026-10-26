@@ -13,7 +13,7 @@ const out = (t) => console.log("::notice::" + String(t).slice(0, 3000));
   out("filas con importe " + Object.keys(ids).length + ": " + Object.entries(ids).map(([id, n]) => h(id) + ":" + n).join(" "));
   const todos = {};
   Object.keys(v).forEach((k) => { const i = k.lastIndexOf("|"); const id = k.slice(0, i); const sem = k.slice(i + 1); (todos[id] = todos[id] || []).push(sem.slice(0, 5) + "=" + (v[k] === "" ? "v" : typeof v[k] === "number" ? "n" : typeof v[k])); });
-  out("TODAS las filas " + Object.keys(todos).length + ": " + Object.entries(todos).map(([id, a]) => h(id) + ":" + a.length).join(" "));
+  out("TODAS las filas " + Object.keys(todos).length + ": " + Object.entries(todos).map(([id, a]) => h(id) + ":" + a.length + "/" + a.filter((x) => x.endsWith("=n")).length).join(" "));
   const ejemplo = Object.keys(v).find((k) => v[k] !== "" && Number(v[k]));
   out("forma de una clave: " + (ejemplo || "").replace(/[A-Za-zÁÉÍÓÚÑáéíóúñ0-9 .()]+/g, (m) => (/^\d{2}\/\d{2}\/\d{4}$/.test(m) ? m : "x")) + " / tipo valor " + typeof v[ejemplo]);
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
