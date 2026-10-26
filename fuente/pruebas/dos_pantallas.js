@@ -426,6 +426,42 @@ async function fs_(fuente, op, a, b) {
     await sinAvisos(A);
   });
 
+  await cerrarAvisos();
+  await control("Cashflow → Salidas Semanales: importar un Excel guarda los importes en la base (y la otra pantalla los ve)", async () => {
+    await clic(A, "Cashflow");
+    await espera(500);
+    await clic(A, "Salidas Semanales");
+    await espera(500);
+    const espera1 = A.waitForEvent("download", { timeout: 15000 });
+    await A.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Exportar Excel/.test(b.textContent)).click());
+    const original = require("fs").readFileSync(await (await espera1).path()).toString("base64");
+    const r = await A.evaluate((b64) => {
+      const wb = XLSX.read(b64, { type: "base64" }),
+        ws = wb.Sheets["Salidas Semanales"],
+        filas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }),
+        i = filas.findIndex((f, k) => k > 0 && f[3]);
+      ws[XLSX.utils.encode_cell({ r: i, c: 5 })] = { t: "n", v: 12345 };
+      ws[XLSX.utils.encode_cell({ r: i, c: 6 })] = { t: "n", v: 23456.5 };
+      return { b64: XLSX.write(wb, { type: "base64", bookType: "xlsx" }), id: filas[i][0], semanas: filas[0].slice(5, 7) };
+    }, original);
+    const tmp = require("path").join(require("os").tmpdir(), "cashflow_dos.xlsx");
+    require("fs").writeFileSync(tmp, Buffer.from(r.b64, "base64"));
+    await A.setInputFiles('input[type="file"][accept=".xlsx,.xls,.csv"]', tmp);
+    await esperarGuardado(A);
+    await espera(4000);
+    const doc = (base.get(P + "app/st_cfSalidasValores") || {}).data || {};
+    const v = doc.v || {};
+    const k1 = r.id + "|" + r.semanas[0], k2 = r.id + "|" + r.semanas[1];
+    const pend = await A.evaluate(() => window.__miaPendientes());
+    if (v[k1] !== 12345 || v[k2] !== 23456.5)
+      throw new Error(
+        "En la base: " + JSON.stringify([v[k1], v[k2]]) + " (claves en el doc: " + Object.keys(v).length + ", campos del doc: " + Object.keys(doc).slice(0, 8).join(",") + ") / pendientes A " + JSON.stringify(pend) +
+          " ## ESCRITURAS: " + bitacora.slice(-12).join(", ") + " ## NOTAS: " + agregados.filter((x) => /erroresGuardado/.test(x.col)).map((x) => x.data.motivo).join(" | ").slice(0, 600),
+      );
+    const enA = await A.evaluate(() => /\$12\.345\b/.test(document.body.innerText));
+    if (!enA) throw new Error("La base lo tiene pero la pantalla A no lo muestra");
+    await sinAvisos(A, B);
+  });
   await control("Al final no queda nada sin guardar en ninguna pantalla (no saldría el aviso al cerrar)", async () => {
     await espera(3000);
     for (const [n, p] of [["A", A], ["B", B]]) {
