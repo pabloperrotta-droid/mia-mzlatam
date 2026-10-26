@@ -141,6 +141,36 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (r.columnas !== 20 || r.snc !== "WC X999901234567" || r.subtotal !== 100.5 || !/10\/0?9\/(20)?26/.test(r.fecha || ""))
       throw new Error("Excel distinto de lo esperado: " + JSON.stringify(r));
   });
+  await control("Cashflow → Salidas Semanales: exportar, cambiar importes en el Excel e importar", async () => {
+    await clic("Cashflow");
+    await clic("Salidas Semanales");
+    const espera = pagina.waitForEvent("download", { timeout: 15000 });
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Exportar Excel/.test(b.textContent)).click());
+    const original = fs.readFileSync(await (await espera).path()).toString("base64");
+    const r = await pagina.evaluate((b64) => {
+      const wb = XLSX.read(b64, { type: "base64" }),
+        ws = wb.Sheets["Salidas Semanales"],
+        filas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }),
+        i = filas.findIndex((f, k) => k > 0 && f[3]);
+      if (i < 0) return { error: "el Excel exportado no tiene filas de proveedor", filas: filas.length };
+      ws[XLSX.utils.encode_cell({ r: i, c: 5 })] = { t: "n", v: 12345 };
+      ws[XLSX.utils.encode_cell({ r: i, c: 6 })] = { t: "n", v: 23456.5 };
+      return { b64: XLSX.write(wb, { type: "base64", bookType: "xlsx" }), fila: filas[i].slice(0, 4), semanas: filas[0].slice(5, 7), filas: filas.length };
+    }, original);
+    if (r.error) throw new Error(r.error + " (" + r.filas + ")");
+    const tmp = path.join(os.tmpdir(), "cashflow_prueba.xlsx");
+    fs.writeFileSync(tmp, Buffer.from(r.b64, "base64"));
+    await pagina.setInputFiles('input[type="file"][accept=".xlsx,.xls,.csv"]', tmp);
+    await pagina.waitForFunction(() => /Importado:|No se pudo leer/.test(document.body.innerText), null, { timeout: 10000 });
+    const msg = await pagina.evaluate(() => (document.body.innerText.match(/(Importado:[^\n]*|No se pudo leer[^\n]*)/) || [""])[0]);
+    await pagina.waitForTimeout(3000);
+    const total = await pagina.evaluate(() => {
+      const t = [...document.querySelectorAll("div")].find((d) => d.children.length > 3 && /^TOTAL SALIDAS SEMANALES/.test(d.innerText.trim()));
+      return t ? t.innerText.replace(/\s+/g, " ").slice(0, 200) : "(no encontré la fila TOTAL)";
+    });
+    if (!/12\.345/.test(total) || !/23\.45[67]/.test(total))
+      throw new Error("Después de importar no se ven los importes. Mensaje: " + msg + " / fila " + JSON.stringify(r.fila) + " semanas " + JSON.stringify(r.semanas) + " / TOTAL: " + total);
+  });
   await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
     const espera = pagina.waitForEvent("download", { timeout: 15000 });
     const n = await pagina.evaluate(() =>
