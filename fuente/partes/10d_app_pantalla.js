@@ -2173,6 +2173,8 @@
                     setCfDiasPagoCliente: setCfDiasPagoCliente,
                     cfRegaliasPagadas: cfRegPag,
                     setCfRegaliasPagadas: setCfRegPag,
+                    cfPagados: cfPagados,
+                    setCfPagados: setCfPagados,
                     navBarHeight: St,
                     onGoToObra: (e, t) => {
                       (setVista("obras"), be(e), no(obraKey(e, t)), ae("facturas"), lo(true));

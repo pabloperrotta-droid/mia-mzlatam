@@ -208,6 +208,39 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
           ),
       );
 }
+// Sección 138: mapa de valores sin los importes tildados como pagados.
+function sinPagados(m, pagados) {
+  const p = pagados || {};
+  if (!m || !Object.keys(p).length) return m || {};
+  const o = {};
+  for (const k in m) p[k] || (o[k] = m[k]);
+  return o;
+}
+// Tilde chiquito "pagado" debajo de cada importe de Cashflow (solo si la celda tiene importe).
+function TildePagadoCf({ clave, valor, pagados, setPagados, puedeEditar }) {
+  const hay = valor !== "" && valor != null && Number(valor) !== 0,
+    pag = !!(pagados || {})[clave];
+  if (!hay && !pag) return null;
+  return React.createElement(
+    "label",
+    {
+      title: pag ? "Pagado: no cuenta en los totales ni en el saldo. Destildá para que vuelva a contar." : "Tildá cuando esté pagado (o cobrado): deja de contar en los totales y en el saldo",
+      style: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, fontSize: 9.5, color: pag ? "#1A7F37" : MUTED, cursor: puedeEditar ? "pointer" : "default", marginTop: 1, userSelect: "none" },
+    },
+    React.createElement("input", {
+      type: "checkbox",
+      checked: pag,
+      disabled: !puedeEditar,
+      onChange: (e) => setPagados && setPagados((x) => {
+        const o = { ...(x || {}) };
+        e.target.checked ? (o[clave] = true) : delete o[clave];
+        return o;
+      }),
+      style: { width: 11, height: 11, margin: 0, cursor: "inherit" },
+    }),
+    pag ? "pagado" : "pag.",
+  );
+}
 function CashflowView({
   obras: n,
   facturas: d,
@@ -217,23 +250,23 @@ function CashflowView({
   costoSubobrasMap: C,
   subCostoProveedoresMap: S,
   subCostoPagosMap: f,
-  cfIngresosValores: F,
+  cfIngresosValores: FRaw,
   setCfIngresosValores: A,
   cfIngresosComentarios: k,
   setCfIngresosComentarios: L,
   cfIngresosCategorias: oe,
   setCfIngresosCategorias: ve,
-  cfIngresosCategoriasValores: P,
+  cfIngresosCategoriasValores: PRaw,
   setCfIngresosCategoriasValores: M,
   cfIngresosCategoriasComentarios: Pe,
   setCfIngresosCategoriasComentarios: ye,
   cfEgresosCategorias: Z,
   setCfEgresosCategorias: Ye,
-  cfEgresosValores: ee,
+  cfEgresosValores: eeRaw,
   setCfEgresosValores: lt,
   cfEgresosComentarios: ne,
   setCfEgresosComentarios: Be,
-  cfSalidasValores: Le,
+  cfSalidasValores: LeRaw,
   setCfSalidasValores: Lt,
   cfSaldoInicial: nt,
   setCfSaldoInicial: H,
@@ -247,9 +280,19 @@ function CashflowView({
   setCfDiasPagoCliente: Bo,
   cfRegaliasPagadas: regPag = {},
   setCfRegaliasPagadas: setRegPag,
+  cfPagados: pagadosCf = {},
+  setCfPagados: setPagadosCf,
   navBarHeight: w,
   onGoToObra: Ne,
 }) {
+  // Sección 138: cada importe (fila + semana) se puede tildar como pagado y deja de contar en todas las cuentas.
+  // *Raw = lo cargado (se ve y se edita en las celdas, se exporta e importa); F, P, ee, Le = sin lo pagado.
+  const F = useMemo(() => sinPagados(FRaw, pagadosCf), [FRaw, pagadosCf]),
+    P = useMemo(() => sinPagados(PRaw, pagadosCf), [PRaw, pagadosCf]),
+    ee = useMemo(() => sinPagados(eeRaw, pagadosCf), [eeRaw, pagadosCf]),
+    Le = useMemo(() => sinPagados(LeRaw, pagadosCf), [LeRaw, pagadosCf]),
+    tildePagado = (clave, valor) =>
+      React.createElement(TildePagadoCf, { clave, valor, pagados: pagadosCf, setPagados: setPagadosCf, puedeEditar: !!g });
   const at = { position: "sticky", top: w, zIndex: 2, background: "#fff" },
     dt = { position: "sticky", left: 0, zIndex: 1 },
     Gt = { ...at, left: 0, zIndex: 3 },
@@ -399,11 +442,11 @@ function CashflowView({
     Wt = useMemo(() => [...Qt, ...lo], [Qt, lo]),
     tn = useMemo(() => Array.from(new Set(Wt.map((s) => s.cliente))).sort(), [Wt]);
   function Lo() {
-    const s = { ...F };
+    const s = { ...FRaw };
     let b = 0;
     const R = viernesDeLaSemana(/* @__PURE__ */ new Date());
     (Qt.forEach((j) => {
-      if (Object.keys(F).some((It) => It.indexOf(j.id + "|") === 0 && Number(F[It]) > 0)) return;
+      if (Object.keys(FRaw).some((It) => It.indexOf(j.id + "|") === 0 && Number(FRaw[It]) > 0)) return;
       const J = fechaAObjetoDate(j.fecha);
       if (!J) return;
       const fe = Number(Oo[j.cliente]) || 30,
@@ -415,7 +458,7 @@ function CashflowView({
       ((s[j.id + "|" + wt] = j.importe), b++);
     }),
       lo.forEach((j) => {
-        if (Object.keys(F).some((fe) => fe.indexOf(j.id + "|") === 0 && Number(F[fe]) > 0)) return;
+        if (Object.keys(FRaw).some((fe) => fe.indexOf(j.id + "|") === 0 && Number(FRaw[fe]) > 0)) return;
         const J = j.importe / 3;
         ([30, 40, 50].forEach((fe) => {
           const ke = /* @__PURE__ */ new Date();
@@ -676,9 +719,11 @@ function CashflowView({
     );
   }
   function Fn() {
+    // Sección 139: además de las semanas que se ven, las semanas anteriores que tienen algo cargado.
+    const semX = [...semanasAnterioresConDatos([FRaw, PRaw, eeRaw, LeRaw], ae[0]), ...ae];
     const s = XLSX.utils.book_new(),
-      b = ["ID", "Cliente", "Centro de Costo", "Tipo", "N° Factura", "Importe Total", ...ae],
-      R = b.length - ae.length,
+      b = ["ID", "Cliente", "Centro de Costo", "Tipo", "N° Factura", "Importe Total", ...semX],
+      R = b.length - semX.length,
       j = Wt.map((et) => [
         et.id,
         et.cliente,
@@ -686,11 +731,11 @@ function CashflowView({
         et.tipo,
         et.nro || "",
         et.importe,
-        ...ae.map((gt) => Number(F[et.id + "|" + gt]) || 0 || ""),
+        ...semX.map((gt) => Number(FRaw[et.id + "|" + gt]) || 0 || ""),
       ]),
       Q = XLSX.utils.aoa_to_sheet([b, ...j]);
     (Wt.forEach((et, gt) => {
-      ae.forEach((Ut, Yt) => {
+      semX.forEach((Ut, Yt) => {
         const Tt = k[et.id + "|" + Ut];
         if (!Tt) return;
         const ue = XLSX.utils.encode_cell({ r: gt + 1, c: R + Yt });
@@ -698,12 +743,12 @@ function CashflowView({
       });
     }),
       XLSX.utils.book_append_sheet(s, Q, "Ingresos"));
-    const J = ["Categoría", ...ae],
-      fe = J.length - ae.length,
-      ke = Z.map((et) => [et, ...ae.map((gt) => Number(ee[et + "|" + gt]) || 0 || "")]),
+    const J = ["Categoría", ...semX],
+      fe = J.length - semX.length,
+      ke = Z.map((et) => [et, ...semX.map((gt) => Number(eeRaw[et + "|" + gt]) || 0 || "")]),
       We = XLSX.utils.aoa_to_sheet([J, ...ke]);
     (Z.forEach((et, gt) => {
-      ae.forEach((Ut, Yt) => {
+      semX.forEach((Ut, Yt) => {
         const Tt = ne[et + "|" + Ut];
         if (!Tt) return;
         const ue = XLSX.utils.encode_cell({ r: gt + 1, c: fe + Yt });
@@ -711,7 +756,7 @@ function CashflowView({
       });
     }),
       XLSX.utils.book_append_sheet(s, We, "Egresos"));
-    const wt = ["ID", "Cliente", "Centro de Costo", "Proveedor", "Saldo", ...ae],
+    const wt = ["ID", "Cliente", "Centro de Costo", "Proveedor", "Saldo", ...semX],
       It = [];
     (re.forEach((et) => {
       (It.push([
@@ -720,7 +765,7 @@ function CashflowView({
         et.obra,
         "",
         et.saldo,
-        ...ae.map((gt) => Number(Le[et.ccId + "|" + gt]) || 0 || ""),
+        ...semX.map((gt) => Number(LeRaw[et.ccId + "|" + gt]) || 0 || ""),
       ]),
         et.proveedores.forEach((gt) => {
           It.push([
@@ -729,7 +774,7 @@ function CashflowView({
             gt.obra,
             gt.proveedor,
             gt.saldo,
-            ...ae.map((Ut) => Number(Le[gt.id + "|" + Ut]) || 0 || ""),
+            ...semX.map((Ut) => Number(LeRaw[gt.id + "|" + Ut]) || 0 || ""),
           ]);
         }));
     }),
@@ -753,7 +798,9 @@ function CashflowView({
           return isNaN(Tt) ? null : Tt;
         },
         Q = (Ut) => /^\d{2}\/\d{2}\/\d{4}$/.test(String(Ut || "").trim()),
-        J = new Set(ae);
+        // Sección 139: se aceptan todas las semanas del Excel (pasadas o futuras, aunque no se vean ahora),
+        // siempre que el título sea el viernes de esa semana (como las exporta MIA).
+        J = { has: (x) => Q(x) && dateAFechaStr(viernesDeLaSemana(fechaAObjetoDate(x))) === String(x).trim() };
       let fe = 0,
         ke = 0,
         We = 0,
@@ -763,7 +810,7 @@ function CashflowView({
         gt = 0;
       if (R.SheetNames.includes("Ingresos")) {
         const Ut = filasDeHojaCashflow(R.Sheets.Ingresos),
-          Yt = { ...F };
+          Yt = { ...FRaw };
         (Ut.forEach((Dt) => {
           const ho = Dt.ID != null ? String(Dt.ID).trim() : "";
           let ct = ho ? Wt.find((Go) => Go.id === ho) : null;
@@ -851,7 +898,7 @@ function CashflowView({
       if (R.SheetNames.includes("Egresos")) {
         const Ut = filasDeHojaCashflow(R.Sheets.Egresos),
           Yt = [],
-          Tt = { ...ee };
+          Tt = { ...eeRaw };
         (Ut.forEach((Vt) => {
           const st = String(Vt.Categoría || "")
             .trim()
@@ -895,7 +942,7 @@ function CashflowView({
       }
       if (R.SheetNames.includes("Salidas Semanales")) {
         const Ut = filasDeHojaCashflow(R.Sheets["Salidas Semanales"]),
-          Yt = { ...Le };
+          Yt = { ...LeRaw };
         (Ut.forEach((Tt) => {
           const ue = Tt.ID != null ? String(Tt.ID).trim() : "",
             So = String(Tt.Proveedor || "").trim(),
@@ -1502,15 +1549,16 @@ function CashflowView({
                             ? React.createElement(MilesInput, {
                                 className: "cf-cell-input",
                                 style: { ...go, textAlign: "right", fontSize: 11.5 },
-                                value: P[J] ?? "",
+                                value: PRaw[J] ?? "",
                                 onChange: (ke) => M((We) => ({ ...We, [J]: ke })),
                                 onPaste: (ke) => vn(ke, oe, (We) => We, Q, b, M),
                               })
                             : React.createElement(
                                 "div",
                                 { style: { textAlign: "right", fontSize: 12 } },
-                                fmt(Number(P[J]) || 0),
+                                fmt(Number(PRaw[J]) || 0),
                               ),
+                          tildePagado(J, PRaw[J]),
                           (fe || g) &&
                             React.createElement(
                               "div",
@@ -1634,7 +1682,7 @@ function CashflowView({
                             ? React.createElement(MilesInput, {
                                 className: "cf-cell-input",
                                 style: { ...go, textAlign: "right", fontSize: 11.5 },
-                                value: F[wt] ?? "",
+                                value: FRaw[wt] ?? "",
                                 onChange: (et) => A((gt) => ({ ...gt, [wt]: et })),
                                 onPaste: (et) => vn(et, ot, (gt) => gt.id, We, b, A),
                                 title: fe,
@@ -1643,8 +1691,9 @@ function CashflowView({
                             : React.createElement(
                                 "div",
                                 { title: fe, style: { textAlign: "right", fontSize: 12 } },
-                                fmt(Number(F[wt]) || 0),
+                                fmt(Number(FRaw[wt]) || 0),
                               ),
+                          tildePagado(wt, FRaw[wt]),
                           (It || g) &&
                             React.createElement(
                               "div",
@@ -2198,15 +2247,16 @@ function CashflowView({
                           ? React.createElement(MilesInput, {
                               className: "cf-cell-input",
                               style: { ...go, textAlign: "right", fontSize: 11.5 },
-                              value: ee[J] ?? "",
+                              value: eeRaw[J] ?? "",
                               onChange: (ke) => lt((We) => ({ ...We, [J]: ke })),
                               onPaste: (ke) => vn(ke, Ht, (We) => We, Q, b, lt),
                             })
                           : React.createElement(
                               "div",
                               { style: { textAlign: "right", fontSize: 12 } },
-                              fmt(Number(ee[J]) || 0),
+                              fmt(Number(eeRaw[J]) || 0),
                             ),
+                        tildePagado(J, eeRaw[J]),
                         (fe || g) &&
                           React.createElement(
                             "div",
@@ -2652,7 +2702,7 @@ function CashflowView({
                             ? React.createElement(MilesInput, {
                                 className: "cf-cell-input",
                                 style: { ...go, textAlign: "right", fontSize: 11.5, fontWeight: 700 },
-                                value: Le[s.ccId + "|" + Q] ?? "",
+                                value: LeRaw[s.ccId + "|" + Q] ?? "",
                                 onChange: (fe) => Lt((ke) => ({ ...ke, [s.ccId + "|" + Q]: fe })),
                                 onPaste: (fe) => vn(fe, $t, (ke) => ke.ccId, J, b, Lt),
                                 title: "Resta: " + fmt(R),
@@ -2664,8 +2714,9 @@ function CashflowView({
                                   title: "Resta: " + fmt(R),
                                   style: { textAlign: "right", fontSize: 12, fontWeight: 700 },
                                 },
-                                fmt(Number(Le[s.ccId + "|" + Q]) || 0),
+                                fmt(Number(LeRaw[s.ccId + "|" + Q]) || 0),
                               ),
+                          tildePagado(s.ccId + "|" + Q, LeRaw[s.ccId + "|" + Q]),
                         ),
                       ),
                       React.createElement(
@@ -2740,7 +2791,7 @@ function CashflowView({
                                   ? React.createElement(MilesInput, {
                                       className: "cf-cell-input",
                                       style: { ...go, textAlign: "right", fontSize: 11.5 },
-                                      value: Le[Q.id + "|" + wt] ?? "",
+                                      value: LeRaw[Q.id + "|" + wt] ?? "",
                                       onChange: (et) => Lt((gt) => ({ ...gt, [Q.id + "|" + wt]: et })),
                                       onPaste: (et) => vn(et, s.proveedores, (gt) => gt.id, It, J, Lt),
                                       title: "Resta: " + fmt(ke),
@@ -2749,8 +2800,9 @@ function CashflowView({
                                   : React.createElement(
                                       "div",
                                       { title: "Resta: " + fmt(ke), style: { textAlign: "right", fontSize: 12 } },
-                                      fmt(Number(Le[Q.id + "|" + wt]) || 0),
+                                      fmt(Number(LeRaw[Q.id + "|" + wt]) || 0),
                                     ),
+                                tildePagado(Q.id + "|" + wt, LeRaw[Q.id + "|" + wt]),
                               ),
                             ),
                             React.createElement(

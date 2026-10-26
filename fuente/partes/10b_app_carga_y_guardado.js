@@ -253,6 +253,7 @@
       cfSimulacionLineas: cfSimulacionLineas,
       cfDiasPagoCliente: cfDiasPagoCliente,
       cfRegaliasPagadas: cfRegPag,
+      cfPagados: cfPagados,
       tipoCambio: tipoCambio,
       tcFecha: tcFecha,
       eerrMensual: eerrMensual,
@@ -1031,6 +1032,11 @@
             To = W ? ((W - io) / W) * 100 : 0;
           return { venta: W, mbInicial: wo, mbFinal: To, variacion: To - wo };
         })(),
+        // Sección 138: lo tildado como pagado en Cashflow no cuenta.
+        cfIV = sinPagados(cfIngresosValores, cfPagados),
+        cfICV = sinPagados(cfIngresosCategoriasValores, cfPagados),
+        cfEV = sinPagados(cfEgresosValores, cfPagados),
+        cfSV = sinPagados(cfSalidasValores, cfPagados),
         tt = generarSemanas(gn, 12),
         yt = g.filter((W) => W.status === "ADEUDA").map((W) => ({ id: "f" + W.id, importe: W.importe || 0 })),
         uo = co
@@ -1071,26 +1077,26 @@
         }));
       const Je = Object.values(He),
         bt = (W, pe) => {
-          const Mt = Number(cfSalidasValores[W.ccId + "|" + pe]) || 0,
-            io = W.proveedores.reduce((wo, To) => wo + (Number(cfSalidasValores[To.id + "|" + pe]) || 0), 0);
+          const Mt = Number(cfSV[W.ccId + "|" + pe]) || 0,
+            io = W.proveedores.reduce((wo, To) => wo + (Number(cfSV[To.id + "|" + pe]) || 0), 0);
           return Math.max(Mt, io);
         },
         regMapApp = regaliasPorSemana(g, tt),
         Et = tt.map((W) => {
-          const pe = Xo.reduce((mo, _o) => mo + (Number(cfIngresosValores[_o.id + "|" + W]) || 0), 0),
-            Mt = cfIngresosCategorias.reduce((mo, _o) => mo + (Number(cfIngresosCategoriasValores[_o + "|" + W]) || 0), 0),
+          const pe = Xo.reduce((mo, _o) => mo + (Number(cfIV[_o.id + "|" + W]) || 0), 0),
+            Mt = cfIngresosCategorias.reduce((mo, _o) => mo + (Number(cfICV[_o + "|" + W]) || 0), 0),
             io = pe + Mt,
-            wo = cfEgresosCategorias.reduce((mo, _o) => mo + (Number(cfEgresosValores[_o + "|" + W]) || 0), 0),
+            wo = cfEgresosCategorias.reduce((mo, _o) => mo + (Number(cfEV[_o + "|" + W]) || 0), 0),
             To = Je.reduce((mo, _o) => mo + bt(_o, W), 0),
             Pt = wo + To + regaliaPendiente(regMapApp, cfRegPag, W);
           return { semana: W, ingresos: io, egresos: Pt, neto: io - Pt };
         });
       // Sección 137: lo cargado en semanas anteriores sigue pendiente y entra en el saldo (como en Cashflow).
       let Po = Number(cfSaldoInicial) || 0;
-      for (const W of semanasAnterioresConDatos([cfIngresosValores, cfIngresosCategoriasValores, cfEgresosValores, cfSalidasValores], tt[0])) {
-        const pe = Xo.reduce((mo, _o) => mo + (Number(cfIngresosValores[_o.id + "|" + W]) || 0), 0) +
-            cfIngresosCategorias.reduce((mo, _o) => mo + (Number(cfIngresosCategoriasValores[_o + "|" + W]) || 0), 0),
-          Mt = cfEgresosCategorias.reduce((mo, _o) => mo + (Number(cfEgresosValores[_o + "|" + W]) || 0), 0) + Je.reduce((mo, _o) => mo + bt(_o, W), 0);
+      for (const W of semanasAnterioresConDatos([cfIV, cfICV, cfEV, cfSV], tt[0])) {
+        const pe = Xo.reduce((mo, _o) => mo + (Number(cfIV[_o.id + "|" + W]) || 0), 0) +
+            cfIngresosCategorias.reduce((mo, _o) => mo + (Number(cfICV[_o + "|" + W]) || 0), 0),
+          Mt = cfEgresosCategorias.reduce((mo, _o) => mo + (Number(cfEV[_o + "|" + W]) || 0), 0) + Je.reduce((mo, _o) => mo + bt(_o, W), 0);
         Po += pe - Mt;
       }
       const Co = Et.map((W) => ((Po += W.neto), Po)),
@@ -1129,7 +1135,7 @@
         totalIngresosCash: pa,
         totalEgresosCash: Di,
       };
-    }, [co, g, proveedoresMap, pagosMap, subCostoProveedoresMap, subCostoPagosMap, gn, cfSaldoInicial, cfIngresosValores, cfIngresosCategorias, cfIngresosCategoriasValores, cfEgresosCategorias, cfEgresosValores, cfSalidasValores, cfRegPag]);
+    }, [co, g, proveedoresMap, pagosMap, subCostoProveedoresMap, subCostoPagosMap, gn, cfSaldoInicial, cfIngresosValores, cfIngresosCategorias, cfIngresosCategoriasValores, cfEgresosCategorias, cfEgresosValores, cfSalidasValores, cfRegPag, cfPagados]);
   function La(e) {
     const t = Number(e.venta) || 0,
       o = Number(e.costoInicial) || 0;
