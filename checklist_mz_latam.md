@@ -1649,6 +1649,15 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Las regalías automáticas de semanas pasadas no se arrastran (no las carga el usuario).
 - [x] Prueba automática nueva. Publicado en QA. Producción: pendiente del OK del usuario.
 
+### 138. Cashflow: tilde "pagado" en cada importe
+
+- [x] 26/10/2026, pedido del usuario ("agregame el tilde de pagado en todas las líneas; si está como pagado, me lo descontás"; elegido: "por semana en cada línea"). Debajo de cada importe cargado de Ingresos (facturas y categorías), Egresos y Salidas Semanales (obra y proveedor) hay un tilde "pag.". Tildado ("pagado", en verde) ese importe de esa semana deja de contar en los totales por semana, en el saldo acumulado, en lo que se arrastra de semanas pasadas, en "pendiente de asignar" y en el resumen de Cash de la presentación. El importe sigue a la vista y se exporta igual. Se guarda en `cfPagados`.
+
+### 139. Cashflow: exportar e importar todas las semanas con datos
+
+- [x] 26/10/2026, pedido del usuario ("al exportar o importar, que me exporte todas las semanas que tengan datos; desde hoy en adelante y de hoy para atrás si hay datos"). Exportar Excel trae, además de las semanas que se ven (hasta fin de 2027), las semanas anteriores que tengan algo cargado. Importar Excel acepta cualquier semana del archivo (pasada o futura), aunque no esté a la vista, siempre que el título sea el viernes de la semana (como las exporta MIA).
+- [x] Pruebas automáticas nuevas y todos los controles en verde (también con dos pantallas). Publicado en QA (junto con la Sección 137). Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
