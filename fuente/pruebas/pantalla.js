@@ -163,7 +163,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Egresos");
       // Ida y vuelta por un .xlsx, como cuando se sube el archivo.
-      const leido = XLSX.read(XLSX.write(wb, { type: "array", bookType: "xlsx" }), { type: "array" });
+      const leido = XLSX.read(XLSX.write(wb, { type: "array", bookType: "xlsx" }), { type: "array", cellDates: true });
       return filasDeHojaCashflow(leido.Sheets.Egresos)[0];
     });
     if (r["23/04/2027"] !== 1 || r["30/04/2027"] !== 2 || r["31/12/2027"] !== 3) throw new Error("Títulos leídos: " + JSON.stringify(r));

@@ -784,7 +784,7 @@ function CashflowView({
   async function Yn(s) {
     try {
       const b = await s.arrayBuffer(),
-        R = XLSX.read(b, { type: "array" }),
+        R = XLSX.read(b, { type: "array", cellDates: true }),
         j = (Ut) => {
           if (Ut == null || Ut === "") return null;
           if (typeof Ut == "number") return Ut;

@@ -121,8 +121,10 @@ function semanasAnterioresConDatos(mapas, primera) {
 function tituloDeCeldaCashflow(c) {
   if (!c || c.v == null) return "";
   let d = null;
-  if (c.v instanceof Date) d = c.v;
-  else if (c.t === "d") d = new Date(c.v);
+  // Las fechas que entrega la lectura del Excel pueden venir a medianoche UTC o local: se corre al mediodía
+  // para que el día no cambie por la zona horaria.
+  if (c.v instanceof Date) d = new Date(c.v.getTime() + 12 * 3600 * 1000);
+  else if (c.t === "d") d = new Date(new Date(c.v).getTime() + 12 * 3600 * 1000);
   else if (c.t === "n" && c.z && XLSX.SSF.is_date(c.z)) {
     const p = XLSX.SSF.parse_date_code(c.v);
     p && (d = new Date(p.y, p.m - 1, p.d));
