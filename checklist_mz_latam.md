@@ -1669,7 +1669,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 27/10/2026, aviso del usuario (archivo CHA_SUBIR.xlsx): "en Egresos no me pone todos los datos hasta el 31/12/2027, me los pone hasta agosto". En la hoja Egresos, desde la columna 30/04/2027 los títulos eran fechas de Excel (tipeadas/arrastradas), no texto como los que exporta MIA (36 columnas); MIA no las reconocía como semanas.
 - [x] Arreglo: al importar, un título que en Excel es fecha se toma como dd/mm/aaaa, con cualquier formato de fecha de la celda (`tituloDeCeldaCashflow`), en las tres hojas y también para los comentarios de Ingresos y Egresos.
 - [x] Prueba de pantalla nueva (títulos texto + fecha dd/mm/aaaa + fecha m/d/yy, ida y vuelta por .xlsx). El Excel se lee con `cellDates` para que esas celdas lleguen como fecha.
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("pasalo a producción", 27/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
