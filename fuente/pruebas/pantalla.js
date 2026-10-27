@@ -113,8 +113,8 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     // semanas quedan " 30/10/2026 " y antes no se reconocían (Sección 136).
     const b64 = fs.readFileSync(path.join(__dirname, "archivos", "salidas_excel_guardado_anonimo.xlsx")).toString("base64");
     const r = await pagina.evaluate((b) => {
-      const filas = filasDeHojaCashflow(XLSX.read(b, { type: "base64" }).Sheets["Salidas Semanales"]);
-      return { valor: filas[1]["30/10/2026"], claves: Object.keys(filas[1]).slice(4, 7) };
+      const l = leerHojaCashflow(XLSX.read(b, { type: "base64", cellDates: true }).Sheets["Salidas Semanales"], "ID");
+      return { valor: l.filas[1].semanas["30/10/2026"], semanas: l.semanas.length };
     }, b64);
     if (r.valor !== 1003.5) throw new Error("No se leyó bien: " + JSON.stringify(r));
   });
@@ -164,9 +164,50 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
       XLSX.utils.book_append_sheet(wb, ws, "Egresos");
       // Ida y vuelta por un .xlsx, como cuando se sube el archivo.
       const leido = XLSX.read(XLSX.write(wb, { type: "array", bookType: "xlsx" }), { type: "array", cellDates: true });
-      return filasDeHojaCashflow(leido.Sheets.Egresos)[0];
+      return leerHojaCashflow(leido.Sheets.Egresos, "Categoría").filas[0].semanas;
     });
-    if (r["23/04/2027"] !== 1 || r["30/04/2027"] !== 2 || r["31/12/2027"] !== 3) throw new Error("Títulos leídos: " + JSON.stringify(r));
+    if (r["23/04/2027"] !== 1 || r["30/04/2027"] !== 2 || r["31/12/2027"] !== 3) throw new Error("Semanas leídas: " + JSON.stringify(r));
+  });
+  await control("Cashflow → importar un Excel desprolijo (filas arriba, nombres sin acento, fechas mezcladas, importes con $, TOTAL)", async () => {
+    await clic("Cashflow");
+    await clic("Egresos");
+    const r1 = await pagina.evaluate(() => {
+      const hoy = viernesDeLaSemana(new Date()),
+        sem = (k) => { const d = new Date(hoy); d.setDate(d.getDate() + 7 * k); return d; },
+        f = (d) => dateAFechaStr(d),
+        lunes = (d) => { const x = new Date(d); x.setDate(x.getDate() - 4); return x; },
+        ws = XLSX.utils.aoa_to_sheet([
+          ["Cashflow de prueba"],
+          [],
+          ["categoria", f(sem(0)), "x", "y", "z"],
+          ["  prestamos ", "$ 1.234,50", "(500)", 77, "pendiente"],
+          ["TOTAL", 1, 1, 1, 1],
+        ]);
+      const d1 = sem(1);
+      ws.C3 = { t: "s", v: String(d1.getDate()).padStart(2, "0") + "-" + String(d1.getMonth() + 1).padStart(2, "0") + "-" + String(d1.getFullYear()).slice(2) };
+      ws.D3 = { t: "s", v: f(lunes(sem(2))) };
+      const d3 = sem(3);
+      ws.E3 = { t: "n", v: Math.round((Date.UTC(d3.getFullYear(), d3.getMonth(), d3.getDate()) - Date.UTC(1899, 11, 30)) / 864e5), z: "d/m/yyyy" };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, " egresos ");
+      return { b64: XLSX.write(wb, { type: "base64", bookType: "xlsx" }), semanas: [0, 1, 2, 3].map((k) => f(sem(k))) };
+    });
+    const tmp = path.join(os.tmpdir(), "cashflow_desprolijo.xlsx");
+    fs.writeFileSync(tmp, Buffer.from(r1.b64, "base64"));
+    pagina.once("dialog", (d) => d.accept());
+    await pagina.setInputFiles('input[type="file"][accept=".xlsx,.xls,.csv"]', tmp);
+    await pagina.waitForFunction(() => /Importado:|No se pudo/.test(document.body.innerText), null, { timeout: 10000 });
+    const msg = await pagina.evaluate(() => (document.body.innerText.match(/(Importado:[^\n]*|No se pudo[^\n]*)/) || [""])[0]);
+    const espera = pagina.waitForEvent("download", { timeout: 15000 });
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Exportar Excel/.test(b.textContent)).click());
+    const b64 = fs.readFileSync(await (await espera).path()).toString("base64");
+    const fila = await pagina.evaluate(([b, sems]) => {
+      const filas = XLSX.utils.sheet_to_json(XLSX.read(b, { type: "base64" }).Sheets.Egresos, { defval: "" });
+      const f = filas.find((x) => x["Categoría"] === "PRESTAMOS");
+      return f ? sems.map((s) => f[s]) : "no está la fila PRESTAMOS: " + filas.map((x) => x["Categoría"]).join(",");
+    }, [b64, r1.semanas]);
+    if (JSON.stringify(fila) !== JSON.stringify([1234.5, -500, 77, ""]) || !/pendiente/.test(msg) || /nueva\(s\)/.test(msg))
+      throw new Error("Cargó " + JSON.stringify(fila) + " / mensaje: " + msg);
   });
   await control("Cashflow → importar un Excel sin semanas reconocibles: no toca nada y avisa", async () => {
     await clic("Cashflow");

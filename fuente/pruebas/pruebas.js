@@ -118,6 +118,44 @@ prueba("Proveedores sin id con los campos en otro orden (como los devuelve la ba
   assert.strictEqual(m.proveedoresMap["NAT|CABILDO"].find((x) => x.proveedor === "LUCIO").presupuesto, 20500000);
   assert.strictEqual(f.textoEstable({ b: 1, a: { d: 2, c: 3 } }), f.textoEstable({ a: { c: 3, d: 2 }, b: 1 }));
 });
+prueba("Cashflow (Excel): títulos de semana en cualquier formato de fecha", () => {
+  const S = f.semanaDeTituloCashflow;
+  assert.strictEqual(S("30/10/2026"), "30/10/2026");
+  assert.strictEqual(S(" 30/10/2026 "), "30/10/2026");
+  assert.strictEqual(S("30-10-26"), "30/10/2026");
+  assert.strictEqual(S("30.10.2026"), "30/10/2026");
+  assert.strictEqual(S("2026-10-30"), "30/10/2026");
+  assert.strictEqual(S("26/10/2026"), "30/10/2026"); // lunes → su viernes
+  assert.strictEqual(S("1/9/2027"), "03/09/2027");
+  assert.strictEqual(S(46325), "30/10/2026"); // número de serie de Excel
+  assert.strictEqual(S(new Date(2027, 11, 31)), "31/12/2027");
+  assert.strictEqual(S("31/02/2027"), null);
+  assert.strictEqual(S("11/13/2026"), null);
+  assert.strictEqual(S("Categoría"), null);
+  assert.strictEqual(S(1500), null);
+});
+prueba("Cashflow (Excel): importes escritos de distintas formas", () => {
+  const N = (v) => JSON.parse(JSON.stringify(f.numeroDeCeldaCashflow(v)));
+  assert.deepStrictEqual(N(1234.5), { valor: 1234.5 });
+  assert.deepStrictEqual(N("$ 1.234.567,89"), { valor: 1234567.89 });
+  assert.deepStrictEqual(N("1,234,567.89"), { valor: 1234567.89 });
+  assert.deepStrictEqual(N("1.234"), { valor: 1234 });
+  assert.deepStrictEqual(N("1234,5"), { valor: 1234.5 });
+  assert.deepStrictEqual(N("(1.000)"), { valor: -1000 });
+  assert.deepStrictEqual(N("-2.500,50"), { valor: -2500.5 });
+  assert.deepStrictEqual(N("=1500*2"), { valor: 3000 });
+  assert.deepStrictEqual(N(""), { valor: null });
+  assert.deepStrictEqual(N(" - "), { valor: null });
+  assert.deepStrictEqual(N("pendiente"), { invalido: "pendiente" });
+  assert.deepStrictEqual(N("US$ 100"), { invalido: "US$ 100" });
+});
+prueba("Cashflow (Excel): nombres de columnas y de filas sin importar acentos ni mayúsculas", () => {
+  assert.strictEqual(f.etiquetaCanonicaCf(" categoria "), "Categoría");
+  assert.strictEqual(f.etiquetaCanonicaCf("Centro de costo"), "Centro de Costo");
+  assert.strictEqual(f.etiquetaCanonicaCf("Nro factura"), "N° Factura");
+  assert.strictEqual(f.etiquetaCanonicaCf("Id"), "ID");
+  assert.strictEqual(f.textoComparableCf("  Préstamos   bancarios "), f.textoComparableCf("PRESTAMOS BANCARIOS"));
+});
 prueba("Cashflow: lo tildado como pagado no cuenta", () => {
   const m = { "a|30/10/2026": 100, "a|06/11/2026": 50 };
   assert.deepStrictEqual(JSON.parse(JSON.stringify(f.sinPagados(m, { "a|30/10/2026": true }))), { "a|06/11/2026": 50 });

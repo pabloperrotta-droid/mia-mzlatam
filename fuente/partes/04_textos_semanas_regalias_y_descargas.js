@@ -113,34 +113,153 @@ function semanasAnterioresConDatos(mapas, primera) {
     }
   return [...vistas].sort((a, b) => fechaAObjetoDate(a) - fechaAObjetoDate(b));
 }
-// Sección 136: filas de una hoja del Excel de Cashflow con los títulos de columna sin espacios de más.
-// Excel, al guardar, deja los títulos de las semanas como " 30/10/2026 " (por el formato de número de la
-// columna) y antes no se reconocía ninguna semana: se importaba todo vacío.
-// Sección 141: el título de una columna como texto: sin espacios de más, y si en Excel es una FECHA de verdad
-// (tipeada o arrastrada en Excel, no texto), como dd/mm/aaaa. Antes esas columnas no se reconocían.
+// ===== Sección 142: lectura tolerante de los Excel de Cashflow (pedido del usuario: "todo lo que sea
+// previsible, cómo el usuario carga la información, MIA lo debería detectar"). =====
+// Texto comparable: sin acentos, mayúsculas, sin espacios de más.
+function textoComparableCf(t) {
+  return String(t == null ? "" : t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+}
+// Título de columna → semana (el viernes, "dd/mm/aaaa") o null. Acepta texto en varios formatos
+// (30/10/2026, 30-10-26, 30.10.2026, 2026-10-30, 1/9/2027), fechas de Excel y números de serie de fecha.
+// Si la fecha no es viernes, se toma la semana a la que pertenece.
+function semanaDeTituloCashflow(v) {
+  let d = null;
+  if (v instanceof Date) d = new Date(v.getTime() + 12 * 3600 * 1000);
+  else if (typeof v == "number") {
+    if (v > 30000 && v < 80000) {
+      const u = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 864e5);
+      d = new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
+    }
+  } else {
+    const t = String(v == null ? "" : v).trim();
+    let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/),
+      y, mes, dia;
+    if (m) (dia = +m[1]), (mes = +m[2]), (y = m[3].length === 2 ? 2000 + +m[3] : +m[3]);
+    else if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) (y = +m[1]), (mes = +m[2]), (dia = +m[3]);
+    if (m) {
+      d = new Date(y, mes - 1, dia);
+      // 31/02 o 13/40 no son fechas: Date las "corre" de mes, así que se descartan.
+      (d.getMonth() !== mes - 1 || d.getDate() !== dia) && (d = null);
+    }
+  }
+  if (!d || isNaN(d) || d.getFullYear() < 2000 || d.getFullYear() > 2100) return null;
+  return dateAFechaStr(viernesDeLaSemana(new Date(d.getFullYear(), d.getMonth(), d.getDate())));
+}
+// Nombre de columna conocido (sin importar acentos, mayúsculas ni espacios) → el que usa MIA.
+const ETIQUETAS_CF = {
+  ID: "ID",
+  CLIENTE: "Cliente",
+  "CENTRO DE COSTO": "Centro de Costo",
+  "CENTRO COSTO": "Centro de Costo",
+  OBRA: "Centro de Costo",
+  PROVEEDOR: "Proveedor",
+  CATEGORIA: "Categoría",
+  TIPO: "Tipo",
+  "N° FACTURA": "N° Factura",
+  "Nº FACTURA": "N° Factura",
+  "NRO FACTURA": "N° Factura",
+  "NRO. FACTURA": "N° Factura",
+  "N FACTURA": "N° Factura",
+  FACTURA: "N° Factura",
+  "IMPORTE TOTAL": "Importe Total",
+  SALDO: "Saldo",
+};
+function etiquetaCanonicaCf(t) {
+  return ETIQUETAS_CF[textoComparableCf(t)] || String(t == null ? "" : t).trim();
+}
+// Importe de una celda → { valor } (null = vacía) o { invalido: texto } si no se entiende.
+// "$ 1.234.567,89", "1,234,567.89", "(1.000)" (negativo), "-", "=1500*2", "1.234" (mil doscientos…).
+function numeroDeCeldaCashflow(v) {
+  if (v == null || v === "") return { valor: null };
+  if (typeof v == "number") return isFinite(v) ? { valor: v } : { invalido: String(v) };
+  if (typeof v == "boolean" || v instanceof Date) return { invalido: String(v) };
+  let t = String(v).trim();
+  if (!t || /^[-–—]$/.test(t)) return { valor: null };
+  if (/^=/.test(t)) {
+    const r = evaluarCuenta(t);
+    return r == null ? { invalido: t } : { valor: r };
+  }
+  const neg = /^\(.*\)$/.test(t) || /^-/.test(t) || /-$/.test(t);
+  const limpio = t.replace(/^\(|\)$/g, "").replace(/\$|ARS|AR\$|PESOS?/gi, "").replace(/[\s\u00a0]/g, "").replace(/^-|-$/g, "");
+  if (!/^[\d.,]+$/.test(limpio) || !/\d/.test(limpio)) return { invalido: t };
+  const n = leerNumeroFlexible(limpio);
+  return { valor: neg ? -n : n };
+}
+// Busca una hoja por nombre sin importar acentos, mayúsculas ni espacios ("salidas semanales", "Salidas").
+function hojaDeLibroCashflow(wb, nombres) {
+  const q = nombres.map(textoComparableCf);
+  const n = (wb.SheetNames || []).find((x) => q.includes(textoComparableCf(x)));
+  return n ? { nombre: n, ws: wb.Sheets[n] } : null;
+}
+// Lee una hoja de Cashflow: busca la fila de títulos (puede haber filas arriba), reconoce las columnas de
+// semanas y las de datos, saltea filas vacías y de TOTAL, y junta valores y comentarios por semana.
+function leerHojaCashflow(ws, etiquetaClave) {
+  const rango = XLSX.utils.decode_range(ws["!ref"] || "A1"),
+    celda = (r, c) => ws[XLSX.utils.encode_cell({ r, c })],
+    valorTitulo = (c) => (c ? (c.v instanceof Date ? c.v : c.t === "n" && c.z && XLSX.SSF.is_date(c.z) ? new Date(Math.round((c.v - 25569) * 864e5)) : c.v) : null);
+  let filaTit = -1;
+  for (let r = rango.s.r; r <= Math.min(rango.e.r, rango.s.r + 15) && filaTit < 0; r++) {
+    let etiqueta = false,
+      semanas = 0;
+    for (let c = rango.s.c; c <= rango.e.c; c++) {
+      const v = valorTitulo(celda(r, c));
+      etiquetaCanonicaCf(v) === etiquetaClave && (etiqueta = true);
+      semanaDeTituloCashflow(v) && semanas++;
+    }
+    (etiqueta || semanas >= 2) && (filaTit = r);
+  }
+  const res = { filas: [], semanas: [], corregidas: 0, repetidas: [], noReconocidas: [], filaTitulos: filaTit + 1 };
+  if (filaTit < 0) return res;
+  const cols = [];
+  for (let c = rango.s.c; c <= rango.e.c; c++) {
+    const v = valorTitulo(celda(filaTit, c)),
+      sem = semanaDeTituloCashflow(v);
+    if (sem) {
+      cols.push({ c, semana: sem });
+      const txt = v instanceof Date || typeof v == "number" ? sem : String(v).trim();
+      txt !== sem && res.corregidas++;
+    } else if (v != null && String(v).trim() !== "") {
+      cols.push({ c, etiqueta: etiquetaCanonicaCf(v) });
+      // Parece una fecha pero no se entiende (ej. 31/02/2027, o mes/día al revés como 11/13/2026).
+      /\d{1,4}[\/\-.]\d{1,2}([\/\-.]\d{1,4})?/.test(String(v)) && res.noReconocidas.push(String(v).trim());
+    }
+  }
+  const vistas = new Set();
+  for (const x of cols) x.semana && (vistas.has(x.semana) ? res.repetidas.push(x.semana) : vistas.add(x.semana));
+  res.semanas = [...vistas];
+  for (let r = filaTit + 1; r <= rango.e.r; r++) {
+    const f = { filaExcel: r + 1, datos: {}, semanas: {}, invalidos: [], comentarios: {} };
+    let algo = false;
+    for (const x of cols) {
+      const ce = celda(r, x.c);
+      if (x.etiqueta) {
+        if (ce && ce.v != null && String(ce.v).trim() !== "") (f.datos[x.etiqueta] = ce.v), (algo = true);
+        continue;
+      }
+      const n = numeroDeCeldaCashflow(ce ? ce.v : null),
+        com = ce && ce.c && ce.c.length ? String(ce.c[ce.c.length - 1].t || "").trim() : "";
+      com && (f.comentarios[x.semana] = com);
+      if (n.invalido != null) {
+        f.invalidos.push({ semana: x.semana, texto: n.invalido });
+        algo = true;
+        continue;
+      }
+      n.valor != null && (algo = true);
+      const prev = f.semanas[x.semana];
+      f.semanas[x.semana] = prev == null || prev === null ? n.valor : n.valor == null ? prev : prev + n.valor;
+    }
+    if (!algo) continue;
+    const primera = Object.values(f.datos).map((v) => String(v)).find((v) => v.trim());
+    if (primera && /^TOTAL/.test(textoComparableCf(primera))) continue;
+    res.filas.push(f);
+  }
+  return res;
+}
+// Título de una celda (para las pruebas y los comentarios): la semana si es fecha, si no el nombre de columna.
 function tituloDeCeldaCashflow(c) {
   if (!c || c.v == null) return "";
-  let d = null;
-  // Las fechas que entrega la lectura del Excel pueden venir a medianoche UTC o local: se corre al mediodía
-  // para que el día no cambie por la zona horaria.
-  if (c.v instanceof Date) d = new Date(c.v.getTime() + 12 * 3600 * 1000);
-  else if (c.t === "d") d = new Date(new Date(c.v).getTime() + 12 * 3600 * 1000);
-  else if (c.t === "n" && c.z && XLSX.SSF.is_date(c.z)) {
-    const p = XLSX.SSF.parse_date_code(c.v);
-    p && (d = new Date(p.y, p.m - 1, p.d));
-  }
-  if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
-  return String(c.v).trim();
-}
-function titulosDeHojaCashflow(ws) {
-  const r = XLSX.utils.decode_range(ws["!ref"] || "A1"),
-    t = [];
-  for (let c = r.s.c; c <= r.e.c; c++) t.push(tituloDeCeldaCashflow(ws[XLSX.utils.encode_cell({ r: r.s.r, c })]));
-  return t;
-}
-function filasDeHojaCashflow(ws) {
-  const tit = titulosDeHojaCashflow(ws).map((x, i) => x || "__col" + i);
-  return XLSX.utils.sheet_to_json(ws, { header: tit, range: 1, defval: null });
+  const v = c.v instanceof Date ? c.v : c.t === "n" && c.z && XLSX.SSF.is_date(c.z) ? new Date(Math.round((c.v - 25569) * 864e5)) : c.v;
+  return semanaDeTituloCashflow(v) || etiquetaCanonicaCf(v);
 }
 function semanasDeCashflow(n) {
   const c = viernesDeLaSemana(fechaAObjetoDate(n) || /* @__PURE__ */ new Date()),

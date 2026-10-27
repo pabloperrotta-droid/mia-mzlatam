@@ -781,246 +781,140 @@ function CashflowView({
       XLSX.utils.book_append_sheet(s, XLSX.utils.aoa_to_sheet([wt, ...It]), "Salidas Semanales"),
       descargarLibroXlsx(s, "cashflow_" + fechaConGuiones(dateAFechaStr(/* @__PURE__ */ new Date())) + ".xlsx"));
   }
+  // Sección 142: importar el Excel de Cashflow. Lee con leerHojaCashflow (tolerante a cómo se cargó el Excel),
+  // arma todos los cambios, pide confirmación si va a borrar importes cargados, y recién ahí los aplica.
   async function Yn(s) {
     try {
-      const b = await s.arrayBuffer(),
-        R = XLSX.read(b, { type: "array", cellDates: true }),
-        j = (Ut) => {
-          if (Ut == null || Ut === "") return null;
-          if (typeof Ut == "number") return Ut;
-          const Yt = String(Ut)
-            .trim()
-            .replace(/\./g, "")
-            .replace(",", ".")
-            .replace(/[^0-9.\-]/g, "");
-          if (Yt === "" || Yt === "-") return null;
-          const Tt = Number(Yt);
-          return isNaN(Tt) ? null : Tt;
+      const R = XLSX.read(await s.arrayBuffer(), { type: "array", cellDates: true }),
+        eq = (a, b) => textoComparableCf(a) === textoComparableCf(b),
+        avisos = [],
+        invalidos = [],
+        noUbicadas = [],
+        nuevosIng = { ...FRaw },
+        nuevosComIng = { ...k },
+        nuevosEgr = { ...eeRaw },
+        nuevosComEgr = { ...ne },
+        nuevasCats = [],
+        nuevosSal = { ...LeRaw };
+      let nIng = 0,
+        nEgr = 0,
+        nSal = 0,
+        nComI = 0,
+        nComE = 0,
+        borra = 0,
+        carga = 0;
+      const poner = (mapa, clave, valor) => {
+          const antes = mapa[clave];
+          valor === null
+            ? antes !== undefined && antes !== "" && Number(antes) !== 0 && (borra++, (mapa[clave] = ""))
+            : (Number(antes) !== valor && carga++, (mapa[clave] = valor));
         },
-        Q = (Ut) => /^\d{2}\/\d{2}\/\d{4}$/.test(String(Ut || "").trim()),
-        // Sección 139: se aceptan todas las semanas del Excel (pasadas o futuras, aunque no se vean ahora),
-        // siempre que el título sea el viernes de esa semana (como las exporta MIA).
-        J = { has: (x) => Q(x) && dateAFechaStr(viernesDeLaSemana(fechaAObjetoDate(x))) === String(x).trim() };
-      let fe = 0,
-        ke = 0,
-        We = 0,
-        wt = 0,
-        It = 0,
-        et = 0,
-        gt = 0;
-      // Sección 140: si una hoja no trae ninguna semana que MIA reconozca, no se toca (antes se cargaba todo
-      // vacío) y se avisa. También se avisa de columnas con fecha que no son el viernes de una semana.
-      const avisosHojas = [],
-        hojaConSemanas = (nombre) => {
-          const ws = R.Sheets[nombre],
-            tit = titulosDeHojaCashflow(ws),
-            fechas = tit.filter((x) => Q(x)),
-            ok = fechas.filter((x) => J.has(x));
-          fechas.length > ok.length &&
-            avisosHojas.push(nombre + ": " + (fechas.length - ok.length) + " columna(s) con fecha que no es el viernes de la semana (no se cargaron)");
-          if (ok.length) return true;
-          avisosHojas.push(nombre + ": no se reconoció ninguna semana en los títulos de las columnas, no se cambió nada en esa hoja");
-          return false;
+        hoja = (nombres, clave, titulo) => {
+          const h = hojaDeLibroCashflow(R, nombres);
+          if (!h) return null;
+          const l = leerHojaCashflow(h.ws, clave);
+          l.filaTitulos > 1 && avisos.push(titulo + ": los títulos están en la fila " + l.filaTitulos);
+          l.corregidas && avisos.push(titulo + ": " + l.corregidas + " columna(s) con fecha que no es viernes se tomaron en su semana");
+          l.repetidas.length && avisos.push(titulo + ": semanas repetidas en dos columnas (se sumaron): " + [...new Set(l.repetidas)].map(semanaLabelCorta).join(", "));
+          l.noReconocidas.length && avisos.push(titulo + ": columna(s) que parecen fecha pero no se entienden (no se cargaron): " + l.noReconocidas.slice(0, 5).join(", "));
+          if (!l.semanas.length) {
+            avisos.push(titulo + ": no se reconoció ninguna semana en los títulos de las columnas, no se cambió nada en esa hoja");
+            return null;
+          }
+          for (const f of l.filas) for (const x of f.invalidos) invalidos.push(titulo + " fila " + f.filaExcel + " (" + semanaLabelCorta(x.semana) + "): \"" + String(x.texto).slice(0, 20) + "\"");
+          return l;
         };
-      if (R.SheetNames.includes("Ingresos") && hojaConSemanas("Ingresos")) {
-        const Ut = filasDeHojaCashflow(R.Sheets.Ingresos),
-          Yt = { ...FRaw };
-        (Ut.forEach((Dt) => {
-          const ho = Dt.ID != null ? String(Dt.ID).trim() : "";
-          let ct = ho ? Wt.find((Go) => Go.id === ho) : null;
-          if (!ct) {
-            const Go = String(Dt.Cliente || "")
-                .trim()
-                .toUpperCase(),
-              $o = String(Dt["Centro de Costo"] || "")
-                .trim()
-                .toUpperCase(),
-              cn = String(Dt.Tipo || "").trim(),
-              on = Dt["N° Factura"] != null ? String(Dt["N° Factura"]).trim() : "";
-            ct = Wt.find(
-              (En) =>
-                En.cliente.trim().toUpperCase() === Go &&
-                En.obra.trim().toUpperCase() === $o &&
-                En.tipo === cn &&
-                String(En.nro || "").trim() === on,
-            );
+      const lI = hoja(["Ingresos"], "ID", "Ingresos");
+      if (lI)
+        for (const f of lI.filas) {
+          const d = f.datos,
+            id = d.ID != null ? String(d.ID).trim() : "";
+          let fila = id ? Wt.find((x) => x.id === id) : null;
+          fila ||
+            (fila = Wt.find(
+              (x) =>
+                eq(x.cliente, d.Cliente) && eq(x.obra, d["Centro de Costo"]) && eq(x.tipo, d.Tipo) && eq(x.nro || "", d["N° Factura"] != null ? d["N° Factura"] : ""),
+            ));
+          if (!fila) {
+            noUbicadas.push("Ingresos fila " + f.filaExcel);
+            continue;
           }
-          if (!ct) {
-            It++;
-            return;
+          for (const [sem, v] of Object.entries(f.semanas)) poner(nuevosIng, fila.id + "|" + sem, v);
+          for (const sem of lI.semanas) {
+            const c = f.comentarios[sem],
+              kk = fila.id + "|" + sem;
+            c ? ((nuevosComIng[kk] = c), nComI++) : delete nuevosComIng[kk];
           }
-          let ko = false;
-          (Object.keys(Dt).forEach((Go) => {
-            if (!Q(Go) || !J.has(Go)) return;
-            const $o = j(Dt[Go]);
-            ((Yt[ct.id + "|" + Go] = $o === null ? "" : $o), (ko = true));
-          }),
-            ko && fe++);
-        }),
-          A(Yt));
-        const Tt = R.Sheets.Ingresos,
-          ue = XLSX.utils.decode_range(Tt["!ref"] || "A1"),
-          So = ue.s.r,
-          Wo = {};
-        for (let Dt = ue.s.c; Dt <= ue.e.c; Dt++) {
-          const ho = Tt[XLSX.utils.encode_cell({ r: So, c: Dt })];
-          ho && ho.v != null && (Wo[tituloDeCeldaCashflow(ho)] = Dt);
+          nIng++;
         }
-        const ln = Wo.ID,
-          Jo = Wo.Cliente,
-          xo = Wo["Centro de Costo"],
-          Vt = Wo.Tipo,
-          st = Wo["N° Factura"],
-          Xt = (Dt, ho) => {
-            if (ho == null) return null;
-            const ct = Tt[XLSX.utils.encode_cell({ r: Dt, c: ho })];
-            return ct ? ct.v : null;
-          },
-          Qo = { ...k };
-        for (let Dt = So + 1; Dt <= ue.e.r; Dt++) {
-          const ho = Xt(Dt, ln) != null ? String(Xt(Dt, ln)).trim() : "";
-          let ct = ho ? Wt.find((ko) => ko.id === ho) : null;
-          if (!ct) {
-            const ko = String(Xt(Dt, Jo) || "")
-                .trim()
-                .toUpperCase(),
-              Go = String(Xt(Dt, xo) || "")
-                .trim()
-                .toUpperCase(),
-              $o = String(Xt(Dt, Vt) || "").trim(),
-              cn = Xt(Dt, st) != null ? String(Xt(Dt, st)).trim() : "";
-            ct = Wt.find(
-              (on) =>
-                on.cliente.trim().toUpperCase() === ko &&
-                on.obra.trim().toUpperCase() === Go &&
-                on.tipo === $o &&
-                String(on.nro || "").trim() === cn,
-            );
+      const lE = hoja(["Egresos"], "Categoría", "Egresos");
+      if (lE) {
+        const usadas = new Set();
+        for (const f of lE.filas) {
+          const nombre = String(f.datos["Categoría"] || "").replace(/\s+/g, " ").trim().toUpperCase();
+          if (!nombre) {
+            noUbicadas.push("Egresos fila " + f.filaExcel + " (sin categoría)");
+            continue;
           }
-          ct &&
-            ae.forEach((ko) => {
-              const Go = Wo[ko];
-              if (Go == null) return;
-              const $o = Tt[XLSX.utils.encode_cell({ r: Dt, c: Go })],
-                cn = $o && $o.c && $o.c.length > 0 ? String($o.c[$o.c.length - 1].t || "").trim() : "",
-                on = ct.id + "|" + ko;
-              cn ? ((Qo[on] = cn), et++) : delete Qo[on];
-            });
+          let cat = Z.find((x) => eq(x, nombre)) || nuevasCats.find((x) => eq(x, nombre));
+          cat || ((cat = nombre), nuevasCats.push(nombre));
+          usadas.has(cat) && avisos.push("Egresos: la categoría " + cat + " está repetida (vale la última fila)");
+          usadas.add(cat);
+          for (const [sem, v] of Object.entries(f.semanas)) poner(nuevosEgr, cat + "|" + sem, v);
+          for (const sem of lE.semanas) {
+            const c = f.comentarios[sem],
+              kk = cat + "|" + sem;
+            c ? ((nuevosComEgr[kk] = c), nComE++) : delete nuevosComEgr[kk];
+          }
+          nEgr++;
         }
-        L(Qo);
       }
-      if (R.SheetNames.includes("Egresos") && hojaConSemanas("Egresos")) {
-        const Ut = filasDeHojaCashflow(R.Sheets.Egresos),
-          Yt = [],
-          Tt = { ...eeRaw };
-        (Ut.forEach((Vt) => {
-          const st = String(Vt.Categoría || "")
-            .trim()
-            .toUpperCase();
-          if (!st) return;
-          !Z.includes(st) && !Yt.includes(st) && Yt.push(st);
-          let Xt = false;
-          (Object.keys(Vt).forEach((Qo) => {
-            if (!Q(Qo) || !J.has(Qo)) return;
-            const Dt = j(Vt[Qo]);
-            ((Tt[st + "|" + Qo] = Dt === null ? "" : Dt), (Xt = true));
-          }),
-            Xt && ke++);
-        }),
-          lt(Tt),
-          Yt.length > 0 && (Ye([...Z, ...Yt]), (We = Yt.length)));
-        const ue = R.Sheets.Egresos,
-          So = XLSX.utils.decode_range(ue["!ref"] || "A1"),
-          Wo = So.s.r,
-          ln = {};
-        for (let Vt = So.s.c; Vt <= So.e.c; Vt++) {
-          const st = ue[XLSX.utils.encode_cell({ r: Wo, c: Vt })];
-          st && st.v != null && (ln[tituloDeCeldaCashflow(st)] = Vt);
-        }
-        const Jo = ln.Categoría,
-          xo = { ...ne };
-        for (let Vt = Wo + 1; Vt <= So.e.r; Vt++) {
-          const st = Jo != null ? ue[XLSX.utils.encode_cell({ r: Vt, c: Jo })] : null,
-            Xt = st && st.v != null ? String(st.v).trim().toUpperCase() : "";
-          Xt &&
-            ae.forEach((Qo) => {
-              const Dt = ln[Qo];
-              if (Dt == null) return;
-              const ho = ue[XLSX.utils.encode_cell({ r: Vt, c: Dt })],
-                ct = ho && ho.c && ho.c.length > 0 ? String(ho.c[ho.c.length - 1].t || "").trim() : "",
-                ko = Xt + "|" + Qo;
-              ct ? ((xo[ko] = ct), gt++) : delete xo[ko];
-            });
-        }
-        Be(xo);
-      }
-      if (R.SheetNames.includes("Salidas Semanales") && hojaConSemanas("Salidas Semanales")) {
-        const Ut = filasDeHojaCashflow(R.Sheets["Salidas Semanales"]),
-          Yt = { ...LeRaw };
-        (Ut.forEach((Tt) => {
-          const ue = Tt.ID != null ? String(Tt.ID).trim() : "",
-            So = String(Tt.Proveedor || "").trim(),
-            Wo = String(Tt.Cliente || "")
-              .trim()
-              .toUpperCase(),
-            ln = String(Tt["Centro de Costo"] || "")
-              .trim()
-              .toUpperCase();
-          let Jo = null;
-          if (ue) {
-            if (re.some((Vt) => Vt.ccId === ue)) Jo = ue;
-            else
-              for (const Vt of re)
-                if (Vt.proveedores.some((st) => st.id === ue)) {
-                  Jo = ue;
-                  break;
-                }
-          }
-          if (!Jo) {
-            const Vt = re.find((st) => st.cliente.trim().toUpperCase() === Wo && st.obra.trim().toUpperCase() === ln);
-            if (Vt)
-              if (!So) Jo = Vt.ccId;
+      const lS = hoja(["Salidas Semanales", "Salidas", "Salidas Semanal"], "ID", "Salidas Semanales");
+      if (lS)
+        for (const f of lS.filas) {
+          const d = f.datos,
+            id = d.ID != null ? String(d.ID).trim() : "";
+          let clave = null;
+          if (id) for (const cc of re) cc.ccId === id ? (clave = id) : cc.proveedores.some((p) => p.id === id) && (clave = id);
+          if (!clave) {
+            const cc = re.find((x) => eq(x.cliente, d.Cliente) && eq(x.obra, d["Centro de Costo"]));
+            if (cc) {
+              if (!String(d.Proveedor || "").trim()) clave = cc.ccId;
               else {
-                const st = Vt.proveedores.find((Xt) => Xt.proveedor.trim().toUpperCase() === So.toUpperCase());
-                st && (Jo = st.id);
+                const p = cc.proveedores.find((x) => eq(x.proveedor, d.Proveedor));
+                p && (clave = p.id);
               }
+            }
           }
-          if (!Jo) {
-            It++;
-            return;
+          if (!clave) {
+            noUbicadas.push("Salidas fila " + f.filaExcel);
+            continue;
           }
-          let xo = false;
-          (Object.keys(Tt).forEach((Vt) => {
-            if (!Q(Vt) || !J.has(Vt)) return;
-            const st = j(Tt[Vt]);
-            ((Yt[Jo + "|" + Vt] = st === null ? "" : st), (xo = true));
-          }),
-            xo && wt++);
-        }),
-          Lt(Yt));
-      }
+          for (const [sem, v] of Object.entries(f.semanas)) poner(nuevosSal, clave + "|" + sem, v);
+          nSal++;
+        }
+      if (!lI && !lE && !lS && !avisos.length)
+        return sn("⚠️ El archivo no tiene hojas Ingresos, Egresos ni Salidas Semanales: no se cambió nada.");
+      if (
+        borra > 0 &&
+        !window.confirm(
+          "Este Excel va a BORRAR " + borra + " importe(s) que hoy están cargados (en el Excel esas celdas están vacías) y va a cargar o cambiar " + carga + ".\n\n¿Seguir?",
+        )
+      )
+        return sn("Importación cancelada: no se cambió nada.");
+      lI && (A(nuevosIng), L(nuevosComIng));
+      lE && (lt(nuevosEgr), Be(nuevosComEgr), nuevasCats.length && Ye([...Z, ...nuevasCats]));
+      lS && Lt(nuevosSal);
       sn(
-        "Importado: " +
-          fe +
-          " ingreso(s), " +
-          ke +
-          " categoría(s) de egresos" +
-          (We > 0 ? " (" + We + " nueva(s))" : "") +
-          ", " +
-          wt +
-          " salida(s) semanal(es) actualizadas" +
-          (et > 0 ? ", " + et + " comentario(s) de Ingresos" : "") +
-          (gt > 0 ? ", " + gt + " comentario(s) de Egresos" : "") +
-          "." +
-          (It > 0
-            ? " " +
-              It +
-              " fila(s) del Excel no se pudieron ubicar (revisá que el Cliente/Centro de Costo/Proveedor sigan existiendo tal cual)."
-            : "") +
-          (avisosHojas.length ? " ⚠️ " + avisosHojas.join(" · ") + "." : ""),
+        "Importado: " + nIng + " ingreso(s), " + nEgr + " categoría(s) de egresos" + (nuevasCats.length ? " (" + nuevasCats.length + " nueva(s): " + nuevasCats.slice(0, 6).join(", ") + ")" : "") +
+          ", " + nSal + " salida(s) semanal(es) actualizadas" + (nComI ? ", " + nComI + " comentario(s) de Ingresos" : "") + (nComE ? ", " + nComE + " comentario(s) de Egresos" : "") +
+          ". " + carga + " importe(s) cargados o cambiados" + (borra ? ", " + borra + " borrados" : "") + "." +
+          (noUbicadas.length ? " " + noUbicadas.length + " fila(s) no se pudieron ubicar (revisá que el Cliente/Centro de Costo/Proveedor existan en MIA): " + noUbicadas.slice(0, 6).join(", ") + "." : "") +
+          (invalidos.length ? " ⚠️ " + invalidos.length + " celda(s) con texto que no es un importe (no se cargaron ni se borró lo que había): " + invalidos.slice(0, 5).join("; ") + "." : "") +
+          (avisos.length ? " ⚠️ " + avisos.join(" · ") + "." : ""),
       );
-    } catch {
-      sn("No se pudo leer el archivo.");
+    } catch (e) {
+      sn("No se pudo leer el archivo" + (e && e.message ? ": " + e.message : "") + ".");
     }
   }
   function vn(s, b, R, j, Q, J) {
@@ -1045,11 +939,9 @@ function CashflowView({
           et.forEach((Tt, ue) => {
             const So = ae[j + ue];
             if (!So) return;
-            const Wo = Tt.trim()
-              .replace(/\./g, "")
-              .replace(",", ".")
-              .replace(/[^0-9.\-]/g, "");
-            Wo !== "" && (It[Yt + "|" + So] = Wo);
+            // Sección 142: el importe pegado se lee igual que al importar ("$ 1.234,5", "1,234.5", "(1.000)").
+            const Wo = numeroDeCeldaCashflow(Tt);
+            Wo.valor != null && (It[Yt + "|" + So] = Wo.valor);
           });
         }),
         It
