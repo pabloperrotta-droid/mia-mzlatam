@@ -1691,6 +1691,11 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Las líneas con "Importe no coincide", "La factura no está en Xubio" o "varias facturas" se reintentan una vez enseguida.
 - [x] Probado con datos simulados (1502 comprobantes con tope de 1000: se listan todos; la 0003 encuentra la factura de junio y no la NC; la 0004 queda como "la factura no está en Xubio").
 
+### 144. Pagos: factura "s/f" (sin factura) no va a Xubio
+
+- [x] 27/10/2026, pedido del usuario ("si en el campo factura dice s/f no debe conectarse a Xubio, ya que es sin factura; que en la columna Xubio lo ponga en check verde"). Si el número de factura es "s/f" (también S/F, s / f, SF, s.f., sin factura), el proceso de Xubio no toma la línea (ni para centro de costo ni para orden de pago) y la columna Xubio muestra ✅ "Sin factura (s/f): no va a Xubio" (sin detalle ni botón de reintentar). "Reintentar todas" no las toca.
+- [x] Prueba automática nueva. Proceso de Xubio actualizado. Pantalla: publicado en QA; Producción pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

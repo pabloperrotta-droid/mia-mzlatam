@@ -198,6 +198,14 @@ prueba("Recibos de efectivo: importe en letras, obra y líneas", () => {
   assert.strictEqual(f.observacionesConRecibo("Pago parcial", 12), "Pago parcial · Recibo 0003-00000012");
   assert.strictEqual(f.observacionesConRecibo("Pago parcial · Recibo 0003-00000012", 12), "Pago parcial · Recibo 0003-00000012");
 });
+prueba("Pagos: factura s/f (sin factura) no va a Xubio y queda en verde", () => {
+  for (const x of ["s/f", "S/F", " s / f ", "SF", "s.f.", "sin factura", "Sin Factura"]) assert.strictEqual(f.esSinFactura(x), true, x);
+  for (const x of ["00004-00000003", "A-1", "", "sfa"]) assert.strictEqual(f.esSinFactura(x), false, x);
+  const c = f.xubioClase({ cuit: "30-71720122-8", factura: "s/f" }, { estado: "factura_no_encontrada" });
+  assert.strictEqual(c.icono, "✅");
+  assert.strictEqual(c.bien, true);
+  assert.strictEqual(f.xubioParaReintentar([{ id: "a", cuit: "30-71720122-8", factura: "S/F" }], {}, "2026-10-20").length, 0);
+});
 prueba("Pagos: Reintentar todas en Xubio elige solo ❌/⚠️ que el proceso atiende", () => {
   const base = { cuit: "30-71720122-8", cliente: "WU", importe: 100 };
   const L = [

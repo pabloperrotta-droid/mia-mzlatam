@@ -119,8 +119,14 @@ function xubioCuando(t) {
     ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "";
 }
+// Sección 144: "s/f" (sin factura) en el número de factura → no va a Xubio y se muestra en verde.
+function esSinFactura(f) {
+  return /^(sf|sinfactura|sinfac|sinfact)$/.test(String(f || "").toLowerCase().replace(/[\s.\/\\_-]/g, ""));
+}
 // Qué muestra la columna Xubio para una línea (lo usa la celda y el orden por esa columna).
 function xubioClase(l, e) {
+  if (esSinFactura(l.factura))
+    return { falta: "", vigente: false, bien: true, espera: false, aviso: false, sinFactura: true, icono: "✅", titulo: "Sin factura (s/f): no va a Xubio" };
   const falta = !String(l.cuit || "").replace(/\D/g, "")
       ? "Falta el CUIT"
       : !String(l.factura || "").trim()
@@ -153,7 +159,7 @@ function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
   const st = useXubio(),
     [abierto, setAbierto] = React.useState(false),
     e = st.estados[l.id],
-    { falta, vigente, bien, espera, icono, titulo } = xubioClase(l, e),
+    { falta, vigente, bien, espera, icono, titulo, sinFactura } = xubioClase(l, e),
     opTodo = l.fechaPagado ? st.ops[xubioClaveOP(l)] : null,
     op = opTodo && opTodo.estado !== "anterior" ? opTodo : null,
     opInfo = op ? XUBIO_OP_ESTADOS[op.estado] || ["•", op.estado, MUTED] : null,
@@ -181,7 +187,7 @@ function XubioEstadoCelda({ linea: l, puedeEditar, onElegirCentro }) {
     React.createElement(
       "button",
       {
-        onClick: () => !falta && setAbierto((x) => !x),
+        onClick: () => !falta && !sinFactura && setAbierto((x) => !x),
         title:
           titulo +
           (vigente && !espera && !bien && e.mensaje ? "\n" + e.mensaje : "") +
