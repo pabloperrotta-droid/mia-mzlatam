@@ -1681,7 +1681,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - Antes de aplicar: si el Excel va a BORRAR importes cargados (celdas vacías donde había algo), pide confirmación con la cantidad. El mensaje final dice cuántos importes se cargaron, cambiaron y borraron, y qué filas no se ubicaron.
   - El pegado desde Excel en la grilla lee los importes igual que la importación.
 - [x] Pruebas: unitarias de fechas, importes y nombres; y de pantalla con un Excel "desprolijo" (filas arriba, hoja " egresos ", "categoria", nombre sin acento, cuatro formatos de semana, "$ 1.234,50", "(500)", "pendiente", fila TOTAL) que verifica lo que quedó cargado.
-- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Publicado en QA y, con el OK del usuario ("pasar a producción", 27/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
