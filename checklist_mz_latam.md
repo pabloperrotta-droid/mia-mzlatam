@@ -1664,6 +1664,12 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Cashflow → Importar Excel: si una hoja no trae ninguna columna de semana que MIA reconozca, esa hoja no se toca (antes se cargaba todo vacío, como pasó el 26/10) y el mensaje lo avisa con ⚠️. También avisa cuántas columnas con fecha no se cargaron por no ser el viernes de la semana. Prueba de pantalla nueva.
 - [x] Publicado en QA y, con el OK del usuario ("sí", 26/10/2026), en `MIA.prd.html`.
 
+### 141. Cashflow: títulos de semana que en Excel son fechas (no texto)
+
+- [x] 27/10/2026, aviso del usuario (archivo CHA_SUBIR.xlsx): "en Egresos no me pone todos los datos hasta el 31/12/2027, me los pone hasta agosto". En la hoja Egresos, desde la columna 30/04/2027 los títulos eran fechas de Excel (tipeadas/arrastradas), no texto como los que exporta MIA (36 columnas); MIA no las reconocía como semanas.
+- [x] Arreglo: al importar, un título que en Excel es fecha se toma como dd/mm/aaaa, con cualquier formato de fecha de la celda (`tituloDeCeldaCashflow`), en las tres hojas y también para los comentarios de Ingresos y Egresos.
+- [x] Prueba de pantalla nueva (títulos texto + fecha dd/mm/aaaa + fecha m/d/yy, ida y vuelta por .xlsx).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -813,7 +813,7 @@ function CashflowView({
       const avisosHojas = [],
         hojaConSemanas = (nombre) => {
           const ws = R.Sheets[nombre],
-            tit = (XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })[0] || []).map((x) => String(x).trim()),
+            tit = titulosDeHojaCashflow(ws),
             fechas = tit.filter((x) => Q(x)),
             ok = fechas.filter((x) => J.has(x));
           fechas.length > ok.length &&
@@ -864,7 +864,7 @@ function CashflowView({
           Wo = {};
         for (let Dt = ue.s.c; Dt <= ue.e.c; Dt++) {
           const ho = Tt[XLSX.utils.encode_cell({ r: So, c: Dt })];
-          ho && ho.v != null && (Wo[String(ho.v).trim()] = Dt);
+          ho && ho.v != null && (Wo[tituloDeCeldaCashflow(ho)] = Dt);
         }
         const ln = Wo.ID,
           Jo = Wo.Cliente,
@@ -935,7 +935,7 @@ function CashflowView({
           ln = {};
         for (let Vt = So.s.c; Vt <= So.e.c; Vt++) {
           const st = ue[XLSX.utils.encode_cell({ r: Wo, c: Vt })];
-          st && st.v != null && (ln[String(st.v).trim()] = Vt);
+          st && st.v != null && (ln[tituloDeCeldaCashflow(st)] = Vt);
         }
         const Jo = ln.Categoría,
           xo = { ...ne };

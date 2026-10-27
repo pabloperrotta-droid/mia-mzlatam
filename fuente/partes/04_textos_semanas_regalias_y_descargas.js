@@ -116,12 +116,29 @@ function semanasAnterioresConDatos(mapas, primera) {
 // Sección 136: filas de una hoja del Excel de Cashflow con los títulos de columna sin espacios de más.
 // Excel, al guardar, deja los títulos de las semanas como " 30/10/2026 " (por el formato de número de la
 // columna) y antes no se reconocía ninguna semana: se importaba todo vacío.
+// Sección 141: el título de una columna como texto: sin espacios de más, y si en Excel es una FECHA de verdad
+// (tipeada o arrastrada en Excel, no texto), como dd/mm/aaaa. Antes esas columnas no se reconocían.
+function tituloDeCeldaCashflow(c) {
+  if (!c || c.v == null) return "";
+  let d = null;
+  if (c.v instanceof Date) d = c.v;
+  else if (c.t === "d") d = new Date(c.v);
+  else if (c.t === "n" && c.z && XLSX.SSF.is_date(c.z)) {
+    const p = XLSX.SSF.parse_date_code(c.v);
+    p && (d = new Date(p.y, p.m - 1, p.d));
+  }
+  if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+  return String(c.v).trim();
+}
+function titulosDeHojaCashflow(ws) {
+  const r = XLSX.utils.decode_range(ws["!ref"] || "A1"),
+    t = [];
+  for (let c = r.s.c; c <= r.e.c; c++) t.push(tituloDeCeldaCashflow(ws[XLSX.utils.encode_cell({ r: r.s.r, c })]));
+  return t;
+}
 function filasDeHojaCashflow(ws) {
-  return XLSX.utils.sheet_to_json(ws, { defval: null }).map((f) => {
-    const o = {};
-    for (const [k, v] of Object.entries(f)) o[String(k).trim()] = v;
-    return o;
-  });
+  const tit = titulosDeHojaCashflow(ws).map((x, i) => x || "__col" + i);
+  return XLSX.utils.sheet_to_json(ws, { header: tit, range: 1, defval: null });
 }
 function semanasDeCashflow(n) {
   const c = viernesDeLaSemana(fechaAObjetoDate(n) || /* @__PURE__ */ new Date()),

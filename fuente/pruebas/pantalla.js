@@ -154,6 +154,20 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (!seve)
       throw new Error("Después de importar no se ven los importes. Mensaje: " + msg + " / fila " + JSON.stringify(r.fila) + " semanas " + JSON.stringify(r.semanas) + " / al volver a exportar la fila trae: " + JSON.stringify(celdas));
   });
+  await control("Cashflow → títulos de semana que en Excel son fechas de verdad (no texto) se reconocen", async () => {
+    const r = await pagina.evaluate(() => {
+      const serie = (d, m, y) => Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 864e5);
+      const ws = XLSX.utils.aoa_to_sheet([["Categoría", "23/04/2027", "x", "y"], ["SUELDOS", 1, 2, 3]]);
+      ws.C1 = { t: "n", v: serie(30, 4, 2027), z: "dd/mm/yyyy" };
+      ws.D1 = { t: "n", v: serie(31, 12, 2027), z: "m/d/yy" };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Egresos");
+      // Ida y vuelta por un .xlsx, como cuando se sube el archivo.
+      const leido = XLSX.read(XLSX.write(wb, { type: "array", bookType: "xlsx" }), { type: "array" });
+      return filasDeHojaCashflow(leido.Sheets.Egresos)[0];
+    });
+    if (r["23/04/2027"] !== 1 || r["30/04/2027"] !== 2 || r["31/12/2027"] !== 3) throw new Error("Títulos leídos: " + JSON.stringify(r));
+  });
   await control("Cashflow → importar un Excel sin semanas reconocibles: no toca nada y avisa", async () => {
     await clic("Cashflow");
     await clic("Salidas Semanales");
