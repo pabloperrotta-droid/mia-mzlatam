@@ -1671,6 +1671,18 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Prueba de pantalla nueva (títulos texto + fecha dd/mm/aaaa + fecha m/d/yy, ida y vuelta por .xlsx). El Excel se lee con `cellDates` para que esas celdas lleguen como fecha.
 - [x] Publicado en QA y, con el OK del usuario ("pasalo a producción", 27/10/2026), en `MIA.prd.html`.
 
+### 142. Cashflow: el Excel se lee tolerando cómo lo cargó el usuario
+
+- [x] 27/10/2026, pedido del usuario ("todo lo que sea previsible que puede haber errores, ya modificalo; por más que no sean errores, es cómo el usuario carga la información, MIA lo debería detectar"). Nueva lectura del Excel (`leerHojaCashflow` y ayudantes en la parte 04) y nueva importación:
+  - Semanas: títulos como texto o como fecha de Excel, en cualquier formato (30/10/2026, 30-10-26, 30.10.2026, 2026-10-30, 1/9/2027, número de serie). Si la fecha no es viernes se toma su semana. Dos columnas de la misma semana se suman (con aviso). Lo que parece fecha pero no se entiende (31/02, mes/día al revés) se avisa.
+  - Importes: "$ 1.234.567,89", "1,234,567.89", "(1.000)" negativo, "=1500*2", "-" vacío. Una celda con texto ("pendiente", "US$ 100") no se carga, no borra lo que había y se lista en el aviso (hoja, fila y semana).
+  - Hojas y columnas: nombres sin importar acentos, mayúsculas ni espacios ("egresos", "Categoria", "Centro de costo", "Nro factura", "Salidas"). Los títulos pueden no estar en la primera fila (se avisa en cuál). Se saltean filas vacías y de TOTAL.
+  - Filas: cliente, centro de costo, proveedor y categoría se buscan sin importar acentos, mayúsculas ni espacios de más (ej. " prestamos " = PRESTAMOS, no crea una categoría nueva). Categoría repetida: avisa. Las categorías nuevas que crea se nombran en el mensaje.
+  - Antes de aplicar: si el Excel va a BORRAR importes cargados (celdas vacías donde había algo), pide confirmación con la cantidad. El mensaje final dice cuántos importes se cargaron, cambiaron y borraron, y qué filas no se ubicaron.
+  - El pegado desde Excel en la grilla lee los importes igual que la importación.
+- [x] Pruebas: unitarias de fechas, importes y nombres; y de pantalla con un Excel "desprolijo" (filas arriba, hoja " egresos ", "categoria", nombre sin acento, cuatro formatos de semana, "$ 1.234,50", "(500)", "pendiente", fila TOTAL) que verifica lo que quedó cargado.
+- [x] Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
