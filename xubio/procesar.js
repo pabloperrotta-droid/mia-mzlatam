@@ -44,6 +44,9 @@ const MAX_LINEAS = 40;
 const REINTENTO_MS = 3 * 3600 * 1000;
 const ARREGLO_DESCRIPCION = Date.UTC(2026, 9, 13, 18, 0); // 13/10/2026 15:00 (Argentina)
 const ARREGLO_INTERNOS = Date.UTC(2026, 9, 13, 19, 50); // 13/10/2026 16:50 (Argentina): internos → Gastos Generales
+// Sección 143: 27/10/2026 ~19:45 (Argentina). Las que quedaron mal por el tope de 1000 de Xubio o por tomar una
+// nota de crédito como factura se vuelven a probar una vez enseguida.
+const ARREGLO_TOPE_Y_NC = Date.UTC(2026, 9, 27, 22, 45);
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
@@ -168,6 +171,7 @@ async function procesarLineas(amb) {
     else if (e.estado === "rechazada" && (e.intento || 0) < ARREGLO_DESCRIPCION) prioridad = 1;
     // Sección 125: las líneas internas que no quedaron bien se vuelven a probar una vez enseguida, ahora con Gastos Generales.
     else if (normalizar(l.cliente) === "INTERNO" && !t(l.centroCostoXubio) && (e.intento || 0) < ARREGLO_INTERNOS) prioridad = 1;
+    else if (["importe_no_coincide", "factura_no_encontrada", "varias_facturas"].includes(e.estado) && (e.intento || 0) < ARREGLO_TOPE_Y_NC) prioridad = 1;
     // Sección 120: si faltaba el centro de costo en Xubio, se vuelve a probar cada 30 minutos (por si lo crearon a mano).
     else if (!BIEN.has(e.estado) && ahora - (e.intento || 0) > (e.estado === "centro_no_encontrado" ? 30 * 60 * 1000 : LENTOS.has(e.estado) ? 24 * 3600 * 1000 : REINTENTO_MS))
       prioridad = 1;

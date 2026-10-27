@@ -1683,6 +1683,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Pruebas: unitarias de fechas, importes y nombres; y de pantalla con un Excel "desprolijo" (filas arriba, hoja " egresos ", "categoria", nombre sin acento, cuatro formatos de semana, "$ 1.234,50", "(500)", "pendiente", fila TOTAL) que verifica lo que quedó cargado.
 - [x] Publicado en QA y, con el OK del usuario ("pasar a producción", 27/10/2026), en `MIA.prd.html`.
 
+### 143. Xubio: facturas viejas que no aparecían y notas de crédito tomadas como factura
+
+- [x] 27/10/2026, aviso del usuario (capturas de PABLO MOHR): "MIA me tira que el importe no coincide con la factura de Xubio; en Xubio no es factura, es nota de crédito".
+- [x] Diagnóstico de solo lectura: (1) Xubio devuelve como máximo 1000 comprobantes de compra por consulta (los más nuevos) y no pagina: con la ventana de 13 meses solo se veía desde el 14/07/2026, así que facturas anteriores "no estaban" (la A-00004-00000003 es del 24/06/2026). (2) En las compras Xubio marca el tipo: 1 = factura, 3 = nota de crédito (negativa); MIA no lo miraba y tomaba la NC con el mismo número (la A-00004-00000004 en Xubio solo existe como NC).
+- [x] Arreglo (`xubio/xubio.js`): `listarPorFechas` pide de a un mes (si un tramo llega a 1000 lo parte) y se usa para buscar facturas y en las órdenes de pago (último certificado y control por e-cheq). `buscarFactura` descarta notas de crédito (tipo 3 o importe negativo) y, si hay varios con el mismo número, se queda con la factura (tipo 1).
+- [x] Las líneas con "Importe no coincide", "La factura no está en Xubio" o "varias facturas" se reintentan una vez enseguida.
+- [x] Probado con datos simulados (1502 comprobantes con tope de 1000: se listan todos; la 0003 encuentra la factura de junio y no la NC; la 0004 queda como "la factura no está en Xubio").
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

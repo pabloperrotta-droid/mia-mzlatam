@@ -19,7 +19,7 @@
  *   Xubio asigna solo el número de OP; el del certificado de retención lo pone MIA (el siguiente al último). La OP no lleva observación:
  *   se aplica a las facturas a mano en Xubio y ahí queda el número de factura.
  */
-const { xubio, buscarFactura, buscarProveedor, comoLista, idDe } = require("./xubio");
+const { xubio, buscarFactura, buscarProveedor, comoLista, idDe, listarPorFechas } = require("./xubio");
 
 const CUENTA_CHEQUES = { ID: 799621, id: 799621, nombre: "Cheques diferidos Banco Santander Rio" };
 const BANCO_SANTANDER = { ID: 47, id: 47, nombre: "Banco Santander Río" };
@@ -182,7 +182,7 @@ async function ultimoCertificado(fecha) {
   for (const dias of [120, 400]) {
     const desde = new Date(new Date(fecha + "T12:00:00Z").getTime() - dias * 86400000).toISOString().slice(0, 10);
     const certs = [];
-    for (const op of comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta)))
+    for (const op of await listarPorFechas("pagoBean", new Date(desde + "T12:00:00"), new Date(hasta + "T12:00:00")))
       for (const r of comoLista(op.transaccionRetencionItems)) {
         const m = String(r.numeroComprobante || "").match(/^(\d+)-(\d+)$/);
         m && certs.push({ fecha: String(op.fecha || ""), prefijo: m[1], numero: Number(m[2]) });
@@ -218,7 +218,7 @@ async function crearOP(cuerpo) {
   if (misCheques.size) {
     const desde = new Date(new Date(cuerpo.fecha + "T12:00:00Z").getTime() - 30 * 86400000).toISOString().slice(0, 10),
       hasta = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    const recientes = comoLista(await xubio("GET", "/pagoBean?fechaDesde=" + desde + "&fechaHasta=" + hasta));
+    const recientes = await listarPorFechas("pagoBean", new Date(desde + "T12:00:00"), new Date(hasta + "T12:00:00"));
     const conCheque = recientes.find(
       (op) =>
         idDe(op.proveedor) === cuerpo.proveedor.ID &&

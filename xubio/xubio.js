@@ -117,6 +117,35 @@ function leerFecha(s) {
   return p[0] > 31 ? new Date(p[0], p[1] - 1, p[2]) : new Date(p[2] < 100 ? 2000 + p[2] : p[2], p[1] - 1, p[0]);
 }
 
+// Sección 143: Xubio devuelve como máximo 1000 comprobantes por consulta (los más nuevos), sin paginar
+// (verificado el 27/10/2026: 13 meses → 1000, desde el 14/07). Se pide de a un mes; si un tramo llega a 1000,
+// se parte al medio. Cada tramo se guarda en memoria durante la pasada.
+const TOPE_XUBIO = 1000;
+async function listarPorFechas(bean, desde, hasta) {
+  const tramos = [];
+  for (let d = new Date(desde.getFullYear(), desde.getMonth(), 1); d <= hasta; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    const ini = d < desde ? new Date(desde) : new Date(d),
+      fin = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    tramos.push([ini, fin > hasta ? new Date(hasta) : fin]);
+  }
+  const vistos = new Map();
+  const traer = async (ini, fin) => {
+    const ruta = "/" + bean + "?fechaDesde=" + fechaXubio(ini) + "&fechaHasta=" + fechaXubio(fin);
+    if (!cacheListas[ruta]) cacheListas[ruta] = xubio("GET", ruta).then(comoLista);
+    const l = await cacheListas[ruta];
+    const dias = Math.round((fin - ini) / 864e5);
+    if (l.length >= TOPE_XUBIO && dias >= 1) {
+      const medio = new Date(ini.getTime() + Math.floor(dias / 2) * 864e5);
+      await traer(ini, medio);
+      await traer(new Date(medio.getTime() + 864e5), fin);
+      return;
+    }
+    for (const c of l) vistos.set(c.transaccionid != null ? c.transaccionid : JSON.stringify(c), c);
+  };
+  for (const [a, b] of tramos) await traer(a, b);
+  return [...vistos.values()];
+}
+
 // "0003-00012345" → {pv:"3", numero:"12345"}; "12345" → {pv:null, numero:"12345"}
 function partesNumero(s) {
   const grupos = String(s || "").match(/\d+/g) || [];
@@ -224,15 +253,18 @@ async function buscarFactura({ cuit, factura, fecha }) {
   desde.setMonth(desde.getMonth() - 13);
   const hasta = new Date(hoy);
   hasta.setDate(hasta.getDate() + 30);
-  const ruta = "/comprobanteCompraBean?fechaDesde=" + fechaXubio(desde) + "&fechaHasta=" + fechaXubio(hasta);
-  if (!cacheListas[ruta]) cacheListas[ruta] = xubio("GET", ruta).then(comoLista);
-  const comps = await cacheListas[ruta];
-  const candidatas = comps.filter((c) => {
+  const comps = await listarPorFechas("comprobanteCompraBean", desde, hasta);
+  // Sección 143: las notas de crédito (tipo 3, importe negativo) no son la factura aunque tengan el mismo número.
+  const candidatasTodas = comps.filter((c) => {
     if (idDe(c.proveedor) !== provId) return false;
+    if (Number(c.tipo) === 3 || Number(c.importetotal) < 0) return false;
     const x = partesNumero((c.puntoVenta ? c.puntoVenta + "-" : "") + (c.numeroDocumento || ""));
     const pvX = c.puntoVenta ? sinCeros(c.puntoVenta) : x.pv;
     return x.numero === buscada.numero && (!buscada.pv || !pvX || pvX === buscada.pv);
   });
+  // Si además hay notas de débito u otros con el mismo número, manda la factura (tipo 1).
+  const soloFacturas = candidatasTodas.filter((c) => Number(c.tipo) === 1);
+  const candidatas = soloFacturas.length ? soloFacturas : candidatasTodas;
   if (candidatas.length === 0)
     return {
       estado: "factura_no_encontrada",
@@ -559,4 +591,4 @@ function limpiarCaches() {
   proveedoresCache = null;
 }
 
-module.exports = { limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
+module.exports = { listarPorFechas, limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
