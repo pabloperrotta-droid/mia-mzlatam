@@ -1694,7 +1694,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 144. Pagos: factura "s/f" (sin factura) no va a Xubio
 
 - [x] 27/10/2026, pedido del usuario ("si en el campo factura dice s/f no debe conectarse a Xubio, ya que es sin factura; que en la columna Xubio lo ponga en check verde"). Si el número de factura es "s/f" (también S/F, s / f, SF, s.f., sin factura), el proceso de Xubio no toma la línea (ni para centro de costo ni para orden de pago) y la columna Xubio muestra ✅ "Sin factura (s/f): no va a Xubio" (sin detalle ni botón de reintentar). "Reintentar todas" no las toca.
-- [x] Prueba automática nueva. Proceso de Xubio actualizado. Pantalla: publicado en QA; Producción pendiente del OK del usuario.
+- [x] Prueba automática nueva. Proceso de Xubio actualizado. Pantalla: publicado en QA y, con el OK del usuario ("perfecto, pasalo", 27/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
