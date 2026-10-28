@@ -208,15 +208,17 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
           ),
       );
 }
-// Sección 145: imprimir una tabla de Cash (real o simulado) en PDF apaisado A4, 10 semanas por hoja.
+// Sección 145/146: imprimir una tabla de Cash (real o simulado) en PDF A3 apaisado, 18 semanas por hoja.
 // filas: [{ etiqueta, valores: [número|null por semana], negrita, fondo, notas: [texto chico por semana] }]
 function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFinal }) {
   if (!(window.jspdf && window.jspdf.jsPDF)) return alert("No se pudo cargar el generador de PDF. Probá recargar la página.");
-  const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }),
-    POR_HOJA = 10,
+  const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a3" }),
+    ANCHO_HOJA = 420,
+    ALTO_HOJA = 297,
     X0 = 10,
     ANCHO_ET = 52,
-    ANCHO_COL = (297 - 2 * X0 - ANCHO_ET) / POR_HOJA,
+    POR_HOJA = Math.floor((ANCHO_HOJA - 2 * X0 - ANCHO_ET) / 19),
+    ANCHO_COL = (ANCHO_HOJA - 2 * X0 - ANCHO_ET) / POR_HOJA,
     hoy = new Date(),
     fechaHoy = String(hoy.getDate()).padStart(2, "0") + "/" + String(hoy.getMonth() + 1).padStart(2, "0") + "/" + hoy.getFullYear(),
     hojas = Math.max(1, Math.ceil(semanas.length / POR_HOJA));
@@ -225,7 +227,7 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
     const sems = semanas.slice(h * POR_HOJA, (h + 1) * POR_HOJA);
     doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(30, 30, 30).text(titulo, X0, 13);
     doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(110, 110, 110);
-    doc.text("MZ LATAM · impreso el " + fechaHoy + " · hoja " + (h + 1) + " de " + hojas, 297 - X0, 13, { align: "right" });
+    doc.text("MZ LATAM · impreso el " + fechaHoy + " · hoja " + (h + 1) + " de " + hojas, ANCHO_HOJA - X0, 13, { align: "right" });
     let y = 19;
     for (const t of info || []) doc.text(t, X0, y), (y += 4.5);
     y += 2;
@@ -240,7 +242,7 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
       const alto = f.notas ? 9 : 6.5,
         idx0 = h * POR_HOJA;
       // Si no entra en la hoja (muchas líneas simuladas), sigue en otra con los títulos de las semanas.
-      if (y + alto > 200) {
+      if (y + alto > ALTO_HOJA - 10) {
         doc.addPage();
         doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(titulo + " (continuación)", X0, 13);
         y = 18;
@@ -254,14 +256,14 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
           xd = X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5;
         if (v == null || v === "") return;
         typeof v == "number" && v < 0 ? doc.setTextColor(176, 58, 46) : doc.setTextColor(30, 30, 30);
-        doc.setFontSize(8).text(typeof v == "number" ? fmt(v) : String(v), xd, y + 4.4, { align: "right" });
+        doc.setFontSize(7.5).text(typeof v == "number" ? fmt(v) : String(v), xd, y + 4.4, { align: "right" });
         const n = f.notas && f.notas[idx0 + i];
-        n && doc.setFontSize(6.3).setTextColor(176, 58, 46).text(n, xd, y + 7.6, { align: "right" });
+        n && doc.setFontSize(5.6).setTextColor(176, 58, 46).text(n, xd, y + 7.6, { align: "right" });
       });
       doc.setDrawColor(225, 222, 214).setLineWidth(0.2).line(X0, y + alto, X0 + ANCHO_ET + ANCHO_COL * sems.length, y + alto);
       y += alto;
     }
-    if (tablaFinal && h === hojas - 1 && y < 170) {
+    if (tablaFinal && h === hojas - 1 && y < ALTO_HOJA - 40) {
       y += 8;
       doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(tablaFinal.titulo, X0, y);
       y += 5;
@@ -757,7 +759,7 @@ function CashflowView({
     }, [eo, nt, Mo, previas]);
   // Sección 145: imprimir el Cash real y la simulación (pedido del usuario, 28/10/2026).
   const ZEBRA_PDF = [246, 243, 236],
-    acuerdoFaltan = (saldos) => saldos.map((x) => { const u = Math.max(-x, 0); return u > Fo ? "Faltan " + fmt(u - Fo) : ""; }),
+    acuerdoFaltan = (saldos) => saldos.map((x) => { const u = Math.max(-x, 0); return u > Fo ? "falta " + fmt(u - Fo) : ""; }),
     infoCash = () => [
       "Saldo inicial (caja y bancos hoy): " + fmt(Number(nt) || 0) + "   ·   Acuerdo total disponible: " + fmt(Fo),
       ...(previas.semanas.length ? ["Incluye lo cargado en semanas anteriores: ingresos " + fmt(previas.ingresos) + " · egresos " + fmt(previas.egresos)] : []),
@@ -2988,7 +2990,7 @@ function CashflowView({
             gap: 10,
           },
         },
-        React.createElement("span", null, "CASH", botonImprimir(imprimirCashReal, "PDF del Cash real (A4 apaisado, 10 semanas por hoja) con los bancos")),
+        React.createElement("span", null, "CASH", botonImprimir(imprimirCashReal, "PDF del Cash real (A3 apaisado, 18 semanas por hoja) con los bancos")),
         React.createElement(
           "div",
           { style: { display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" } },
@@ -3575,7 +3577,7 @@ function CashflowView({
             },
           },
           "SIMULACIÓN DE CASH",
-          botonImprimir(imprimirCashSimulado, "PDF de la simulación (A4 apaisado, 10 semanas por hoja)"),
+          botonImprimir(imprimirCashSimulado, "PDF de la simulación (A3 apaisado, 18 semanas por hoja)"),
         ),
         React.createElement(
           "div",

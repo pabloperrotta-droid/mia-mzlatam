@@ -1704,6 +1704,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Corrección encontrada al armarlo: el "Saldo acumulado (con simulación)" no sumaba lo arrastrado de semanas anteriores (Sección 137), así que sin ingresos simulados no coincidía con el real (ej. −$14.186.906 contra −$37.644.365). Ahora arranca igual que el real.
 - [x] Prueba de pantalla nueva (los dos botones generan su PDF). Si las líneas no entran en la hoja, sigue en otra con los títulos de las semanas. Publicado en QA y, con el OK del usuario ("subilo a prod", 28/10/2026), en `MIA.prd.html`.
 
+### 146. Imprimir Cash: A3 apaisado con más semanas por hoja
+
+- [x] 28/10/2026, pedido del usuario ("ponémela en hoja A3 horizontal y más semanas en una misma hoja, así utilizo menos hojas"). Los PDF de Cash real y simulado salen en A3 apaisado con 18 semanas por hoja (antes A4 con 10): las 62 semanas quedan en 4 hojas en lugar de 7. Importes en 7,5 pt y la nota de acuerdo como "falta $…". Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
