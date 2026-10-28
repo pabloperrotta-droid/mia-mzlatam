@@ -226,13 +226,14 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
   await control("Cashflow → Imprimir Cash real y simulado (PDF)", async () => {
     await clic("Cashflow");
     await clic("Ingresos");
+    // La simulación está plegada: se abre con "Simular".
+    await pagina.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Simular"); b && b.click(); });
+    await pagina.waitForTimeout(500);
+    const hay = await pagina.evaluate(() => [...document.querySelectorAll("button")].filter((x) => /Imprimir/.test(x.textContent)).length);
+    if (hay < 2) throw new Error("Hay " + hay + " botón(es) Imprimir (se esperaban 2: Cash y Simulación)");
     for (const [i, titulo] of [[0, "Cashflow real"], [1, "Cashflow simulado"]]) {
       const espera = pagina.waitForEvent("download", { timeout: 15000 });
-      const hay = await pagina.evaluate((k) => {
-        const b = [...document.querySelectorAll("button")].filter((x) => /Imprimir/.test(x.textContent));
-        return b[k] ? (b[k].click(), b.length) : b.length;
-      }, i);
-      if (hay < 2) throw new Error("Hay " + hay + " botón(es) Imprimir (se esperaban 2: Cash y Simulación)");
+      await pagina.evaluate((k) => [...document.querySelectorAll("button")].filter((x) => /Imprimir/.test(x.textContent))[k].click(), i);
       const pdf = fs.readFileSync(await (await espera).path()).toString("latin1");
       if (!pdf.includes(titulo) || !/Saldo acumulado/.test(pdf)) throw new Error("El PDF de " + titulo + " no tiene lo esperado");
     }
