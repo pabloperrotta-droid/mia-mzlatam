@@ -4052,7 +4052,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                       React.createElement(
                         "button",
                         {
-                          onClick: () => No(I),
+                          onClick: () => sinPermisoParaEliminar() || No(I),
                           style: { border: "none", background: "none", cursor: "pointer", color: RED },
                         },
                         React.createElement(Trash2, { size: 13 }),

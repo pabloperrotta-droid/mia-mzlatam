@@ -238,6 +238,22 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
       if (!pdf.includes(titulo) || !/Saldo acumulado/.test(pdf)) throw new Error("El PDF de " + titulo + " no tiene lo esperado");
     }
   });
+  await control("Roles: sin permiso de eliminar no se borra (y avisa)", async () => {
+    const r = await pagina.evaluate(() => {
+      const avisos = [];
+      const alertaReal = window.alert;
+      window.alert = (m) => avisos.push(m);
+      const antes = PERMISO_ELIMINAR.ok;
+      PERMISO_ELIMINAR.ok = false;
+      const bloqueado = sinPermisoParaEliminar();
+      PERMISO_ELIMINAR.ok = true;
+      const permitido = !sinPermisoParaEliminar();
+      PERMISO_ELIMINAR.ok = antes;
+      window.alert = alertaReal;
+      return { bloqueado, permitido, avisos: avisos.length };
+    });
+    if (!r.bloqueado || !r.permitido || r.avisos !== 1) throw new Error(JSON.stringify(r));
+  });
   await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
     const espera = pagina.waitForEvent("download", { timeout: 15000 });
     const n = await pagina.evaluate(() =>

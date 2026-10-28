@@ -210,6 +210,14 @@ function Tbl({ cols: n, rows: d, totalRow: c, widths: p }) {
 
 // Menú "Herramientas" del encabezado (Sección 95): junta las herramientas de administración
 // (papelera, roles, backups, registros, auditoría, historial) en una sola lista desplegable.
+// Sección 147: permiso de eliminar del rol actual (lo fija la App en cada dibujo). Las acciones de borrar
+// llaman a sinPermisoParaEliminar(): si el rol no puede, avisa y no borra.
+const PERMISO_ELIMINAR = { ok: true };
+function sinPermisoParaEliminar() {
+  if (PERMISO_ELIMINAR.ok) return false;
+  window.alert("Tu rol no tiene permiso para eliminar. Pedile a un Admin que lo habilite en Herramientas → Roles (\"Puede eliminar\").");
+  return true;
+}
 function MenuHerramientas({ children }) {
   const [abierto, setAbierto] = useState(false),
     ref = useRef(null),

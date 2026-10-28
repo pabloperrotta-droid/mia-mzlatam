@@ -79,6 +79,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
       },
       obrasScope: { modo: "todos", items: [] },
       puedeFijarTipoCambio: false,
+      puedeEliminar: true,
       puedeRegaliasPresentacion: false,
       herramientasAdmin: oe,
     },
@@ -107,6 +108,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
           "Secciones y permiso": dt || "—",
           "Alcance en Obras": Gt || "—",
           "Tipo de Cambio": Re.puedeFijarTipoCambio ? "Puede fijar" : "No",
+          "Puede eliminar": Re.puedeEliminar === false ? "No" : "Sí",
           "Regalías y Presentación": Re.puedeRegaliasPresentacion ? "Sí" : "No",
           "Herramientas de Admin": vt.length ? vt.join(", ") : "—",
         };
@@ -146,6 +148,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         items: (w.obrasScope && w.obrasScope.items) || [],
       },
       puedeFijarTipoCambio: !!w.puedeFijarTipoCambio,
+      puedeEliminar: w.puedeEliminar !== false,
       puedeRegaliasPresentacion: !!w.puedeRegaliasPresentacion,
       herramientasAdmin: { ...oe, ...(w.herramientasAdmin || {}) },
     }),
@@ -210,6 +213,7 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
         permisosPorSeccion: P.permisosPorSeccion,
         obrasScope: P.obrasScope,
         puedeFijarTipoCambio: P.puedeFijarTipoCambio,
+        puedeEliminar: P.puedeEliminar !== false,
         puedeRegaliasPresentacion: !!P.puedeRegaliasPresentacion,
         herramientasAdmin: P.herramientasAdmin,
       }),
@@ -318,6 +322,16 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
           React.createElement(
             "div",
             { style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 } },
+            React.createElement(
+              "label",
+              { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" } },
+              React.createElement("input", {
+                type: "checkbox",
+                checked: P.puedeEliminar !== false,
+                onChange: () => M((w) => ({ ...w, puedeEliminar: w.puedeEliminar === false })),
+              }),
+              " Puede eliminar (obras, facturas, líneas de Pagos, proveedores, pagos, sub obras, órdenes de compra, adicionales, categorías y líneas de Cashflow). Destildado: carga y edita, pero no borra",
+            ),
             React.createElement(
               "label",
               { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" } },
@@ -729,6 +743,8 @@ function RolesAdminPanel({ onClose: n, roles: d, obras: c, onSave: p, onDelete: 
                       { style: { fontSize: 12, color: MUTED, marginTop: 3 } },
                       "Puede fijar el tipo de cambio",
                     ),
+                  w.puedeEliminar === false &&
+                    React.createElement("div", { style: { fontSize: 12, color: RED, marginTop: 3 } }, "No puede eliminar"),
                   w.puedeRegaliasPresentacion &&
                     React.createElement(
                       "div",

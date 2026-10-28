@@ -247,6 +247,8 @@ function App({ sesion = null } = {}) {
     rehaciendoRef = useRef(false),
     [avisoDeshacer, setAvisoDeshacer] = useState(null);
   puedeGuardarRef.current = puedeGuardar;
+  // Sección 147: Admin y Comercial pueden eliminar; los roles creados, salvo que se les destilde "Puede eliminar".
+  PERMISO_ELIMINAR.ok = ct === "admin" || ct === "comercial" || (ct === "custom" && !!so && so.puedeEliminar !== false);
   // Rol actual para las notas de Fallas de guardado (las funciones que quedan de la primera carga veían el rol viejo).
   rolActualRef.current =
     (sesion ? (sesion.nombre || sesion.email) + " · " : "") + (ct === "admin" ? "Admin" : ct === "comercial" ? "Comercial" : so ? so.nombre : ct || "—");

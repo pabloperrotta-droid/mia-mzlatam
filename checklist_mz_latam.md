@@ -1710,6 +1710,12 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Simulado: las líneas de clientes simulados aparecen solo en el primer bloque de semanas; en los bloques siguientes va solo el cashflow (Total ingresos simulados, saldos y uso del acuerdo). Pedido del usuario.
 - [x] Publicado en QA. Producción: pendiente del OK del usuario.
 
+### 147. Roles: permiso "Puede eliminar"
+
+- [x] 28/10/2026, pedido del usuario ("en Roles agregame la opción de poder eliminar obras… o cosas"). En Herramientas → Roles, al crear o editar un rol, nuevo tilde **"Puede eliminar"** (Permisos adicionales). Destildado, el rol carga y edita pero no borra: al intentarlo, MIA avisa "Tu rol no tiene permiso para eliminar" y no hace nada. En la lista de roles figura "No puede eliminar"; en el Excel de roles, columna "Puede eliminar".
+- [x] Alcance: obras, facturas, líneas de Pagos, proveedores y pagos de Costos, sub obras (y sus proveedores, pagos y adicionales), órdenes de compra, adicionales, imputaciones habituales de proveedores, y en Cashflow categorías, líneas de ingreso simulado y bancos. Admin y Comercial siempre pueden. Los roles que ya existían quedan como estaban (pueden eliminar) hasta que se les destilde.
+- [x] Prueba de pantalla nueva. Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

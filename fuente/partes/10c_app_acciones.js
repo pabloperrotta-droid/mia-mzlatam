@@ -141,6 +141,7 @@
       _t("Editó proveedor en " + e + ": " + (o.proveedor || "").toUpperCase()));
   }
   function Sr(e, t) {
+    if (sinPermisoParaEliminar()) return;
     const o = (proveedoresMap[e] || [])[t]?.proveedor || "";
     (setProveedoresMap((a) => ({ ...a, [e]: a[e].filter((r, i) => i !== t) })), _t("Borró proveedor " + o + " de " + e));
   }
@@ -166,6 +167,7 @@
       _t("Editó pago en " + e + ": " + (o.proveedor || "").toUpperCase()));
   }
   function Cr(e, t) {
+    if (sinPermisoParaEliminar()) return;
     const o = (pagosMap[e] || [])[t];
     (setPagosMap((a) => ({ ...a, [e]: a[e].filter((r, i) => i !== t) })),
       _t("Borró pago" + (o ? " de " + o.proveedor + " (" + fmt(o.monto) + ")" : "") + " en " + e));
@@ -379,6 +381,7 @@
     !t || !t.fechaPagado || t.registradoEnCostos || Ma(e, t.fechaPagado);
   }
   function Fr(e) {
+    if (sinPermisoParaEliminar()) return;
     const t = pagosSemanales.find((o) => o.id === e);
     (Ua(e),
       setPagosSemanales((o) => o.filter((a) => a.id !== e)),
@@ -618,6 +621,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     }));
   }
   function borrarAdicionalSubObra(e, t, o) {
+    if (sinPermisoParaEliminar()) return;
     setCostoSubobrasMap((a) => ({
       ...a,
       [e]: a[e].map((r, i) => (i !== t ? r : { ...r, adicionales: (r.adicionales || []).filter((u, m) => m !== o) })),
@@ -645,6 +649,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
       ));
   }
   function borrarSubObra(e, t) {
+    if (sinPermisoParaEliminar()) return;
     const o = (costoSubobrasMap[e] || [])[t] || {},
       a = subCostoKey(e, o.id);
     (setCostoSubobrasMap((r) => ({ ...r, [e]: r[e].filter((i, u) => u !== t) })),
@@ -684,6 +689,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     }));
   }
   function borrarProveedorSubObra(e, t) {
+    if (sinPermisoParaEliminar()) return;
     setSubCostoProveedoresMap((o) => ({ ...o, [e]: o[e].filter((a, r) => r !== t) }));
   }
   function agregarPagoSubObra(e, t) {
@@ -722,6 +728,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     }));
   }
   function borrarPagoSubObra(e, t) {
+    if (sinPermisoParaEliminar()) return;
     setSubCostoPagosMap((o) => ({ ...o, [e]: o[e].filter((a, r) => r !== t) }));
   }
   function ja(e) {
@@ -819,6 +826,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
       ));
   }
   function Zr(e) {
+    if (sinPermisoParaEliminar()) return;
     if (!dbRef.current) return;
     const t = g.find((u) => u.id === e),
       o = dbRef.current.collection("facturas");
@@ -1082,6 +1090,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     tn(false);
   }
   function si(e, t) {
+    if (sinPermisoParaEliminar()) return;
     const o = obraKey(e, t),
       a = g.filter((x) => x.cliente === e && x.obra === t);
     setObras((x) => x.filter((D) => obraKey(D.cliente, D.obra) !== o));
@@ -1278,6 +1287,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     }));
   }
   function borrarAdicionalObra(e, t) {
+    if (sinPermisoParaEliminar()) return;
     (setAdicionalesMap((o) => ({ ...o, [e]: o[e].filter((a, r) => r !== t) })), _t("Borró adicional en " + e));
   }
   function agregarOrdenCompra(e, t) {
@@ -1315,6 +1325,7 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     }));
   }
   function borrarOrdenCompra(e, t) {
+    if (sinPermisoParaEliminar()) return;
     const o = (((ordenesCompraMap[e] || [])[t] || {}).ordenCompra || "").trim();
     (setOrdenesCompraMap((a) => ({ ...a, [e]: a[e].filter((r, i) => i !== t) })),
       o &&

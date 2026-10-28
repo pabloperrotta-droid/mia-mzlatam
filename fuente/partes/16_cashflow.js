@@ -199,7 +199,7 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
             React.createElement(
               "button",
               {
-                onClick: onDelete,
+                onClick: () => sinPermisoParaEliminar() || onDelete(),
                 title: "Eliminar categoría",
                 style: { border: "none", background: "none", cursor: "pointer", color: RED },
               },
@@ -1549,7 +1549,7 @@ function CashflowView({
                           React.createElement(
                             "button",
                             {
-                              onClick: () => ve((j) => j.filter((Q) => Q !== s)),
+                              onClick: () => sinPermisoParaEliminar() || ve((j) => j.filter((Q) => Q !== s)),
                               style: { border: "none", background: "none", cursor: "pointer", color: RED },
                             },
                             React.createElement(Trash2, { size: 11 }),
@@ -3494,7 +3494,7 @@ function CashflowView({
                   React.createElement(
                     "button",
                     {
-                      onClick: () => nn(s.id),
+                      onClick: () => sinPermisoParaEliminar() || nn(s.id),
                       style: { border: "none", background: "none", cursor: "pointer", color: RED, display: "flex" },
                     },
                     React.createElement(Trash2, { size: 12 }),
@@ -3722,7 +3722,7 @@ function CashflowView({
                       React.createElement(
                         "button",
                         {
-                          onClick: () => xt(s.id),
+                          onClick: () => sinPermisoParaEliminar() || xt(s.id),
                           style: { border: "none", background: "none", cursor: "pointer", color: RED, display: "flex" },
                         },
                         React.createElement(Trash2, { size: 13 }),
