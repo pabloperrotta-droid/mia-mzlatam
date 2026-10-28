@@ -1704,9 +1704,10 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Corrección encontrada al armarlo: el "Saldo acumulado (con simulación)" no sumaba lo arrastrado de semanas anteriores (Sección 137), así que sin ingresos simulados no coincidía con el real (ej. −$14.186.906 contra −$37.644.365). Ahora arranca igual que el real.
 - [x] Prueba de pantalla nueva (los dos botones generan su PDF). Si las líneas no entran en la hoja, sigue en otra con los títulos de las semanas. Publicado en QA y, con el OK del usuario ("subilo a prod", 28/10/2026), en `MIA.prd.html`.
 
-### 146. Imprimir Cash: A3 apaisado con más semanas por hoja
+### 146. Imprimir Cash: A3 apaisado, bloques de semanas uno debajo del otro
 
-- [x] 28/10/2026, pedido del usuario ("ponémela en hoja A3 horizontal y más semanas en una misma hoja, así utilizo menos hojas"). Los PDF de Cash real y simulado salen en A3 apaisado con 18 semanas por hoja (antes A4 con 10): las 62 semanas quedan en 4 hojas en lugar de 7. Importes en 7,5 pt y la nota de acuerdo como "falta $…". Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] 28/10/2026, pedido del usuario ("ponémela en hoja A3 horizontal y más semanas en una misma hoja, así utilizo menos hojas"; "poner una línea abajo de otra en lugar de una hoja por hoja"). Los PDF de Cash real y simulado salen en A3 apaisado; las semanas van en bloques de 18 columnas, uno debajo del otro en la misma hoja (cada bloque con su fila de títulos "Sem. dd/mm" y el rango). Si un bloque no entra en lo que queda, pasa a la hoja siguiente; si un bloque solo es más alto que la hoja (muchas líneas simuladas), sigue en la próxima repitiendo los títulos. El Cash real de 62 semanas (con Bancos) entra en una hoja. Pie con título, fecha y número de hoja.
+- [x] Publicado en QA. Producción: pendiente del OK del usuario.
 
 ## 41. Pendientes / recomendaciones
 

@@ -208,49 +208,62 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
           ),
       );
 }
-// Sección 145/146: imprimir una tabla de Cash (real o simulado) en PDF A3 apaisado, 18 semanas por hoja.
+// Sección 145/146: imprimir una tabla de Cash (real o simulado) en PDF A3 apaisado, en bloques de 18 semanas.
 // filas: [{ etiqueta, valores: [número|null por semana], negrita, fondo, notas: [texto chico por semana] }]
 function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFinal }) {
   if (!(window.jspdf && window.jspdf.jsPDF)) return alert("No se pudo cargar el generador de PDF. Probá recargar la página.");
+  // Sección 146: A3 apaisado; los bloques de 18 semanas van uno debajo del otro (no uno por hoja), así se usan
+  // menos hojas. Si un bloque no entra en lo que queda de la hoja, pasa a la siguiente.
   const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a3" }),
     ANCHO_HOJA = 420,
     ALTO_HOJA = 297,
     X0 = 10,
     ANCHO_ET = 52,
-    POR_HOJA = Math.floor((ANCHO_HOJA - 2 * X0 - ANCHO_ET) / 19),
-    ANCHO_COL = (ANCHO_HOJA - 2 * X0 - ANCHO_ET) / POR_HOJA,
+    POR_BLOQUE = Math.floor((ANCHO_HOJA - 2 * X0 - ANCHO_ET) / 19),
+    ANCHO_COL = (ANCHO_HOJA - 2 * X0 - ANCHO_ET) / POR_BLOQUE,
     hoy = new Date(),
     fechaHoy = String(hoy.getDate()).padStart(2, "0") + "/" + String(hoy.getMonth() + 1).padStart(2, "0") + "/" + hoy.getFullYear(),
-    hojas = Math.max(1, Math.ceil(semanas.length / POR_HOJA));
-  for (let h = 0; h < hojas; h++) {
-    h > 0 && doc.addPage();
-    const sems = semanas.slice(h * POR_HOJA, (h + 1) * POR_HOJA);
-    doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(30, 30, 30).text(titulo, X0, 13);
-    doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(110, 110, 110);
-    doc.text("MZ LATAM · impreso el " + fechaHoy + " · hoja " + (h + 1) + " de " + hojas, ANCHO_HOJA - X0, 13, { align: "right" });
-    let y = 19;
-    for (const t of info || []) doc.text(t, X0, y), (y += 4.5);
-    y += 2;
+    bloques = Math.max(1, Math.ceil(semanas.length / POR_BLOQUE)),
+    altoFila = (f) => (f.notas ? 9 : 6.5),
+    altoBloque = 7 + filas.reduce((a, f) => a + altoFila(f), 0) + 6;
+  let hoja = 1,
+    y = 0;
+  const pie = () => {
+      doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(130, 130, 130);
+      doc.text("MZ LATAM · " + titulo + " · impreso el " + fechaHoy + " · hoja " + hoja, ANCHO_HOJA - X0, ALTO_HOJA - 5, { align: "right" });
+    },
+    nuevaHoja = () => {
+      pie();
+      doc.addPage();
+      hoja++;
+      y = 12;
+    };
+  doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(30, 30, 30).text(titulo, X0, 14);
+  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(110, 110, 110);
+  y = 20;
+  for (const t of info || []) doc.text(t, X0, y), (y += 4.8);
+  y += 3;
+  for (let b = 0; b < bloques; b++) {
+    const idx0 = b * POR_BLOQUE,
+      sems = semanas.slice(idx0, idx0 + POR_BLOQUE),
+      ancho = ANCHO_ET + ANCHO_COL * sems.length;
+    altoBloque <= ALTO_HOJA - 12 && y + altoBloque > ALTO_HOJA - 10 && nuevaHoja();
     const encabezado = () => {
-      doc.setFillColor(239, 237, 231).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, 7, "F");
+      doc.setFillColor(239, 237, 231).rect(X0, y, ancho, 7, "F");
       doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(60, 60, 60);
+      doc.text(semanaLabelCorta(sems[0]) + " a " + semanaLabelCorta(sems[sems.length - 1]), X0 + 2, y + 4.8);
       sems.forEach((s, i) => doc.text("Sem. " + semanaLabelCorta(s), X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5, y + 4.8, { align: "right" }));
       y += 7;
     };
     encabezado();
     for (const f of filas) {
-      const alto = f.notas ? 9 : 6.5,
-        idx0 = h * POR_HOJA;
-      // Si no entra en la hoja (muchas líneas simuladas), sigue en otra con los títulos de las semanas.
-      if (y + alto > ALTO_HOJA - 10) {
-        doc.addPage();
-        doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(titulo + " (continuación)", X0, 13);
-        y = 18;
-        encabezado();
-      }
-      f.fondo && doc.setFillColor(...f.fondo).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, alto, "F");
+      const alto = altoFila(f);
+      // Un bloque más alto que la hoja (muchas líneas simuladas) sigue en la próxima con los títulos de las semanas.
+      y + alto > ALTO_HOJA - 10 && (nuevaHoja(), encabezado());
+      f.fondo && doc.setFillColor(...f.fondo).rect(X0, y, ancho, alto, "F");
       doc.setFont("helvetica", f.negrita ? "bold" : "normal").setFontSize(8.5).setTextColor(30, 30, 30);
       doc.text(doc.splitTextToSize(String(f.etiqueta), ANCHO_ET - 3)[0], X0 + 2, y + 4.4);
+      doc.setFont("helvetica", f.negrita ? "bold" : "normal");
       sems.forEach((s, i) => {
         const v = f.valores[idx0 + i],
           xd = X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5;
@@ -260,26 +273,30 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
         const n = f.notas && f.notas[idx0 + i];
         n && doc.setFontSize(5.6).setTextColor(176, 58, 46).text(n, xd, y + 7.6, { align: "right" });
       });
-      doc.setDrawColor(225, 222, 214).setLineWidth(0.2).line(X0, y + alto, X0 + ANCHO_ET + ANCHO_COL * sems.length, y + alto);
+      doc.setDrawColor(225, 222, 214).setLineWidth(0.2).line(X0, y + alto, X0 + ancho, y + alto);
       y += alto;
     }
-    if (tablaFinal && h === hojas - 1 && y < ALTO_HOJA - 40) {
-      y += 8;
-      doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(tablaFinal.titulo, X0, y);
+    y += 6;
+  }
+  if (tablaFinal) {
+    const alto = 12 + 5 * tablaFinal.filas.length;
+    y + alto > ALTO_HOJA - 10 && nuevaHoja();
+    y += 2;
+    doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(tablaFinal.titulo, X0, y);
+    y += 5;
+    const anchos = tablaFinal.anchos;
+    let x = X0;
+    doc.setFontSize(8).setTextColor(90, 90, 90);
+    tablaFinal.columnas.forEach((c, i) => (doc.text(c, i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
+    y += 1.5;
+    for (const fila of tablaFinal.filas) {
       y += 5;
-      const anchos = tablaFinal.anchos;
-      let x = X0;
-      doc.setFontSize(8).setTextColor(90, 90, 90);
-      tablaFinal.columnas.forEach((c, i) => (doc.text(c, i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
-      y += 1.5;
-      for (const fila of tablaFinal.filas) {
-        y += 5;
-        x = X0;
-        doc.setFont("helvetica", fila.negrita ? "bold" : "normal").setTextColor(30, 30, 30);
-        fila.celdas.forEach((c, i) => (doc.text(String(c), i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
-      }
+      x = X0;
+      doc.setFont("helvetica", fila.negrita ? "bold" : "normal").setTextColor(30, 30, 30);
+      fila.celdas.forEach((c, i) => (doc.text(String(c), i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
     }
   }
+  pie();
   doc.save(archivo + " " + fechaHoy.replace(/\//g, "-") + ".pdf");
 }
 // Sección 138: mapa de valores sin los importes tildados como pagados.
@@ -2990,7 +3007,7 @@ function CashflowView({
             gap: 10,
           },
         },
-        React.createElement("span", null, "CASH", botonImprimir(imprimirCashReal, "PDF del Cash real (A3 apaisado, 18 semanas por hoja) con los bancos")),
+        React.createElement("span", null, "CASH", botonImprimir(imprimirCashReal, "PDF del Cash real (A3 apaisado, bloques de 18 semanas uno debajo del otro) con los bancos")),
         React.createElement(
           "div",
           { style: { display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" } },
@@ -3577,7 +3594,7 @@ function CashflowView({
             },
           },
           "SIMULACIÓN DE CASH",
-          botonImprimir(imprimirCashSimulado, "PDF de la simulación (A3 apaisado, 18 semanas por hoja)"),
+          botonImprimir(imprimirCashSimulado, "PDF de la simulación (A3 apaisado, bloques de 18 semanas uno debajo del otro)"),
         ),
         React.createElement(
           "div",
