@@ -229,13 +229,23 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
     let y = 19;
     for (const t of info || []) doc.text(t, X0, y), (y += 4.5);
     y += 2;
-    doc.setFillColor(239, 237, 231).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, 7, "F");
-    doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(60, 60, 60);
-    sems.forEach((s, i) => doc.text("Sem. " + semanaLabelCorta(s), X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5, y + 4.8, { align: "right" }));
-    y += 7;
+    const encabezado = () => {
+      doc.setFillColor(239, 237, 231).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, 7, "F");
+      doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(60, 60, 60);
+      sems.forEach((s, i) => doc.text("Sem. " + semanaLabelCorta(s), X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5, y + 4.8, { align: "right" }));
+      y += 7;
+    };
+    encabezado();
     for (const f of filas) {
       const alto = f.notas ? 9 : 6.5,
         idx0 = h * POR_HOJA;
+      // Si no entra en la hoja (muchas líneas simuladas), sigue en otra con los títulos de las semanas.
+      if (y + alto > 200) {
+        doc.addPage();
+        doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(titulo + " (continuación)", X0, 13);
+        y = 18;
+        encabezado();
+      }
       f.fondo && doc.setFillColor(...f.fondo).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, alto, "F");
       doc.setFont("helvetica", f.negrita ? "bold" : "normal").setFontSize(8.5).setTextColor(30, 30, 30);
       doc.text(doc.splitTextToSize(String(f.etiqueta), ANCHO_ET - 3)[0], X0 + 2, y + 4.4);
