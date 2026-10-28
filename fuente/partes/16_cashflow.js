@@ -225,7 +225,9 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
     fechaHoy = String(hoy.getDate()).padStart(2, "0") + "/" + String(hoy.getMonth() + 1).padStart(2, "0") + "/" + hoy.getFullYear(),
     bloques = Math.max(1, Math.ceil(semanas.length / POR_BLOQUE)),
     altoFila = (f) => (f.notas ? 9 : 6.5),
-    altoBloque = 7 + filas.reduce((a, f) => a + altoFila(f), 0) + 6;
+    // soloPrimerBloque: filas que van solo en el primer bloque de semanas (las líneas de clientes simulados).
+    filasDe = (b) => filas.filter((f) => !f.soloPrimerBloque || b === 0),
+    altoBloque = (b) => 7 + filasDe(b).reduce((a, f) => a + altoFila(f), 0) + 6;
   let hoja = 1,
     y = 0;
   const pie = () => {
@@ -247,7 +249,7 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
     const idx0 = b * POR_BLOQUE,
       sems = semanas.slice(idx0, idx0 + POR_BLOQUE),
       ancho = ANCHO_ET + ANCHO_COL * sems.length;
-    altoBloque <= ALTO_HOJA - 12 && y + altoBloque > ALTO_HOJA - 10 && nuevaHoja();
+    altoBloque(b) <= ALTO_HOJA - 12 && y + altoBloque(b) > ALTO_HOJA - 10 && nuevaHoja();
     const encabezado = () => {
       doc.setFillColor(239, 237, 231).rect(X0, y, ancho, 7, "F");
       doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(60, 60, 60);
@@ -256,7 +258,7 @@ function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFina
       y += 7;
     };
     encabezado();
-    for (const f of filas) {
+    for (const f of filasDe(b)) {
       const alto = altoFila(f);
       // Un bloque más alto que la hoja (muchas líneas simuladas) sigue en la próxima con los títulos de las semanas.
       y + alto > ALTO_HOJA - 10 && (nuevaHoja(), encabezado());
@@ -815,7 +817,8 @@ function CashflowView({
       semanas: ae,
       archivo: "Cashflow simulado",
       filas: [
-        ...qt.map((l, i) => ({ etiqueta: l.nombre || "(sin nombre)", valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null })),
+        // Pedido del usuario: las líneas de clientes simulados solo en el primer bloque de semanas.
+        ...qt.map((l, i) => ({ etiqueta: l.nombre || "(sin nombre)", valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true })),
         { etiqueta: "TOTAL INGRESOS SIMULADOS", valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
         { etiqueta: "Saldo acumulado (real)", valores: vo },
         { etiqueta: "Saldo acumulado (con simulación)", valores: Yo, negrita: true, fondo: ZEBRA_PDF },

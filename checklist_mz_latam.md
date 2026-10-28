@@ -1707,6 +1707,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 ### 146. Imprimir Cash: A3 apaisado, bloques de semanas uno debajo del otro
 
 - [x] 28/10/2026, pedido del usuario ("ponémela en hoja A3 horizontal y más semanas en una misma hoja, así utilizo menos hojas"; "poner una línea abajo de otra en lugar de una hoja por hoja"). Los PDF de Cash real y simulado salen en A3 apaisado; las semanas van en bloques de 18 columnas, uno debajo del otro en la misma hoja (cada bloque con su fila de títulos "Sem. dd/mm" y el rango). Si un bloque no entra en lo que queda, pasa a la hoja siguiente; si un bloque solo es más alto que la hoja (muchas líneas simuladas), sigue en la próxima repitiendo los títulos. El Cash real de 62 semanas (con Bancos) entra en una hoja. Pie con título, fecha y número de hoja.
+- [x] Simulado: las líneas de clientes simulados aparecen solo en el primer bloque de semanas; en los bloques siguientes va solo el cashflow (Total ingresos simulados, saldos y uso del acuerdo). Pedido del usuario.
 - [x] Publicado en QA. Producción: pendiente del OK del usuario.
 
 ## 41. Pendientes / recomendaciones
