@@ -223,6 +223,20 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.setInputFiles('input[type="file"][accept=".xlsx,.xls,.csv"]', tmp);
     await pagina.waitForFunction(() => /no se reconoció ninguna semana/.test(document.body.innerText), null, { timeout: 10000 });
   });
+  await control("Cashflow → Imprimir Cash real y simulado (PDF)", async () => {
+    await clic("Cashflow");
+    await clic("Ingresos");
+    for (const [i, titulo] of [[0, "Cashflow real"], [1, "Cashflow simulado"]]) {
+      const espera = pagina.waitForEvent("download", { timeout: 15000 });
+      const hay = await pagina.evaluate((k) => {
+        const b = [...document.querySelectorAll("button")].filter((x) => /Imprimir/.test(x.textContent));
+        return b[k] ? (b[k].click(), b.length) : b.length;
+      }, i);
+      if (hay < 2) throw new Error("Hay " + hay + " botón(es) Imprimir (se esperaban 2: Cash y Simulación)");
+      const pdf = fs.readFileSync(await (await espera).path()).toString("latin1");
+      if (!pdf.includes(titulo) || !/Saldo acumulado/.test(pdf)) throw new Error("El PDF de " + titulo + " no tiene lo esperado");
+    }
+  });
   await control("Recibos efectivo: PDF con un recibo por línea en efectivo (2 por hoja)", async () => {
     const espera = pagina.waitForEvent("download", { timeout: 15000 });
     const n = await pagina.evaluate(() =>

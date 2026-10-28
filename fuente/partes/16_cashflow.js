@@ -208,6 +208,68 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
           ),
       );
 }
+// Sección 145: imprimir una tabla de Cash (real o simulado) en PDF apaisado A4, 10 semanas por hoja.
+// filas: [{ etiqueta, valores: [número|null por semana], negrita, fondo, notas: [texto chico por semana] }]
+function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFinal }) {
+  if (!(window.jspdf && window.jspdf.jsPDF)) return alert("No se pudo cargar el generador de PDF. Probá recargar la página.");
+  const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" }),
+    POR_HOJA = 10,
+    X0 = 10,
+    ANCHO_ET = 52,
+    ANCHO_COL = (297 - 2 * X0 - ANCHO_ET) / POR_HOJA,
+    hoy = new Date(),
+    fechaHoy = String(hoy.getDate()).padStart(2, "0") + "/" + String(hoy.getMonth() + 1).padStart(2, "0") + "/" + hoy.getFullYear(),
+    hojas = Math.max(1, Math.ceil(semanas.length / POR_HOJA));
+  for (let h = 0; h < hojas; h++) {
+    h > 0 && doc.addPage();
+    const sems = semanas.slice(h * POR_HOJA, (h + 1) * POR_HOJA);
+    doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(30, 30, 30).text(titulo, X0, 13);
+    doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(110, 110, 110);
+    doc.text("MZ LATAM · impreso el " + fechaHoy + " · hoja " + (h + 1) + " de " + hojas, 297 - X0, 13, { align: "right" });
+    let y = 19;
+    for (const t of info || []) doc.text(t, X0, y), (y += 4.5);
+    y += 2;
+    doc.setFillColor(239, 237, 231).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, 7, "F");
+    doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(60, 60, 60);
+    sems.forEach((s, i) => doc.text("Sem. " + semanaLabelCorta(s), X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5, y + 4.8, { align: "right" }));
+    y += 7;
+    for (const f of filas) {
+      const alto = f.notas ? 9 : 6.5,
+        idx0 = h * POR_HOJA;
+      f.fondo && doc.setFillColor(...f.fondo).rect(X0, y, ANCHO_ET + ANCHO_COL * sems.length, alto, "F");
+      doc.setFont("helvetica", f.negrita ? "bold" : "normal").setFontSize(8.5).setTextColor(30, 30, 30);
+      doc.text(doc.splitTextToSize(String(f.etiqueta), ANCHO_ET - 3)[0], X0 + 2, y + 4.4);
+      sems.forEach((s, i) => {
+        const v = f.valores[idx0 + i],
+          xd = X0 + ANCHO_ET + ANCHO_COL * (i + 1) - 1.5;
+        if (v == null || v === "") return;
+        typeof v == "number" && v < 0 ? doc.setTextColor(176, 58, 46) : doc.setTextColor(30, 30, 30);
+        doc.setFontSize(8).text(typeof v == "number" ? fmt(v) : String(v), xd, y + 4.4, { align: "right" });
+        const n = f.notas && f.notas[idx0 + i];
+        n && doc.setFontSize(6.3).setTextColor(176, 58, 46).text(n, xd, y + 7.6, { align: "right" });
+      });
+      doc.setDrawColor(225, 222, 214).setLineWidth(0.2).line(X0, y + alto, X0 + ANCHO_ET + ANCHO_COL * sems.length, y + alto);
+      y += alto;
+    }
+    if (tablaFinal && h === hojas - 1 && y < 170) {
+      y += 8;
+      doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30, 30, 30).text(tablaFinal.titulo, X0, y);
+      y += 5;
+      const anchos = tablaFinal.anchos;
+      let x = X0;
+      doc.setFontSize(8).setTextColor(90, 90, 90);
+      tablaFinal.columnas.forEach((c, i) => (doc.text(c, i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
+      y += 1.5;
+      for (const fila of tablaFinal.filas) {
+        y += 5;
+        x = X0;
+        doc.setFont("helvetica", fila.negrita ? "bold" : "normal").setTextColor(30, 30, 30);
+        fila.celdas.forEach((c, i) => (doc.text(String(c), i ? x + anchos[i] - 1.5 : x + 1, y, i ? { align: "right" } : undefined), (x += anchos[i])));
+      }
+    }
+  }
+  doc.save(archivo + " " + fechaHoy.replace(/\//g, "-") + ".pdf");
+}
 // Sección 138: mapa de valores sin los importes tildados como pagados.
 function sinPagados(m, pagados) {
   const p = pagados || {};
@@ -678,10 +740,66 @@ function CashflowView({
         s
       );
     }, [ae, qt]),
+    // Sección 145: el saldo con simulación arranca igual que el real (incluye lo arrastrado de semanas anteriores).
     Yo = useMemo(() => {
-      let s = Number(nt) || 0;
+      let s = (Number(nt) || 0) + previas.neto;
       return eo.map((b) => ((s += b.neto + (Mo[b.semana] || 0)), s));
-    }, [eo, nt, Mo]);
+    }, [eo, nt, Mo, previas]);
+  // Sección 145: imprimir el Cash real y la simulación (pedido del usuario, 28/10/2026).
+  const ZEBRA_PDF = [246, 243, 236],
+    acuerdoFaltan = (saldos) => saldos.map((x) => { const u = Math.max(-x, 0); return u > Fo ? "Faltan " + fmt(u - Fo) : ""; }),
+    infoCash = () => [
+      "Saldo inicial (caja y bancos hoy): " + fmt(Number(nt) || 0) + "   ·   Acuerdo total disponible: " + fmt(Fo),
+      ...(previas.semanas.length ? ["Incluye lo cargado en semanas anteriores: ingresos " + fmt(previas.ingresos) + " · egresos " + fmt(previas.egresos)] : []),
+    ];
+  function imprimirCashReal() {
+    imprimirTablaCashPdf({
+      titulo: "Cashflow real",
+      info: infoCash(),
+      semanas: ae,
+      archivo: "Cashflow real",
+      filas: [
+        { etiqueta: "Ingresos", valores: eo.map((x) => x.ingresos) },
+        { etiqueta: "Egresos", valores: eo.map((x) => x.egresos), fondo: ZEBRA_PDF },
+        { etiqueta: "Neto semanal", valores: eo.map((x) => x.neto), negrita: true },
+        { etiqueta: "Saldo acumulado", valores: vo, negrita: true, fondo: ZEBRA_PDF },
+        { etiqueta: "Caja", valores: vo.map((x) => Math.max(x, 0)) },
+        { etiqueta: "Utilizar acuerdo", valores: vo.map((x) => Math.max(-x, 0)), notas: acuerdoFaltan(vo), fondo: ZEBRA_PDF },
+      ],
+      tablaFinal: Ee.length
+        ? {
+            titulo: "Bancos",
+            columnas: ["Banco", "Acuerdo", "Usado", "Disponible"],
+            anchos: [60, 35, 35, 35],
+            filas: [
+              ...Ee.map((b) => ({ celdas: [b.nombre || "—", fmt(Number(b.acuerdo) || 0), fmt(Number(b.utilizado) || 0), fmt((Number(b.acuerdo) || 0) - (Number(b.utilizado) || 0))] })),
+              { negrita: true, celdas: ["TOTAL", fmt(qo), fmt(ao), fmt(Fo)] },
+            ],
+          }
+        : null,
+    });
+  }
+  function imprimirCashSimulado() {
+    imprimirTablaCashPdf({
+      titulo: "Cashflow simulado",
+      info: [...infoCash(), "Ingresos simulados: líneas hipotéticas que se suman al cashflow real (no modifican los ingresos ni egresos reales)."],
+      semanas: ae,
+      archivo: "Cashflow simulado",
+      filas: [
+        ...qt.map((l, i) => ({ etiqueta: l.nombre || "(sin nombre)", valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null })),
+        { etiqueta: "TOTAL INGRESOS SIMULADOS", valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
+        { etiqueta: "Saldo acumulado (real)", valores: vo },
+        { etiqueta: "Saldo acumulado (con simulación)", valores: Yo, negrita: true, fondo: ZEBRA_PDF },
+        { etiqueta: "Utilizar acuerdo (con simulación)", valores: Yo.map((x) => Math.max(-x, 0)), notas: acuerdoFaltan(Yo) },
+      ],
+    });
+  }
+  const botonImprimir = (fn, titulo) =>
+    React.createElement(
+      "button",
+      { onClick: fn, style: { ...smallBtnGhost, marginLeft: 10, fontWeight: 600 }, title: titulo },
+      "🖨 Imprimir",
+    );
   function yo(s, b) {
     let R = 0;
     return (
@@ -2860,7 +2978,7 @@ function CashflowView({
             gap: 10,
           },
         },
-        React.createElement("span", null, "CASH"),
+        React.createElement("span", null, "CASH", botonImprimir(imprimirCashReal, "PDF del Cash real (A4 apaisado, 10 semanas por hoja) con los bancos")),
         React.createElement(
           "div",
           { style: { display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" } },
@@ -3447,6 +3565,7 @@ function CashflowView({
             },
           },
           "SIMULACIÓN DE CASH",
+          botonImprimir(imprimirCashSimulado, "PDF de la simulación (A4 apaisado, 10 semanas por hoja)"),
         ),
         React.createElement(
           "div",

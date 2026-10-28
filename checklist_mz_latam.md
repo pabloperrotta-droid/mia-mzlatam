@@ -1696,6 +1696,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] 27/10/2026, pedido del usuario ("si en el campo factura dice s/f no debe conectarse a Xubio, ya que es sin factura; que en la columna Xubio lo ponga en check verde"). Si el número de factura es "s/f" (también S/F, s / f, SF, s.f., sin factura), el proceso de Xubio no toma la línea (ni para centro de costo ni para orden de pago) y la columna Xubio muestra ✅ "Sin factura (s/f): no va a Xubio" (sin detalle ni botón de reintentar). "Reintentar todas" no las toca.
 - [x] Prueba automática nueva. Proceso de Xubio actualizado. Pantalla: publicado en QA y, con el OK del usuario ("perfecto, pasalo", 27/10/2026), en `MIA.prd.html`.
 
+### 145. Cashflow: imprimir el Cash real y el simulado
+
+- [x] 28/10/2026, pedido del usuario ("en la solapa de Cashflow necesitaría poder imprimir el cashflow real y el cashflow simulado", con capturas de las secciones CASH y SIMULACIÓN DE CASH). Botón **🖨 Imprimir** en el título de cada sección: PDF A4 apaisado, 10 semanas por hoja (todas las semanas, hasta fin de 2027), con fecha de impresión y número de hoja.
+  - Real: Saldo inicial, acuerdo disponible y lo arrastrado de semanas anteriores; filas Ingresos, Egresos, Neto semanal, Saldo acumulado, Caja, Utilizar acuerdo (con "Faltan $…" cuando supera el acuerdo); y al final la tabla de Bancos.
+  - Simulado: cada línea de ingreso simulado, Total ingresos simulados, Saldo acumulado (real), Saldo acumulado (con simulación) y Utilizar acuerdo (con simulación).
+- [x] Corrección encontrada al armarlo: el "Saldo acumulado (con simulación)" no sumaba lo arrastrado de semanas anteriores (Sección 137), así que sin ingresos simulados no coincidía con el real (ej. −$14.186.906 contra −$37.644.365). Ahora arranca igual que el real.
+- [x] Prueba de pantalla nueva (los dos botones generan su PDF). Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
