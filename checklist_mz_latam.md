@@ -1702,7 +1702,7 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - Real: Saldo inicial, acuerdo disponible y lo arrastrado de semanas anteriores; filas Ingresos, Egresos, Neto semanal, Saldo acumulado, Caja, Utilizar acuerdo (con "Faltan $…" cuando supera el acuerdo); y al final la tabla de Bancos.
   - Simulado: cada línea de ingreso simulado, Total ingresos simulados, Saldo acumulado (real), Saldo acumulado (con simulación) y Utilizar acuerdo (con simulación).
 - [x] Corrección encontrada al armarlo: el "Saldo acumulado (con simulación)" no sumaba lo arrastrado de semanas anteriores (Sección 137), así que sin ingresos simulados no coincidía con el real (ej. −$14.186.906 contra −$37.644.365). Ahora arranca igual que el real.
-- [x] Prueba de pantalla nueva (los dos botones generan su PDF). Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Prueba de pantalla nueva (los dos botones generan su PDF). Si las líneas no entran en la hoja, sigue en otra con los títulos de las semanas. Publicado en QA y, con el OK del usuario ("subilo a prod", 28/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
