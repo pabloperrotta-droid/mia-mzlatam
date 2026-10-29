@@ -237,8 +237,9 @@ function FacturacionView({
           (te) =>
             (f === "TODOS" || te.cliente === f) &&
             (A === "TODOS" || te.status === A) &&
-            (L === "TODOS" || Lt(te) === L) &&
-            fechaEnMes(te.fecha, mesFact) &&
+            // Sección 150: con un mes elegido manda la fecha de la factura (el mes ya trae su año), así la
+            // tabla suma lo mismo que la barra del gráfico.
+            (mesFact ? fechaEnMes(te.fecha, mesFact) : L === "TODOS" || Lt(te) === L) &&
             (!y || te.cliente.toLowerCase().includes(y) || te.obra.toLowerCase().includes(y)),
         );
       return ve
@@ -358,17 +359,26 @@ function FacturacionView({
       () => n.filter((y) => (f === "TODOS" || y.cliente === f) && (L === "TODOS" || Lt(y) === L)),
       [n, f, L, Le],
     ),
+    // Sección 150: facturas del mes elegido en el gráfico (mismo criterio que la tabla). Sin mes, igual que `at`.
+    atMes = useMemo(
+      () => (mesFact ? n.filter((y) => (f === "TODOS" || y.cliente === f) && fechaEnMes(y.fecha, mesFact)) : at),
+      [n, f, at, mesFact],
+    ),
     dt = useMemo(() => {
-      const y = at.filter((St) => St.status === "PAGADA").reduce((St, zt) => St + (zt.importe || 0), 0),
-        G = at.filter((St) => St.status === "ADEUDA").reduce((St, zt) => St + (zt.importe || 0), 0),
+      const suma = (arr, est, fn) => arr.filter((St) => St.status === est).reduce((St, zt) => St + fn(zt), 0),
+        ars = (zt) => zt.importe || 0,
+        usd = (zt) => aUsd(zt.importe, zt.tc),
+        // Facturado / cobrado / adeudado siguen el mes elegido; el pendiente por facturar es de toda la obra.
+        y = suma(atMes, "PAGADA", ars),
+        G = suma(atMes, "ADEUDA", ars),
         te = y + G,
-        V = at.filter((St) => St.status === "PAGADA").reduce((St, zt) => St + aUsd(zt.importe, zt.tc), 0),
-        ut = at.filter((St) => St.status === "ADEUDA").reduce((St, zt) => St + aUsd(zt.importe, zt.tc), 0),
+        V = suma(atMes, "PAGADA", usd),
+        ut = suma(atMes, "ADEUDA", usd),
         At = V + ut,
         go = Re.reduce((St, zt) => St + zt.ventaFinal, 0),
         No = Re.reduce((St, zt) => St + (zt.ventaFinalUSD || 0), 0),
-        Jt = go - te,
-        ht = No - At;
+        Jt = go - (suma(at, "PAGADA", ars) + suma(at, "ADEUDA", ars)),
+        ht = No - (suma(at, "PAGADA", usd) + suma(at, "ADEUDA", usd));
       return {
         pagado: y,
         adeuda: G,
@@ -382,7 +392,7 @@ function FacturacionView({
         ventaTotalUSD: No,
         pendienteFacturarUSD: ht,
       };
-    }, [at, Re]),
+    }, [at, atMes, Re]),
     Gt = useMemo(() => {
       const y = /* @__PURE__ */ new Map(),
         G = (te, V) => obraKey(te, V);
@@ -594,8 +604,17 @@ function FacturacionView({
           ),
       ),
     (() => {
-      const y = {};
-      at.filter((V) => V.status === "ADEUDA").forEach((V) => {
+      const y = {},
+        // Sección 150: con un mes elegido, la torta muestra lo facturado en ese mes por cliente.
+        mesTxt = mesFact ? MESES[mesFact.mesIdx] + " " + mesFact.anio : "",
+        elegir = (nom) =>
+          mesFact
+            ? F(f === nom ? "TODOS" : nom)
+            : f === nom && A === "ADEUDA"
+              ? (F("TODOS"), k("TODOS"))
+              : (F(nom), k("ADEUDA")),
+        marcado = (nom) => f === nom && (mesFact || A === "ADEUDA");
+      (mesFact ? atMes : at.filter((V) => V.status === "ADEUDA")).forEach((V) => {
         y[V.cliente] = (y[V.cliente] || 0) + (V.importe || 0);
       });
       const G = Object.entries(y)
@@ -637,9 +656,7 @@ function FacturacionView({
                       cx: "50%",
                       cy: "50%",
                       outerRadius: 55,
-                      onClick: (V) => {
-                        f === V.name && A === "ADEUDA" ? (F("TODOS"), k("TODOS")) : (F(V.name), k("ADEUDA"));
-                      },
+                      onClick: (V) => elegir(V.name),
                       style: { cursor: "pointer" },
                     },
                     G.map((V, ut) => React.createElement(Cell, { key: ut, fill: PIE_COLORS[ut % PIE_COLORS.length] })),
@@ -654,7 +671,7 @@ function FacturacionView({
               React.createElement(
                 "div",
                 { style: { fontSize: 10.5, fontWeight: 700, color: MUTED, marginBottom: 6, letterSpacing: 0.3 } },
-                "PORCENTAJE FACTURADO Y PRÓXIMO A COBRAR DE CADA CLIENTE",
+                mesFact ? "FACTURADO EN " + mesTxt + " POR CLIENTE" : "PORCENTAJE FACTURADO Y PRÓXIMO A COBRAR DE CADA CLIENTE",
               ),
               React.createElement(
                 "div",
@@ -672,15 +689,13 @@ function FacturacionView({
                     "div",
                     {
                       key: V.name,
-                      onClick: () => {
-                        f === V.name && A === "ADEUDA" ? (F("TODOS"), k("TODOS")) : (F(V.name), k("ADEUDA"));
-                      },
+                      onClick: () => elegir(V.name),
                       style: {
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
                         cursor: "pointer",
-                        background: f === V.name && A === "ADEUDA" ? "#F1E9D2" : "transparent",
+                        background: marcado(V.name) ? "#F1E9D2" : "transparent",
                         borderRadius: 5,
                         padding: "2px 4px",
                       },
@@ -708,7 +723,7 @@ function FacturacionView({
               React.createElement(
                 "div",
                 { style: { fontSize: 10, color: MUTED, marginTop: 6 } },
-                "Click en un cliente para ver el detalle de lo que debe",
+                mesFact ? "Click en un cliente para ver sus facturas de " + mesTxt.toLowerCase() : "Click en un cliente para ver el detalle de lo que debe",
               ),
             ),
           );

@@ -241,6 +241,13 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
   await control("Gráficos por mes en Facturación y en Pagos", async () => {
     await clic("Facturación");
     await pagina.waitForFunction(() => document.body.innerText.includes("FACTURACIÓN POR MES"), null, { timeout: 5000 });
+    // Sección 150: al elegir un mes, la torta y las tarjetas pasan a ese mes.
+    const barras = await pagina.$$(".recharts-bar-rectangle path");
+    if (barras.length) {
+      await barras[barras.length - 1].click({ force: true });
+      await pagina.waitForFunction(() => /FACTURADO EN \S+ \d{4} POR CLIENTE/.test(document.body.innerText), null, { timeout: 5000 }).catch(async () => { throw new Error("Al elegir un mes no cambió la torta. En pantalla: " + (await pagina.evaluate(() => document.body.innerText.slice(0, 400)))); });
+      await pagina.evaluate(() => [...document.querySelectorAll("*")].find((x) => x.children.length === 0 && /^Filtrando la tabla/.test(x.textContent.trim())).click());
+    }
     await clic("Pagos");
     await pagina.waitForFunction(() => /PAGOS POR MES|Ver gráfico: pagos por mes/i.test(document.body.innerText), null, { timeout: 5000 });
   });
