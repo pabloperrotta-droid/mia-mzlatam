@@ -1737,7 +1737,7 @@ Pedido del usuario: al tocar Septiembre en el gráfico, la suma de las facturas 
 - [x] Con un mes elegido, las tarjetas TOTAL FACTURADO, COBRADO / PAGADO y ADEUDADO muestran solo ese mes. PENDIENTE POR FACTURAR sigue siendo el de toda la obra.
 - [x] Con un mes elegido, la torta pasa a "FACTURADO EN SEPTIEMBRE 2026 POR CLIENTE" (todas las facturas del mes, cobradas o no); al tocar un cliente filtra la tabla por ese cliente. Sin mes, vuelve a "próximo a cobrar" como antes.
 - [x] Con un mes elegido manda la fecha de la factura (el mes ya trae el año): no se filtra por el año de la obra, así la tabla, las tarjetas y la barra suman lo mismo.
-- [x] Prueba de pantalla nueva. Publicado en QA.
+- [x] Prueba de pantalla nueva. Publicado en QA y, con el OK del usuario ("pasalo a produccion", 29/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
