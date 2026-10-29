@@ -1731,6 +1731,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Facturación arranca con el filtro de año en el año en curso (antes "Todos los años"); el año actual siempre está en la lista. El gráfico de Facturación sigue el filtro de Cliente pero no el de año de la obra, para poder comparar años por fecha de factura.
 - [x] Pruebas unitarias nuevas. Publicado en QA y, con el OK del usuario (29/10/2026), en `MIA.prd.html` junto con la Sección 148.
 
+## 150. Facturación: totales y torta del mes elegido (29/10/2026)
+
+Pedido del usuario: al tocar Septiembre en el gráfico, la suma de las facturas del mes (ej. NATURA: 3 facturas) no se veía en ningún total; la torta seguía mostrando lo adeudado de todos los meses.
+- [x] Con un mes elegido, las tarjetas TOTAL FACTURADO, COBRADO / PAGADO y ADEUDADO muestran solo ese mes. PENDIENTE POR FACTURAR sigue siendo el de toda la obra.
+- [x] Con un mes elegido, la torta pasa a "FACTURADO EN SEPTIEMBRE 2026 POR CLIENTE" (todas las facturas del mes, cobradas o no); al tocar un cliente filtra la tabla por ese cliente. Sin mes, vuelve a "próximo a cobrar" como antes.
+- [x] Con un mes elegido manda la fecha de la factura (el mes ya trae el año): no se filtra por el año de la obra, así la tabla, las tarjetas y la barra suman lo mismo.
+- [x] Prueba de pantalla nueva. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
