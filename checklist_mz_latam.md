@@ -1716,6 +1716,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
 - [x] Alcance: obras, facturas, líneas de Pagos, proveedores y pagos de Costos, sub obras (y sus proveedores, pagos y adicionales), órdenes de compra, adicionales, imputaciones habituales de proveedores, y en Cashflow categorías, líneas de ingreso simulado y bancos. Admin y Comercial siempre pueden. Los roles que ya existían quedan como estaban (pueden eliminar) hasta que se les destilde.
 - [x] Prueba de pantalla nueva. Publicado en QA y, con el OK del usuario ("ok pasalo", 28/10/2026), en `MIA.prd.html`.
 
+### 148. Gráficos de barras por mes en Facturación y en Pagos
+
+- [x] 29/10/2026, pedido del usuario ("en Facturación un gráfico de barras con la facturación del mes, como está la venta en Obras pero con la facturación"; "lo mismo en Pagos con los pagos"). Componente `GraficoPorMes` (parte 17), con el estilo del de Obras:
+  - **Facturación → FACTURACIÓN POR MES**: suma de las facturas por mes según su fecha; sigue los filtros de Cliente y Año de la obra de la pantalla.
+  - **Pagos → PAGOS POR MES**: lo pagado por mes según la Fecha Pagado (suma de Efectivo + Transferencia + E-Cheq + Diego Levy de cada línea; si no tiene formas de pago cargadas, el Importe Final). Se puede plegar ("▲ ocultar" / "▼ Ver gráfico"), y queda recordado en cada compu, para no correr la tabla.
+  - En los dos: botones de año para elegir qué años comparar (arranca con el año actual y el anterior), barras por mes, y arriba el acumulado del año contra el anterior en los mismos meses (▲/▼ con %). Respeta la moneda elegida ($ o US$).
+- [x] Pruebas: unitaria de la suma por mes y de pantalla (los dos gráficos aparecen). Publicado en QA. Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

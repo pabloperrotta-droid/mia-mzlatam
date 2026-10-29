@@ -2815,6 +2815,18 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
           ),
       ),
     ),
+    // Sección 148: lo pagado por mes (por Fecha Pagado), como el gráfico de Venta de Obras.
+    React.createElement(GraficoPorMes, {
+      titulo: "PAGOS POR MES",
+      verbo: "pagado",
+      plegable: true,
+      items: n
+        .filter((l) => l && l.fechaPagado)
+        .map((l) => {
+          const formas = (Number(l.efectivo) || 0) + (Number(l.transferencia) || 0) + (Number(l.echeq) || 0) + (Number(l.diegoLevy) || 0);
+          return { fecha: l.fechaPagado, importe: formas || Number(l.importe) || 0 };
+        }),
+    }),
     fcRev && renderRevisionFacturas(),
     cierre && renderCierre(),
     fcRes &&

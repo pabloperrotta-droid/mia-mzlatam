@@ -198,6 +198,19 @@ prueba("Recibos de efectivo: importe en letras, obra y líneas", () => {
   assert.strictEqual(f.observacionesConRecibo("Pago parcial", 12), "Pago parcial · Recibo 0003-00000012");
   assert.strictEqual(f.observacionesConRecibo("Pago parcial · Recibo 0003-00000012", 12), "Pago parcial · Recibo 0003-00000012");
 });
+prueba("Gráficos por mes (Facturación y Pagos): suma por mes y año", () => {
+  const r = JSON.parse(JSON.stringify(f.importePorMes([
+    { fecha: "05/10/2026", importe: 100 },
+    { fecha: "2026-10-20", importe: 50 },
+    { fecha: "15-11-2026", importe: 7 },
+    { fecha: "—", importe: 999 },
+    { fecha: "03/10/2025", importe: 30 },
+  ])));
+  assert.strictEqual(r["2026|9"].ars, 150);
+  assert.strictEqual(r["2026|10"].ars, 7);
+  assert.strictEqual(r["2025|9"].ars, 30);
+  assert.strictEqual(Object.keys(r).length, 3);
+});
 prueba("Pagos: factura s/f (sin factura) no va a Xubio y queda en verde", () => {
   for (const x of ["s/f", "S/F", " s / f ", "SF", "s.f.", "sin factura", "Sin Factura"]) assert.strictEqual(f.esSinFactura(x), true, x);
   for (const x of ["00004-00000003", "A-1", "", "sfa"]) assert.strictEqual(f.esSinFactura(x), false, x);

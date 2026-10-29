@@ -1,3 +1,159 @@
+// Sección 148: gráfico de barras por mes (como "Venta por mes" de Obras): en Facturación con las facturas
+// (por fecha de factura) y en Pagos con lo pagado (por Fecha Pagado). items: [{ fecha, importe, tc }].
+// Se eligen los años a comparar; arriba, el acumulado del año contra el anterior en los mismos meses.
+function importePorMes(items) {
+  const r = {};
+  for (const f of items || []) {
+    const fe = normalizarFecha(f.fecha),
+      a = anioDeFecha(fe),
+      m = mesIdxDeFecha(fe);
+    if (a == null || m == null || m < 0 || m > 11) continue;
+    const k = a + "|" + m;
+    r[k] = r[k] || { ars: 0, usd: 0 };
+    r[k].ars += Number(f.importe) || 0;
+    r[k].usd += aUsd(f.importe, f.tc) || 0;
+  }
+  return r;
+}
+function GraficoPorMes({ titulo, items, verbo, plegable }) {
+  const mes3 = (i) => MESES[i].charAt(0) + MESES[i].slice(1, 3).toLowerCase(),
+    porMes = useMemo(() => importePorMes(items), [items]),
+    anios = useMemo(() => [...new Set(Object.keys(porMes).map((k) => Number(k.split("|")[0])))].sort(), [porMes]),
+    hoy = new Date(),
+    anioActual = hoy.getFullYear(),
+    [elegidos, setElegidos] = useState(() => [anioActual - 1, anioActual]),
+    vistos = anios.filter((a) => elegidos.includes(a)),
+    valor = (a, m) => {
+      const x = porMes[a + "|" + m];
+      return x ? valSmart(x.ars, x.usd) : 0;
+    },
+    datos = MESES.map((_, m) => {
+      const o = { label: mes3(m), mesIdx: m };
+      vistos.forEach((a) => (o[a] = valor(a, m)));
+      return o;
+    }),
+    hastaMes = hoy.getMonth(),
+    acumulado = (a) => {
+      let ars = 0, usd = 0;
+      for (let m = 0; m <= hastaMes; m++) {
+        const x = porMes[a + "|" + m];
+        x && ((ars += x.ars), (usd += x.usd));
+      }
+      return { ars, usd };
+    },
+    act = acumulado(anioActual),
+    ant = acumulado(anioActual - 1),
+    delta = valSmart(act.ars - ant.ars, act.usd - ant.usd),
+    base = valSmart(ant.ars, ant.usd),
+    colorDe = (a) => PIE_COLORS[anios.indexOf(a) % PIE_COLORS.length],
+    // En Pagos se puede plegar (queda recordado en esta compu) para no correr la tabla hacia abajo.
+    claveVista = "mia-grafico-" + titulo,
+    [abierto, setAbierto] = useState(() => {
+      try {
+        return !plegable || window.localStorage.getItem(claveVista) !== "no";
+      } catch {
+        return true;
+      }
+    }),
+    alternar = () =>
+      setAbierto((x) => {
+        try {
+          window.localStorage.setItem(claveVista, x ? "no" : "si");
+        } catch {}
+        return !x;
+      });
+  if (!abierto)
+    return React.createElement(
+      "button",
+      { onClick: alternar, style: { ...smallBtnGhost, marginBottom: 14 } },
+      "▼ Ver gráfico: " + titulo.toLowerCase(),
+    );
+  return React.createElement(
+    "div",
+    { style: { background: "#fff", borderRadius: 12, border: "1px solid " + BORDER, boxShadow: CARD_SHADOW, padding: "18px 20px", marginBottom: 18 } },
+    React.createElement(
+      "div",
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 6 } },
+      React.createElement(
+        "div",
+        { style: { fontSize: 11.5, fontWeight: 700, color: MUTED, letterSpacing: 0.3 } },
+        titulo,
+        plegable && React.createElement("button", { onClick: alternar, style: { border: "none", background: "none", color: MUTED, cursor: "pointer", fontSize: 11, marginLeft: 8 } }, "▲ ocultar"),
+      ),
+      React.createElement(
+        "div",
+        { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
+        anios.map((a) =>
+          React.createElement(
+            "button",
+            {
+              key: a,
+              onClick: () => setElegidos((x) => (x.includes(a) ? x.filter((y) => y !== a) : [...x, a])),
+              style: {
+                border: "1px solid " + (elegidos.includes(a) ? colorDe(a) : BORDER),
+                background: elegidos.includes(a) ? colorDe(a) : "#fff",
+                color: elegidos.includes(a) ? "#fff" : MUTED,
+                borderRadius: 14,
+                padding: "2px 10px",
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: "pointer",
+              },
+            },
+            a,
+          ),
+        ),
+      ),
+    ),
+    React.createElement(
+      "div",
+      { style: { display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 8 } },
+      React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: NAVY } }, fmtSmart(act.ars, act.usd)),
+      React.createElement("span", { style: { fontSize: 11, color: MUTED } }, verbo + " " + anioActual + " (Ene–" + mes3(hastaMes) + ")"),
+      base > 0 &&
+        React.createElement(
+          "span",
+          {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
+              color: delta >= 0 ? GREEN : RED,
+              background: delta >= 0 ? "#E6EEE9" : "#F7E6E3",
+              borderRadius: 20,
+              padding: "2px 10px",
+            },
+            title: "Comparado con " + (anioActual - 1) + " en los mismos meses (Ene–" + mes3(hastaMes) + "): " + fmtSmart(ant.ars, ant.usd),
+          },
+          (delta >= 0 ? "▲ " : "▼ ") + fmtSmart(Math.abs(act.ars - ant.ars), Math.abs(act.usd - ant.usd)) + " (" + ((Math.abs(delta) / base) * 100).toFixed(0) + "%) vs " + (anioActual - 1),
+        ),
+    ),
+    vistos.length === 0
+      ? React.createElement("div", { style: { fontSize: 12, color: MUTED, padding: "30px 0", textAlign: "center" } }, "Elegí al menos un año arriba.")
+      : React.createElement(
+          "div",
+          { style: { width: "100%", height: 240 } },
+          React.createElement(
+            ResponsiveContainer,
+            null,
+            React.createElement(
+              BarChart,
+              { data: datos, margin: { top: 5, right: 10, left: 0, bottom: 0 } },
+              React.createElement(CartesianGrid, { strokeDasharray: "3 3", stroke: BORDER, vertical: false }),
+              React.createElement(XAxis, { dataKey: "label", tick: { fontSize: 11, fill: MUTED }, axisLine: { stroke: BORDER }, tickLine: false }),
+              React.createElement(YAxis, {
+                tick: { fontSize: 10, fill: MUTED },
+                axisLine: false,
+                tickLine: false,
+                tickFormatter: (e) => (Math.abs(e) >= 1e6 ? (e / 1e6).toFixed(0) + "M" : Math.abs(e) >= 1e3 ? (e / 1e3).toFixed(0) + "k" : e),
+              }),
+              React.createElement(Tooltip, { formatter: (e, n) => [fmt(e), verbo.charAt(0).toUpperCase() + verbo.slice(1) + " " + n] }),
+              vistos.length > 1 && React.createElement(Legend, { wrapperStyle: { fontSize: 11 } }),
+              vistos.map((a) => React.createElement(Bar, { key: a, dataKey: a, name: String(a), fill: colorDe(a), radius: [4, 4, 0, 0] })),
+            ),
+          ),
+        ),
+  );
+}
 function FacturacionView({
   facturas: n,
   obras: d,
@@ -274,6 +430,7 @@ function FacturacionView({
         }),
       ),
     ),
+    React.createElement(GraficoPorMes, { titulo: "FACTURACIÓN POR MES", verbo: "facturado", items: at }),
     M &&
       React.createElement(
         "div",

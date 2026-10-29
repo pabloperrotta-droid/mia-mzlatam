@@ -238,6 +238,12 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
       if (!pdf.includes(titulo) || !/Saldo acumulado/.test(pdf)) throw new Error("El PDF de " + titulo + " no tiene lo esperado");
     }
   });
+  await control("Gráficos por mes en Facturación y en Pagos", async () => {
+    await clic("Facturación");
+    await pagina.waitForFunction(() => document.body.innerText.includes("FACTURACIÓN POR MES"), null, { timeout: 5000 });
+    await clic("Pagos");
+    await pagina.waitForFunction(() => /PAGOS POR MES|Ver gráfico: pagos por mes/i.test(document.body.innerText), null, { timeout: 5000 });
+  });
   await control("Roles: sin permiso de eliminar no se borra (y avisa)", async () => {
     const r = await pagina.evaluate(() => {
       const avisos = [];
