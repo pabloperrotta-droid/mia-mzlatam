@@ -1722,14 +1722,14 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - **Facturación → FACTURACIÓN POR MES**: suma de las facturas por mes según su fecha; sigue los filtros de Cliente y Año de la obra de la pantalla.
   - **Pagos → PAGOS POR MES**: lo pagado por mes según la Fecha Pagado (suma de Efectivo + Transferencia + E-Cheq + Diego Levy de cada línea; si no tiene formas de pago cargadas, el Importe Final). Se puede plegar ("▲ ocultar" / "▼ Ver gráfico"), y queda recordado en cada compu, para no correr la tabla.
   - En los dos: botones de año para elegir qué años comparar (arranca con el año actual y el anterior), barras por mes, y arriba el acumulado del año contra el anterior en los mismos meses (▲/▼ con %). Respeta la moneda elegida ($ o US$).
-- [x] Pruebas: unitaria de la suma por mes y de pantalla (los dos gráficos aparecen). Publicado en QA. Producción: pendiente del OK del usuario.
+- [x] Pruebas: unitaria de la suma por mes y de pantalla (los dos gráficos aparecen). Publicado en QA y, con el OK del usuario ("pasalo a producción", 29/10/2026), en `MIA.prd.html`.
 
 ### 149. Gráficos por mes: tocar un mes filtra la tabla; Facturación arranca en el año en curso
 
 - [x] 29/10/2026, pedidos del usuario ("al hacer clic en el mes, ¿se puede filtrar por ese mes tanto en Facturación como en Pagos?" y "en Facturación que aparezca por defecto la facturación del año en curso, ahora está todos los años").
 - [x] Tocar una barra del gráfico filtra la tabla de abajo por ese mes y año: en Facturación, las facturas con fecha en ese mes; en Pagos, las líneas con Fecha Pagado en ese mes (en cualquier vista). La barra elegida queda resaltada y aparece "Filtrando la tabla: Oct 2026 ✕" para sacarlo (o tocando la misma barra).
 - [x] Facturación arranca con el filtro de año en el año en curso (antes "Todos los años"); el año actual siempre está en la lista. El gráfico de Facturación sigue el filtro de Cliente pero no el de año de la obra, para poder comparar años por fecha de factura.
-- [x] Pruebas unitarias nuevas. Publicado en QA (junto con la Sección 148). Producción: pendiente del OK del usuario.
+- [x] Pruebas unitarias nuevas. Publicado en QA y, con el OK del usuario (29/10/2026), en `MIA.prd.html` junto con la Sección 148.
 
 ## 41. Pendientes / recomendaciones
 
