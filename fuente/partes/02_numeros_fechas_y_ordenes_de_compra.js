@@ -523,6 +523,25 @@ function mesIdxDeFecha(n) {
   const c = parseInt(d[1], 10);
   return isNaN(c) ? null : c - 1;
 }
+// Sección 151: fecha de pago anterior a la de emisión (ej. emitida 23/09/2026, pagada "02/10/2025": error de tipeo).
+function fechaANumero(n) {
+  const d = String(normalizarFecha(n) || "").split("/");
+  if (d.length !== 3) return null;
+  const [dd, mm, aa] = d.map((x) => parseInt(x, 10));
+  return isNaN(dd) || isNaN(mm) || isNaN(aa) ? null : aa * 10000 + mm * 100 + dd;
+}
+function pagoAntesDeEmision(fecha, fechaPago) {
+  const e = fechaANumero(fecha),
+    p = fechaANumero(fechaPago);
+  return e != null && p != null && p < e;
+}
+// Al guardar una factura: si el pago es anterior a la emisión, pregunta. Devuelve true si se puede guardar.
+function confirmarFechasDeFactura(fecha, fechaPago) {
+  if (!fechaPago || !pagoAntesDeEmision(fecha, fechaPago)) return true;
+  return window.confirm(
+    "La fecha de pago (" + normalizarFecha(fechaPago) + ") es anterior a la de emisión (" + normalizarFecha(fecha) + ").\n\n¿Guardar igual? (Cancelar para corregirla)",
+  );
+}
 function capitalizar(n) {
   return n && n.charAt(0) + n.slice(1).toLowerCase();
 }

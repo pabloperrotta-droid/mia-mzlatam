@@ -1739,6 +1739,13 @@ Pedido del usuario: al tocar Septiembre en el gráfico, la suma de las facturas 
 - [x] Con un mes elegido manda la fecha de la factura (el mes ya trae el año): no se filtra por el año de la obra, así la tabla, las tarjetas y la barra suman lo mismo.
 - [x] Prueba de pantalla nueva. Publicado en QA y, con el OK del usuario ("pasalo a produccion", 29/10/2026), en `MIA.prd.html`.
 
+## 151. Facturas: aviso de fecha de pago anterior a la emisión (29/10/2026)
+
+Pedido del usuario (factura 131 de NATURA: emitida 23/09/2026, fecha de pago cargada 02/10/2025).
+- [x] Al cargar o editar una factura, si la fecha de pago es anterior a la de emisión, MIA pregunta "¿Guardar igual?" antes de guardar (Cancelar deja corregirla).
+- [x] En Facturación y en el detalle de la obra, esas facturas muestran la fecha de pago en rojo con ⚠, para encontrar las que ya están cargadas.
+- [x] Pruebas unitarias nuevas. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
