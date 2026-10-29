@@ -661,6 +661,7 @@ function PagosView({
     xubioSt = useXubio(),
     _recibos = (useEffect(() => recibosIniciar(), []), null),
     [busqPag, setBusqPag] = useState(""),
+    [mesPag, setMesPag] = useState(null),
     [Re, at] = useState(null),
     dt = useMemo(
       () => Array.from(/* @__PURE__ */ new Set([CLIENTE_GASTOS_INTERNOS, ...d.map((l) => l.cliente)])).sort(),
@@ -2091,7 +2092,10 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
     fo = useMemo(() => {
       let l;
       return (
-        nt === "semana"
+        // Sección 149: tocando una barra del gráfico, se ven las líneas pagadas en ese mes (cualquier vista).
+        mesPag
+          ? (l = n.filter((I) => I.fechaPagado && fechaEnMes(I.fechaPagado, mesPag)))
+          : nt === "semana"
           ? (l = n.filter((I) => !I.fechaPagado && I.sePaga === "NO"))
           : nt === "vacias"
             ? (l = n.filter((I) => !I.fechaPagado && I.sePaga === "SI"))
@@ -2125,7 +2129,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
             })),
         l
       );
-    }, [n, nt, Ee, Oo, w, ordPag, busqPag, ordPag && ordPag.key === "xubio" ? xubioSt.version : 0]),
+    }, [n, nt, Ee, Oo, w, ordPag, busqPag, mesPag, ordPag && ordPag.key === "xubio" ? xubioSt.version : 0]),
     v = useMemo(() => {
       const l = n.filter((me) => !me.fechaPagado && me.sePaga === "SI" && (me.cliente || "").trim()),
         I = /* @__PURE__ */ new Map();
@@ -2820,6 +2824,8 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
       titulo: "PAGOS POR MES",
       verbo: "pagado",
       plegable: true,
+      mesElegido: mesPag,
+      onElegirMes: setMesPag,
       items: n
         .filter((l) => l && l.fechaPagado)
         .map((l) => {

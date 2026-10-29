@@ -15,7 +15,13 @@ function importePorMes(items) {
   }
   return r;
 }
-function GraficoPorMes({ titulo, items, verbo, plegable }) {
+// Sección 149: ¿la fecha cae en ese mes y año? (para filtrar la tabla al tocar una barra del gráfico)
+function fechaEnMes(fecha, mes) {
+  if (!mes) return true;
+  const fe = normalizarFecha(fecha);
+  return anioDeFecha(fe) === mes.anio && mesIdxDeFecha(fe) === mes.mesIdx;
+}
+function GraficoPorMes({ titulo, items, verbo, plegable, mesElegido, onElegirMes }) {
   const mes3 = (i) => MESES[i].charAt(0) + MESES[i].slice(1, 3).toLowerCase(),
     porMes = useMemo(() => importePorMes(items), [items]),
     anios = useMemo(() => [...new Set(Object.keys(porMes).map((k) => Number(k.split("|")[0])))].sort(), [porMes]),
@@ -79,6 +85,19 @@ function GraficoPorMes({ titulo, items, verbo, plegable }) {
         { style: { fontSize: 11.5, fontWeight: 700, color: MUTED, letterSpacing: 0.3 } },
         titulo,
         plegable && React.createElement("button", { onClick: alternar, style: { border: "none", background: "none", color: MUTED, cursor: "pointer", fontSize: 11, marginLeft: 8 } }, "▲ ocultar"),
+        onElegirMes &&
+          !mesElegido &&
+          React.createElement("span", { style: { fontWeight: 400, marginLeft: 8, fontSize: 11 } }, "· tocá una barra para filtrar la tabla por ese mes"),
+        mesElegido &&
+          React.createElement(
+            "button",
+            {
+              onClick: () => onElegirMes(null),
+              title: "Sacar el filtro de mes",
+              style: { marginLeft: 10, border: "1px solid " + GOLD, background: "#FBF5E6", color: NAVY, borderRadius: 14, padding: "2px 10px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" },
+            },
+            "Filtrando la tabla: " + mes3(mesElegido.mesIdx) + " " + mesElegido.anio + "  ✕",
+          ),
       ),
       React.createElement(
         "div",
@@ -148,7 +167,31 @@ function GraficoPorMes({ titulo, items, verbo, plegable }) {
               }),
               React.createElement(Tooltip, { formatter: (e, n) => [fmt(e), verbo.charAt(0).toUpperCase() + verbo.slice(1) + " " + n] }),
               vistos.length > 1 && React.createElement(Legend, { wrapperStyle: { fontSize: 11 } }),
-              vistos.map((a) => React.createElement(Bar, { key: a, dataKey: a, name: String(a), fill: colorDe(a), radius: [4, 4, 0, 0] })),
+              vistos.map((a) =>
+                React.createElement(
+                  Bar,
+                  {
+                    key: a,
+                    dataKey: a,
+                    name: String(a),
+                    fill: colorDe(a),
+                    radius: [4, 4, 0, 0],
+                    cursor: onElegirMes ? "pointer" : "default",
+                    onClick: (o) => {
+                      if (!onElegirMes) return;
+                      const m = (o && (o.payload || o)).mesIdx;
+                      onElegirMes(mesElegido && mesElegido.anio === a && mesElegido.mesIdx === m ? null : { anio: a, mesIdx: m });
+                    },
+                  },
+                  datos.map((d) =>
+                    React.createElement(Cell, {
+                      key: d.mesIdx,
+                      fill: colorDe(a),
+                      opacity: !mesElegido || (mesElegido.anio === a && mesElegido.mesIdx === d.mesIdx) ? 1 : 0.3,
+                    }),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -165,14 +208,16 @@ function FacturacionView({
 }) {
   const [f, F] = useState("TODOS"),
     [A, k] = useState("TODOS"),
-    [L, oe] = useState("TODOS"),
+    // Sección 149: arranca mostrando el año en curso (pedido del usuario); "Todos los años" sigue en la lista.
+    [L, oe] = useState(() => new Date().getFullYear()),
     [ve, P] = useState(null),
     [M, Pe] = useState(false),
     [ye, Z] = useState(""),
     [Ye, ee] = useState(null),
+    [mesFact, setMesFact] = useState(null),
     lt = useMemo(() => ["TODOS", ...Array.from(new Set(n.map((y) => y.cliente))).sort()], [n]),
     ne = useMemo(
-      () => ["TODOS", ...Array.from(new Set(d.map((y) => y.anio || /* @__PURE__ */ new Date().getFullYear()))).sort()],
+      () => ["TODOS", ...Array.from(new Set([new Date().getFullYear(), ...d.map((y) => y.anio || /* @__PURE__ */ new Date().getFullYear())])).sort()],
       [d],
     ),
     Be = useMemo(() => new Set(d.map((y) => obraKey(y.cliente, y.obra))), [d]),
@@ -193,6 +238,7 @@ function FacturacionView({
             (f === "TODOS" || te.cliente === f) &&
             (A === "TODOS" || te.status === A) &&
             (L === "TODOS" || Lt(te) === L) &&
+            fechaEnMes(te.fecha, mesFact) &&
             (!y || te.cliente.toLowerCase().includes(y) || te.obra.toLowerCase().includes(y)),
         );
       return ve
@@ -218,7 +264,7 @@ function FacturacionView({
             );
           })
         : G;
-    }, [n, f, A, L, ve, Le, ye]);
+    }, [n, f, A, L, ve, Le, ye, mesFact]);
   function H(y) {
     P((G) => ({ key: y, dir: G && G.key === y && G.dir === "asc" ? "desc" : "asc" }));
   }
@@ -430,7 +476,8 @@ function FacturacionView({
         }),
       ),
     ),
-    React.createElement(GraficoPorMes, { titulo: "FACTURACIÓN POR MES", verbo: "facturado", items: at }),
+    // El gráfico compara años por fecha de factura: sigue el filtro de Cliente, no el de año de la obra.
+    React.createElement(GraficoPorMes, { titulo: "FACTURACIÓN POR MES", verbo: "facturado", items: f === "TODOS" ? n : n.filter((y) => y.cliente === f), mesElegido: mesFact, onElegirMes: setMesFact }),
     M &&
       React.createElement(
         "div",

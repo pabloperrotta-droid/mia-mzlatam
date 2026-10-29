@@ -210,6 +210,10 @@ prueba("Gráficos por mes (Facturación y Pagos): suma por mes y año", () => {
   assert.strictEqual(r["2026|10"].ars, 7);
   assert.strictEqual(r["2025|9"].ars, 30);
   assert.strictEqual(Object.keys(r).length, 3);
+  assert.strictEqual(f.fechaEnMes("05/10/2026", { anio: 2026, mesIdx: 9 }), true);
+  assert.strictEqual(f.fechaEnMes("2026-10-20", { anio: 2026, mesIdx: 9 }), true);
+  assert.strictEqual(f.fechaEnMes("05/10/2025", { anio: 2026, mesIdx: 9 }), false);
+  assert.strictEqual(f.fechaEnMes("cualquiera", null), true);
 });
 prueba("Pagos: factura s/f (sin factura) no va a Xubio y queda en verde", () => {
   for (const x of ["s/f", "S/F", " s / f ", "SF", "s.f.", "sin factura", "Sin Factura"]) assert.strictEqual(f.esSinFactura(x), true, x);

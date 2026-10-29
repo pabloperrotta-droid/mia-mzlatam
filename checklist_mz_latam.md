@@ -1724,6 +1724,13 @@ Si querés, puedo limpiar estos 3 casos (mover el de YKU a la semana actual, y e
   - En los dos: botones de año para elegir qué años comparar (arranca con el año actual y el anterior), barras por mes, y arriba el acumulado del año contra el anterior en los mismos meses (▲/▼ con %). Respeta la moneda elegida ($ o US$).
 - [x] Pruebas: unitaria de la suma por mes y de pantalla (los dos gráficos aparecen). Publicado en QA. Producción: pendiente del OK del usuario.
 
+### 149. Gráficos por mes: tocar un mes filtra la tabla; Facturación arranca en el año en curso
+
+- [x] 29/10/2026, pedidos del usuario ("al hacer clic en el mes, ¿se puede filtrar por ese mes tanto en Facturación como en Pagos?" y "en Facturación que aparezca por defecto la facturación del año en curso, ahora está todos los años").
+- [x] Tocar una barra del gráfico filtra la tabla de abajo por ese mes y año: en Facturación, las facturas con fecha en ese mes; en Pagos, las líneas con Fecha Pagado en ese mes (en cualquier vista). La barra elegida queda resaltada y aparece "Filtrando la tabla: Oct 2026 ✕" para sacarlo (o tocando la misma barra).
+- [x] Facturación arranca con el filtro de año en el año en curso (antes "Todos los años"); el año actual siempre está en la lista. El gráfico de Facturación sigue el filtro de Cliente pero no el de año de la obra, para poder comparar años por fecha de factura.
+- [x] Pruebas unitarias nuevas. Publicado en QA (junto con la Sección 148). Producción: pendiente del OK del usuario.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
