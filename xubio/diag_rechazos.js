@@ -1,17 +1,23 @@
-// SOLO LECTURA: estados de centro de costo después del arreglo de la Sección 143 (sin importes).
+// SOLO LECTURA: lista de productos/servicios de compra en Xubio y cómo viene el producto en un renglón (sin importes).
 const admin = require("firebase-admin");
 admin.initializeApp();
-const db = admin.firestore();
+const { xubio, fechaXubio } = require("./xubio");
 const out = (t) => console.log("::notice::" + String(t).replace(/\$[-\d.,]+/g, "$#").slice(0, 900));
+const lista = (r) => (Array.isArray(r) ? r : r && typeof r === "object" ? Object.values(r).find(Array.isArray) || [] : []);
 (async () => {
-  const est = (await db.collection("xubioEstado").get()).docs.map((d) => d.data());
-  const c = {};
-  est.forEach((e) => (c[e.estado] = (c[e.estado] || 0) + 1));
-  out("Estados: " + Object.entries(c).map(([k, v]) => k.replace(/_/g, " ") + " = " + v).join(" / "));
-  const desde = Date.UTC(2026, 9, 27, 22, 20);
-  const rec = est.filter((e) => (e.intento || 0) >= desde);
-  const r = {};
-  rec.forEach((e) => (r[e.estado] = (r[e.estado] || 0) + 1));
-  out("Procesadas desde el arreglo: " + rec.length + " → " + Object.entries(r).map(([k, v]) => k.replace(/_/g, " ") + " = " + v).join(" / "));
-  est.filter((e) => /A-0*4-0*000000[34]\b|00004-0000000[34]/.test(String(e.mensaje || "") + " " + String(e.facturaXubio || ""))).forEach((e) => out("PABLO MOHR?: " + e.estado + " / " + String(e.mensaje || "").slice(0, 160)));
+  for (const ruta of ["/ProductoCompraBean", "/productoCompraBean", "/productoBean", "/ProductoVentaBean"]) {
+    try {
+      const l = lista(await xubio("GET", ruta));
+      out(ruta + ": " + l.length + " · campos: " + Object.keys(l[0] || {}).join(","));
+      out(ruta + " nombres: " + l.slice(0, 40).map((p) => (p.nombre || p.descripcion || "?") + "#" + (p.productoid ?? p.ID ?? p.id ?? "")).join(" | "));
+    } catch (e) { out(ruta + ": ERROR " + (e.status || "") + " " + String(e.message || "").slice(0, 150)); }
+  }
+  try {
+    const hoy = new Date(), d = new Date(hoy - 20 * 864e5), f = fechaXubio;
+    const l = lista(await xubio("GET", "/comprobanteCompraBean?fechaDesde=" + f(d) + "&fechaHasta=" + f(hoy)));
+    const c = l[0] && (await xubio("GET", "/comprobanteCompraBean/" + l[0].transaccionid));
+    const it = c && (Array.isArray(c.transaccionProductoItems) ? c.transaccionProductoItems : [])[0];
+    out("Renglón: campos " + Object.keys(it || {}).join(","));
+    out("Renglón.producto: " + JSON.stringify(it && it.producto) + " · centro: " + JSON.stringify(it && it.centroDeCosto && Object.keys(it.centroDeCosto)));
+  } catch (e) { out("Factura: ERROR " + String(e.message || "").slice(0, 200)); }
 })().catch((e) => { out("ERROR " + e.message); process.exit(1); });
