@@ -743,7 +743,6 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
       );
   }
   function Yr(e, t, o) {
-    if (!confirmarFechasDeFactura(o.fecha, o.fechaPago)) return;
     dbRef.current &&
       (dbRef.current
         .collection("facturas")
@@ -789,7 +788,6 @@ Esta acción no se puede deshacer con el botón "Deshacer".`,
     if (!dbRef.current) return;
     const o = g.find((u) => u.id === e);
     if (!o) return;
-    if (!confirmarFechasDeFactura(t.fecha || o.fecha, t.fechaPago)) return;
     const { id: a, ...r } = o,
       i = dbRef.current.collection("facturasEdiciones");
     (i

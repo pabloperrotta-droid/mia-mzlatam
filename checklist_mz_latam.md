@@ -1745,6 +1745,7 @@ Pedido del usuario (factura 131 de NATURA: emitida 23/09/2026, fecha de pago car
 - [x] Al cargar o editar una factura, si la fecha de pago es anterior a la de emisión, MIA pregunta "¿Guardar igual?" antes de guardar (Cancelar deja corregirla).
 - [x] En Facturación y en el detalle de la obra, esas facturas muestran la fecha de pago en rojo con ⚠, para encontrar las que ya están cargadas.
 - [x] Pruebas unitarias nuevas. Publicado en QA.
+- [x] **Retirada el 30/10/2026** (pedido del usuario: "la fecha de pago la cambio manual"): se sacó de QA y no se publicó en Producción.
 
 ## 152. Servicio Xubio por proveedor (Producto/Servicio en Xubio) (30/10/2026)
 
@@ -1754,7 +1755,7 @@ Pedido del usuario: en Pagos → Proveedores (MAT/MO/Fact. A), un "tipo de servi
 - [x] Si el servicio no existe en Xubio: estado "El tipo de servicio del proveedor no existe en Xubio", no se toca la factura y se reintenta cada 30 minutos.
 - [x] Si Xubio rechaza el cambio de servicio, o si al cambiarlo cambia el total de la factura (otra alícuota de IVA), se deja el servicio como estaba y se pone solo el centro de costo (⚠ "Centro puesto; Xubio no aceptó cambiar el tipo de servicio"). La factura nunca queda con otro importe.
 - [x] Las líneas que ya están en ✅ no se vuelven a mandar (regla de siempre); las pendientes se mandan de nuevo si cambia el servicio del proveedor. Para una ✅ puntual, "Reintentar ahora".
-- [x] Pruebas unitarias y de pantalla nuevas; prueba del proceso con un Xubio simulado (servicio puesto, rechazado, total cambiado, sin servicio, servicio inexistente). Publicado en QA (QA no cambia Xubio: muestra 🧪 lo que haría).
+- [x] Pruebas unitarias y de pantalla nuevas; prueba del proceso con un Xubio simulado (servicio puesto, rechazado, total cambiado, sin servicio, servicio inexistente). Publicado en QA (QA no cambia Xubio: muestra 🧪 lo que haría) y, con el OK del usuario ("solo el 1", 30/10/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 

@@ -1079,14 +1079,7 @@ function FacturaRow({ f: n, onSave: d, onDelete: c, onView: p, readOnly: g, most
           { style: { textAlign: "right", fontVariantNumeric: "tabular-nums" } },
           fmt(n.importe, n.tc),
         ),
-        React.createElement(
-              "div",
-              {
-                style: { color: pagoAntesDeEmision(n.fecha, n.fechaPago) ? RED : MUTED, fontWeight: pagoAntesDeEmision(n.fecha, n.fechaPago) ? 700 : 400 },
-                title: pagoAntesDeEmision(n.fecha, n.fechaPago) ? "La fecha de pago es anterior a la de emisión: revisala" : undefined,
-              },
-              n.fechaPago ? (pagoAntesDeEmision(n.fecha, n.fechaPago) ? "⚠ " : "") + normalizarFecha(n.fechaPago) : "—",
-            ),
+        React.createElement("div", { style: { color: MUTED } }, n.fechaPago ? normalizarFecha(n.fechaPago) : "—"),
         React.createElement(
           "div",
           { style: { display: "flex", gap: 4, justifyContent: "center" } },

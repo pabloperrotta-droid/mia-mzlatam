@@ -1035,14 +1035,7 @@ function FacturacionView({
               { style: { textAlign: "right", fontVariantNumeric: "tabular-nums" } },
               fmt(y.importe, y.tc),
             ),
-            React.createElement(
-              "div",
-              {
-                style: { color: pagoAntesDeEmision(y.fecha, y.fechaPago) ? RED : MUTED, fontWeight: pagoAntesDeEmision(y.fecha, y.fechaPago) ? 700 : 400 },
-                title: pagoAntesDeEmision(y.fecha, y.fechaPago) ? "La fecha de pago es anterior a la de emisión: revisala" : undefined,
-              },
-              y.fechaPago ? (pagoAntesDeEmision(y.fecha, y.fechaPago) ? "⚠ " : "") + normalizarFecha(y.fechaPago) : "—",
-            ),
+            React.createElement("div", { style: { color: MUTED } }, y.fechaPago ? normalizarFecha(y.fechaPago) : "—"),
             React.createElement("div", { style: { color: MUTED } }, y.forma || "—"),
             React.createElement(
               "div",

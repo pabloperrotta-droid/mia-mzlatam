@@ -222,13 +222,6 @@ prueba("Proveedores: desplegable de servicio Xubio", () => {
   assert.strictEqual(f.servicioEstaEnXubio("PINTURA", ["MATERIALES"]), false);
   assert.strictEqual(f.servicioEstaEnXubio("", ["MATERIALES"]), true);
 });
-prueba("Facturación: avisa fecha de pago anterior a la emisión", () => {
-  assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", "02/10/2025"), true);
-  assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", "02/10/2026"), false);
-  assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", "23/09/2026"), false);
-  assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", null), false);
-  assert.strictEqual(f.pagoAntesDeEmision("—", "01/01/2020"), false);
-});
 prueba("Pagos: factura s/f (sin factura) no va a Xubio y queda en verde", () => {
   for (const x of ["s/f", "S/F", " s / f ", "SF", "s.f.", "sin factura", "Sin Factura"]) assert.strictEqual(f.esSinFactura(x), true, x);
   for (const x of ["00004-00000003", "A-1", "", "sfa"]) assert.strictEqual(f.esSinFactura(x), false, x);
