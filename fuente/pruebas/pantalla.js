@@ -254,7 +254,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
   await control("Pagos → Proveedores: columna Servicio Xubio con desplegable", async () => {
     await clic("Pagos");
     await clic("Proveedores (MAT/MO/Fact. A)");
-    await pagina.waitForFunction(() => document.body.innerText.includes("Servicio Xubio"), null, { timeout: 5000 });
+    await pagina.waitForFunction(() => /servicio xubio/i.test(document.body.innerText), null, { timeout: 5000 });
     await clic("Agregar proveedor");
     const hay = await pagina.evaluate(() => [...document.querySelectorAll("select")].some((x) => [...x.options].some((o) => o.value === "__nuevo__")));
     if (!hay) throw new Error("No está el desplegable con \"+ Agregar nuevo…\"");
