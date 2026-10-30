@@ -1746,6 +1746,16 @@ Pedido del usuario (factura 131 de NATURA: emitida 23/09/2026, fecha de pago car
 - [x] En Facturación y en el detalle de la obra, esas facturas muestran la fecha de pago en rojo con ⚠, para encontrar las que ya están cargadas.
 - [x] Pruebas unitarias nuevas. Publicado en QA.
 
+## 152. Servicio Xubio por proveedor (Producto/Servicio en Xubio) (30/10/2026)
+
+Pedido del usuario: en Pagos → Proveedores (MAT/MO/Fact. A), un "tipo de servicio Xubio" por proveedor, en desplegable (con opción de agregar nuevos), que al conectarse con Xubio se ponga en Producto/Servicio de la factura junto con el centro de costo.
+- [x] Columna "Servicio Xubio" en la tabla de proveedores: desplegable con los productos/servicios de compra de Xubio (lista que el proceso de Xubio actualiza cada 30 minutos en `xubioConfig/centros`, campo `servicios`) más los ya usados, y "+ Agregar nuevo…". Si el elegido no existe en Xubio se marca en rojo ("no está en Xubio"): MIA nunca lo crea en Xubio. También en la búsqueda, en Descargar Excel e Importar Excel (columna "Servicio Xubio"; si el Excel no la trae, se conserva la cargada).
+- [x] Xubio (`xubio/xubio.js`, `procesar.js`): el servicio se toma de la tabla de proveedores (por CUIT y, si no, por nombre). Con el mismo cambio que pone el centro de costo se pone el producto/servicio en todos los renglones de la factura. Lista: GET /ProductoCompraBean (verificado en Xubio, solo lectura, 30/10/2026: 34 productos).
+- [x] Si el servicio no existe en Xubio: estado "El tipo de servicio del proveedor no existe en Xubio", no se toca la factura y se reintenta cada 30 minutos.
+- [x] Si Xubio rechaza el cambio de servicio, o si al cambiarlo cambia el total de la factura (otra alícuota de IVA), se deja el servicio como estaba y se pone solo el centro de costo (⚠ "Centro puesto; Xubio no aceptó cambiar el tipo de servicio"). La factura nunca queda con otro importe.
+- [x] Las líneas que ya están en ✅ no se vuelven a mandar (regla de siempre); las pendientes se mandan de nuevo si cambia el servicio del proveedor. Para una ✅ puntual, "Reintentar ahora".
+- [x] Pruebas unitarias y de pantalla nuevas; prueba del proceso con un Xubio simulado (servicio puesto, rechazado, total cambiado, sin servicio, servicio inexistente). Publicado en QA (QA no cambia Xubio: muestra 🧪 lo que haría).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

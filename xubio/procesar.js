@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar } = require("./xubio");
+const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, productosCompra, CENTRO_GASTOS_GENERALES, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -50,7 +50,7 @@ const ARREGLO_TOPE_Y_NC = Date.UTC(2026, 9, 27, 22, 45);
 // Sección 144: "s/f" (sin factura) en el número de factura → no va a Xubio (pedido del usuario, 27/10/2026).
 const sinFactura = (f) => /^(sf|sinfactura|sinfac|sinfact)$/.test(String(f || "").toLowerCase().replace(/[\s.\/\\_-]/g, ""));
 const TRABADO_MS = 15 * 60 * 1000;
-const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea"]);
+const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea", "servicio_no_aceptado"]);
 // Estados que no se arreglan solos: se reintentan una vez por día.
 const LENTOS = new Set(["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 
@@ -82,6 +82,23 @@ const camposLinea = (l, importeMia) => ({
   centroCostoXubio: texto(l.centroCostoXubio),
 });
 
+// Sección 152: tipo de servicio de Xubio de cada proveedor (tabla "Proveedores — Actividad y Factura" de Pagos,
+// guardada en app/state como reglasProveedoresPago). Se busca por CUIT y, si no, por nombre del proveedor.
+async function serviciosDeProveedores(amb) {
+  const st = await db.doc(amb.prefijo + "app/state").get();
+  const filas = (st.exists && st.get("reglasProveedoresPago")) || [];
+  const porCuit = {},
+    porNombre = {};
+  for (const f of Array.isArray(filas) ? filas : []) {
+    const serv = t(f && f.servicioXubio);
+    if (!serv) continue;
+    const c = soloDigitos(f.cuit);
+    c && (porCuit[c] = serv);
+    t(f.proveedor) && (porNombre[normalizar(f.proveedor)] = serv);
+  }
+  return (l) => porCuit[soloDigitos(l.cuit)] || porNombre[normalizar(l.proveedorPago || l.proveedor)] || "";
+}
+
 async function registrar(amb, datos) {
   await db
     .collection(amb.prefijo + "xubioLog")
@@ -111,6 +128,7 @@ async function procesarLineas(amb) {
   // Sección 120 (pedido del usuario, 09/10/2026): el centro de costo se pone solo en las líneas SIN Fecha Pagado
   // ("Sin Fecha Pagado" y "Postergados"). Las pagadas no se tocan (en Xubio ya suelen tener el pago aplicado), salvo
   // las pagadas desde que se activaron las OP: esas necesitan el centro antes de emitir su OP.
+  const servicioDe = await serviciosDeProveedores(amb);
   const cfgOP = await db.doc(amb.prefijo + "xubioConfig/op").get();
   const opDesde = (cfgOP.exists && cfgOP.get("desde")) || null;
   const validas = lineas.filter(
@@ -169,6 +187,9 @@ async function procesarLineas(amb) {
     else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
+    // Sección 152: cambió el tipo de servicio del proveedor (y la línea todavía no quedó bien): se vuelve a mandar.
+    else if (servicioDe(l) !== (e.servicioPedido || "")) prioridad = 0;
+    else if (e.estado === "producto_no_encontrado" && ahora - (e.intento || 0) > 30 * 60 * 1000) prioridad = 1;
     // Sección 123: las rechazadas antes del arreglo de la descripción vacía se vuelven a probar una vez enseguida.
     else if (e.estado === "rechazada" && (e.intento || 0) < ARREGLO_DESCRIPCION) prioridad = 1;
     // Sección 125: las líneas internas que no quedaron bien se vuelven a probar una vez enseguida, ahora con Gastos Generales.
@@ -187,7 +208,12 @@ async function procesarLineas(amb) {
     try {
       r = repartida[l.id]
         ? { estado: "en_otra_linea", mensaje: repartida[l.id] }
-        : await asignarCentroCosto({ ...camposLinea(l, importePorFactura[claveFactura(l)]), centroAnterior: (e && e.centro) || "", simular: !!amb.simular });
+        : await asignarCentroCosto({
+            ...camposLinea(l, importePorFactura[claveFactura(l)]),
+            productoXubio: servicioDe(l),
+            centroAnterior: (e && e.centro) || "",
+            simular: !!amb.simular,
+          });
     } catch (err) {
       r = { estado: "error", mensaje: texto((err && err.message) || err, 500) };
     }
@@ -198,6 +224,8 @@ async function procesarLineas(amb) {
       // Centro que quedó puesto en Xubio (solo si quedó bien); sirve para poder cambiarlo si después cambia en MIA.
       centro: BIEN.has(r.estado) && r.centroDeCosto ? r.centroDeCosto.nombre : (e && e.centro) || null,
       centroMia: (r.centroDeCosto && r.centroDeCosto.nombre) || null,
+      servicioPedido: servicioDe(l) || null,
+      servicioMia: (r.producto && r.producto.nombre) || null,
       facturaXubio: (r.factura && r.factura.numeroDocumento) || null,
       proveedorXubio: (r.factura && r.factura.proveedor) || null,
       errorXubio: r.errorXubio || null,
@@ -390,8 +418,12 @@ async function actualizarCentros() {
     .map((c) => c.nombre)
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b, "es"));
-  for (const r of refs) await r.set({ nombres, actualizado: Date.now() });
-  console.log("Centros de costo de Xubio actualizados: " + nombres.length);
+  // Sección 152: también la lista de productos/servicios de compra, para el desplegable de la tabla de proveedores.
+  const servicios = await productosCompra()
+    .then((l) => [...new Set(l.map((x) => x.nombre))].sort((a, b) => a.localeCompare(b, "es")))
+    .catch(() => null);
+  for (const r of refs) await r.set({ nombres, ...(servicios ? { servicios } : {}), actualizado: Date.now() });
+  console.log("Centros de costo de Xubio actualizados: " + nombres.length + (servicios ? " · servicios: " + servicios.length : ""));
 }
 
 // Una pasada completa por ambiente (pedidos sueltos, líneas de Pagos y OP).

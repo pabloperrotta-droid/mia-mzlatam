@@ -68,6 +68,7 @@ function xubioIniciar() {
   db.doc("xubioConfig/centros").onSnapshot(
     (s) => {
       XUBIO_ST.centros = (s.exists && s.data().nombres) || [];
+      XUBIO_ST.servicios = (s.exists && s.data().servicios) || [];
       xubioAvisar();
     },
     () => {},
@@ -109,11 +110,13 @@ const XUBIO_TEXTOS = {
   bloqueada: "Orden de pago aplicada",
   simulacion: "Prueba QA: en Producción se pondría este centro (QA no cambia Xubio)",
   importe_no_coincide: "Importe no coincide",
+  producto_no_encontrado: "El tipo de servicio del proveedor no existe en Xubio",
+  servicio_no_aceptado: "Centro puesto; Xubio no aceptó cambiar el tipo de servicio",
   rechazada: "Xubio rechazó el cambio: poner el centro a mano en Xubio",
   repartida: "Factura repartida en varias líneas con distintos centros",
   en_otra_linea: "Factura repartida: en Xubio va el centro de costo de la parte más grande",
 };
-const XUBIO_LENTOS = ["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"];
+const XUBIO_LENTOS = ["producto_no_encontrado", "rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"];
 function xubioCuando(t) {
   return t
     ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -136,13 +139,13 @@ function xubioClase(l, e) {
     vigente = !!e && (yaBien || e.firma === xubioFirma(l)),
     bien = vigente && yaBien && !e.forzar,
     espera = !falta && (!vigente || e.forzar),
-    aviso = vigente && !espera && ["otro_centro", "bloqueada", "rechazada", "importe_no_coincide"].includes(e.estado),
+    aviso = vigente && !espera && ["otro_centro", "bloqueada", "rechazada", "importe_no_coincide", "servicio_no_aceptado"].includes(e.estado),
     icono = falta ? "–" : espera ? "⏳" : bien ? "✅" : aviso ? "⚠️" : e.estado === "simulacion" ? "🧪" : "❌",
     titulo = falta
       ? falta + ": no se manda a Xubio"
       : espera
         ? "Se manda a Xubio en unos minutos"
-        : (XUBIO_TEXTOS[e.estado] || e.estado) + (bien && e.centroMia ? ": " + e.centroMia : "");
+        : (XUBIO_TEXTOS[e.estado] || e.estado) + (bien && e.centroMia ? ": " + e.centroMia + (e.servicioMia ? " · " + e.servicioMia : "") : "");
   return { falta, vigente, bien, espera, aviso, icono, titulo };
 }
 // Orden por la columna Xubio: ❌ primero, después ⚠️, ⏳, 🧪 y ✅; dentro de cada grupo, por motivo.
@@ -608,8 +611,47 @@ function coincideBusquedaProveedor(fila, texto) {
   const q = norm(texto);
   if (!q || !fila || !String(fila.proveedor || "").trim()) return true;
   const dig = q.replace(/\D/g, "");
-  const campos = [fila.proveedor, fila.razonSocial, fila.cuit, fila.cbu, fila.imputacion, fila.actividad, fila.factura].map(norm);
+  const campos = [fila.proveedor, fila.razonSocial, fila.cuit, fila.cbu, fila.imputacion, fila.actividad, fila.factura, fila.servicioXubio].map(norm);
   return q.split(/\s+/).every((p) => campos.some((c) => c.includes(p))) || (dig.length >= 4 && [fila.cuit, fila.cbu].some((c) => String(c || "").replace(/\D/g, "").includes(dig)));
+}
+// Sección 152: desplegable del tipo de servicio de Xubio del proveedor (lista que viene de Xubio + los ya usados),
+// con "+ Agregar nuevo…". Si el elegido no existe en Xubio se marca en rojo (MIA nunca lo crea en Xubio).
+function opcionesServicioXubio(enXubio, usados) {
+  const k = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim(),
+    vistos = new Set(),
+    r = [];
+  for (const [n, existe] of [...(enXubio || []).map((x) => [x, true]), ...(usados || []).map((x) => [x, false])]) {
+    const t = String(n || "").trim();
+    if (!t || vistos.has(k(t))) continue;
+    vistos.add(k(t));
+    r.push({ nombre: t, enXubio: existe });
+  }
+  return r.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+function servicioEstaEnXubio(nombre, enXubio) {
+  const k = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  return !String(nombre || "").trim() || (enXubio || []).some((x) => k(x) === k(nombre));
+}
+function SelectorServicioXubio({ value, enXubio, usados, style, onChange }) {
+  const ops = opcionesServicioXubio(enXubio, usados),
+    falta = (enXubio || []).length > 0 && !servicioEstaEnXubio(value, enXubio);
+  return React.createElement(
+    "select",
+    {
+      style: { ...style, ...(falta ? { borderColor: RED, background: "#FBEAE7" } : {}) },
+      value: value || "",
+      title: falta ? '"' + value + '" no existe en Xubio: crealo en Xubio (MIA no lo crea) o elegí otro.' : "Tipo de servicio en Xubio (Producto/Servicio)",
+      onChange: (e) => {
+        const v = e.target.value;
+        if (v !== "__nuevo__") return onChange(v);
+        const n = (window.prompt("Nuevo tipo de servicio (tiene que llamarse igual que en Xubio):") || "").trim();
+        n && onChange(n);
+      },
+    },
+    React.createElement("option", { value: "" }, "—"),
+    ops.map((o) => React.createElement("option", { key: o.nombre, value: o.nombre }, o.nombre + (o.enXubio || !(enXubio || []).length ? "" : " (no está en Xubio)"))),
+    React.createElement("option", { value: "__nuevo__" }, "+ Agregar nuevo…"),
+  );
 }
 function PagosView({
   rows: n,
@@ -1810,7 +1852,7 @@ function PagosView({
   }
   function St() {
     const l = XLSX.utils.aoa_to_sheet([
-        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU", "Imputación"],
+        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU", "Imputación", "Servicio Xubio"],
         ...(A || []).map((U) => [
           U.proveedor || "",
           U.actividad || "",
@@ -1819,6 +1861,7 @@ function PagosView({
           U.razonSocial || "",
           U.cbu || "",
           U.imputacion || "",
+          U.servicioXubio || "",
         ]),
       ]),
       I = XLSX.utils.book_new();
@@ -1856,6 +1899,10 @@ function PagosView({
               imputacion: String(ge(Ue, ["imputación", "imputacion"]) || "")
                 .toUpperCase()
                 .trim(),
+              // Sección 152: solo si el Excel trae la columna (si no, se conserva el que ya tenía).
+              ...(Object.keys(Ue).some((pt) => /^servicio( xubio)?$/i.test(pt.toString().trim()))
+                ? { servicioXubio: String(ge(Ue, ["servicio xubio", "servicio"]) || "").trim() }
+                : {}),
             }))
             .filter((Ue) => Ue.proveedor),
           Y = {};
@@ -3957,6 +4004,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                     },
                     "Imputación",
                   ),
+                  React.createElement(
+                    "th",
+                    { style: q, title: "Producto/Servicio que se pone en los renglones de la factura en Xubio (junto con el centro de costo)." },
+                    "Servicio Xubio",
+                  ),
                   React.createElement("th", { style: q }),
                 ),
               ),
@@ -3969,7 +4021,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                     null,
                     React.createElement(
                       "td",
-                      { colSpan: 8, style: { ...Ae, textAlign: "center", color: MUTED, padding: "18px 8px" } },
+                      { colSpan: 9, style: { ...Ae, textAlign: "center", color: MUTED, padding: "18px 8px" } },
                       'Todavía no hay proveedores cargados acá. Usá "Traer proveedores nuevos de Costos", "Importar Excel" o "Agregar proveedor".',
                     ),
                   ),
@@ -4062,6 +4114,17 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                         placeholder: "Imputación",
                         title: "Imputación habitual (ej. SAN ANDRES → PINTURA)",
                         onChange: (U) => At(I, { imputacion: U.target.value.toUpperCase() }),
+                      }),
+                    ),
+                    React.createElement(
+                      "td",
+                      { style: Ae },
+                      React.createElement(SelectorServicioXubio, {
+                        value: l.servicioXubio || "",
+                        enXubio: xubioSt.servicios || [],
+                        usados: (A || []).map((x) => x && x.servicioXubio),
+                        style: Ve,
+                        onChange: (v) => At(I, { servicioXubio: v }),
                       }),
                     ),
                     React.createElement(

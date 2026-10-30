@@ -280,6 +280,22 @@ async function buscarFactura({ cuit, factura, fecha }) {
 }
 
 const CENTRO_GASTOS_GENERALES = "Gastos Generales de Oficina"; // nombre exacto en Xubio (verificado 13/10/2026)
+// Sección 152: productos/servicios de compra de Xubio ("Producto/Servicio" de los renglones). MIA nunca los crea.
+let productosCache = null;
+function productosCompra() {
+  if (!productosCache)
+    productosCache = xubio("GET", "/ProductoCompraBean").then((l) =>
+      comoLista(l)
+        .map((x) => ({ id: x.productoid != null ? x.productoid : idDe(x), nombre: String(x.nombre || x.codigo || "").trim(), codigo: x.codigo }))
+        .filter((x) => x.id != null && x.nombre),
+    );
+  return productosCache;
+}
+function buscarProducto(productos, nombre) {
+  const k = normalizar(nombre);
+  return (k && productos.find((x) => normalizar(x.nombre) === k || normalizar(x.codigo) === k)) || null;
+}
+
 function buscarCentro(centros, nombres) {
   for (const n of nombres) {
     const k = normalizar(n);
@@ -343,13 +359,27 @@ async function asignarCentroCosto(p) {
         ". Elegilo de la lista en Pagos. No se creó ninguno.",
     };
 
+  // Sección 152: tipo de servicio de Xubio según la tabla de proveedores de MIA (si el proveedor lo tiene).
+  const prodNombre = String(p.productoXubio || "").trim();
+  let prod = null;
+  if (prodNombre) {
+    prod = buscarProducto(await productosCompra(), prodNombre);
+    if (!prod)
+      return {
+        estado: "producto_no_encontrado",
+        mensaje: 'No hay en Xubio un producto/servicio "' + prodNombre + '" (tipo de servicio del proveedor en MIA). Crealo en Xubio o elegí otro en la tabla de proveedores. No se tocó la factura.',
+      };
+  }
+  const yServ = prod ? ' y servicio "' + prod.nombre + '"' : "";
+
   const id = r.comprobante.transaccionid;
   const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
   const items = comoLista(completo.transaccionProductoItems);
   if (items.length === 0) return { estado: "sin_renglones", mensaje: "La factura en Xubio no tiene renglones." };
-  const yaTenia = items.every((it) => idDe(it.centroDeCosto) === cc.id);
+  const prodOk = (it) => !prod || idDe(it.producto) === prod.id;
+  const yaTenia = items.every((it) => idDe(it.centroDeCosto) === cc.id && prodOk(it));
   const antes = resumenComprobante(completo);
-  if (yaTenia) return { estado: "ya_estaba", mensaje: "La factura ya tenía ese centro de costo.", factura: antes, centroDeCosto: cc };
+  if (yaTenia) return { estado: "ya_estaba", mensaje: "La factura ya tenía ese centro de costo" + yServ + ".", factura: antes, centroDeCosto: cc, producto: prod };
   // Si en Xubio tenía otro centro de costo, se pisa con el de MIA (pedido del usuario: "pisalo").
   const otros = [
     ...new Set(
@@ -368,14 +398,16 @@ async function asignarCentroCosto(p) {
     transaccionProductoItems: items.map((it) => ({
       ...it,
       centroDeCosto: { ID: cc.id },
+      ...(prod ? { producto: { ID: prod.id } } : {}),
     })),
   };
   if (p.simular)
     return {
       estado: "simulacion",
-      mensaje: 'Se asignaría "' + cc.nombre + '" a ' + items.length + " renglón(es)" + antesTenia + ". No se modificó nada.",
+      mensaje: 'Se asignaría "' + cc.nombre + '"' + yServ + " a " + items.length + " renglón(es)" + antesTenia + ". No se modificó nada.",
       factura: antes,
       centroDeCosto: cc,
+      producto: prod,
     };
 
   // Chequeo previo 2 (pedido del usuario): si la factura ya tiene una orden de pago aplicada no se toca.
@@ -391,8 +423,17 @@ async function asignarCentroCosto(p) {
     centroDeCosto: cc,
   });
   if (comoLista(completo.transaccionOrdenPagoItems).length) return bloqueada(true);
+  // Sección 152: si Xubio no acepta el cambio de servicio, se pone solo el centro de costo y se avisa.
+  let servicioNoAceptado = false;
+  const soloCentro = { ...modificado, transaccionProductoItems: items.map((it) => ({ ...it, centroDeCosto: { ID: cc.id } })) };
   try {
-    await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
+    try {
+      await xubio("PUT", "/comprobanteCompraBean/" + id, modificado);
+    } catch (e1) {
+      if (!prod || items.every(prodOk) || /se encuentra aplicada/i.test(String(e1.message || "") + String(e1.cuerpo || ""))) throw e1;
+      servicioNoAceptado = true;
+      await xubio("PUT", "/comprobanteCompraBean/" + id, soloCentro);
+    }
   } catch (err) {
     if (err.status !== 401 && err.status !== 403) throw err;
     // Xubio (09/10/2026): el rechazo era porque "La transacción se encuentra aplicada" (la factura ya tiene un
@@ -410,16 +451,27 @@ async function asignarCentroCosto(p) {
     // Se guarda la respuesta completa de Xubio (JSON) para poder mandarla a soporte (info@xubio.com).
     return { ...bloqueada(false), errorXubio: String(err.cuerpo || err.message || "").slice(0, 6000), transaccionid: id };
   }
-  const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
-  const ok = comoLista(despues.transaccionProductoItems).every((it) => idDe(it.centroDeCosto) === cc.id);
+  let despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  // Sección 152: si al cambiar el servicio Xubio cambió el total (ej. otra alícuota de IVA), se deja como estaba
+  // el servicio y se pone solo el centro de costo: la factura nunca puede quedar con otro importe.
+  if (prod && !servicioNoAceptado && Number(despues.importetotal) !== Number(completo.importetotal)) {
+    servicioNoAceptado = true;
+    await xubio("PUT", "/comprobanteCompraBean/" + id, soloCentro);
+    despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  }
+  const itemsDespues = comoLista(despues.transaccionProductoItems);
+  const ok = itemsDespues.every((it) => idDe(it.centroDeCosto) === cc.id);
+  const servOk = !prod || servicioNoAceptado || itemsDespues.every(prodOk);
   const totalIgual = Number(despues.importetotal) === Number(completo.importetotal);
   return {
-    estado: ok && totalIgual ? "ok" : "no_verificado",
-    mensaje: ok && totalIgual
-      ? 'Centro de costo "' + cc.nombre + '" asignado en Xubio' + antesTenia + "."
+    estado: ok && totalIgual && servOk ? (servicioNoAceptado ? "servicio_no_aceptado" : "ok") : "no_verificado",
+    mensaje: ok && totalIgual && servOk
+      ? 'Centro de costo "' + cc.nombre + '"' + (servicioNoAceptado ? "" : yServ) + (prod && !servicioNoAceptado ? " asignados" : " asignado") + " en Xubio" + antesTenia + "." +
+        (servicioNoAceptado ? ' Xubio no aceptó cambiar el servicio a "' + prod.nombre + '" sin cambiar el importe: ponelo a mano en Xubio si hace falta.' : "")
       : "Xubio aceptó el cambio pero al volver a leer la factura no coincide. Revisarla en Xubio.",
     factura: resumenComprobante(despues),
     centroDeCosto: cc,
+    producto: servicioNoAceptado ? null : prod,
   };
 }
 
@@ -586,9 +638,10 @@ async function facturaYaAplicada(id) {
 // Sección 122: el proceso ahora queda corriendo horas (vigilando); antes de cada pasada se borran las listas
 // guardadas de Xubio (facturas, proveedores, centros) para trabajar siempre con lo último.
 function limpiarCaches() {
+  productosCache = null;
   for (const k of Object.keys(cacheListas)) delete cacheListas[k];
   centrosCache = null;
   proveedoresCache = null;
 }
 
-module.exports = { listarPorFechas, limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
+module.exports = { listarPorFechas, limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, productosCompra, buscarProducto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };

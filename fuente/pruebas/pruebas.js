@@ -215,6 +215,13 @@ prueba("Gráficos por mes (Facturación y Pagos): suma por mes y año", () => {
   assert.strictEqual(f.fechaEnMes("05/10/2025", { anio: 2026, mesIdx: 9 }), false);
   assert.strictEqual(f.fechaEnMes("cualquiera", null), true);
 });
+prueba("Proveedores: desplegable de servicio Xubio", () => {
+  const o = JSON.parse(JSON.stringify(f.opcionesServicioXubio(["MATERIALES", "mano de obra"], ["MANO DE OBRA", "PINTURA", "", null])));
+  assert.deepStrictEqual(o, [{ nombre: "mano de obra", enXubio: true }, { nombre: "MATERIALES", enXubio: true }, { nombre: "PINTURA", enXubio: false }]);
+  assert.strictEqual(f.servicioEstaEnXubio("Materiales", ["MATERIALES"]), true);
+  assert.strictEqual(f.servicioEstaEnXubio("PINTURA", ["MATERIALES"]), false);
+  assert.strictEqual(f.servicioEstaEnXubio("", ["MATERIALES"]), true);
+});
 prueba("Facturación: avisa fecha de pago anterior a la emisión", () => {
   assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", "02/10/2025"), true);
   assert.strictEqual(f.pagoAntesDeEmision("23/09/2026", "02/10/2026"), false);
