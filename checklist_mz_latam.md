@@ -1799,7 +1799,7 @@ Pedido del usuario: "agregame el eliminar cada línea de simulación". El tacho 
 
 Pedido del usuario: el total de "TOTAL INGRESOS SIMULADOS" y "TOTAL COSTOS SIMULADOS" al lado del título.
 - [x] Al lado de cada título se ve el total de todas las semanas: ingresos (verde), costos (rojo) y neto. "NETO SIMULADO (venta − costo)" pasa a "NETO (venta − costo)" para que entre el número. También en el PDF.
-- [x] Publicado en QA.
+- [x] Publicado en QA y, con el OK del usuario ("producción", 03/11/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
