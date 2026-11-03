@@ -1807,6 +1807,15 @@ Pedido del usuario ("se ven mal los totales"): en la columna de la izquierda el 
 - [x] El título va arriba, más chico, y el total abajo, completo (ingresos en verde, costos en rojo, neto según el signo).
 - [x] Publicado en QA.
 
+## 160. Pagos: dividir una factura en varias obras (03/11/2026)
+
+Pedido del usuario: "dejame dividir una FC y que en Xubio cargue el CC del más alto" (factura 22 de ANDRES, $1.276.550, cargada en 3 líneas: WU San Martín, NATURA Santa Fe y NATURA Cabildo; MIA avisaba ⚠️ "factura repetida").
+- [x] Botón ✂ al lado del número de factura: pregunta en cuántas líneas se divide y agrega las líneas con el mismo proveedor, CUIT, factura y datos de pago (sin importes ni centro de costo, para completar). Todas quedan marcadas como partes de la factura (1/N, 2/N…).
+- [x] Si la factura ya está cargada en varias líneas (como la 22), un clic en ⚠️ pregunta si es una factura dividida y las marca como partes. Si alguna ya está pagada, no deja (avisa que puede ser la misma factura cargada dos veces).
+- [x] Las partes muestran ✂ (en lugar de ⚠️), con el detalle: suma de las partes y qué centro de costo va a Xubio.
+- [x] Xubio: sin cambios en el proceso, que ya lo hacía (Sección de factura repartida): en Xubio va el centro de costo de la parte con mayor Importe Bruto, las demás quedan "en otra línea" (✅), y el importe se compara con la suma de las partes.
+- [x] Pruebas unitarias nuevas. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

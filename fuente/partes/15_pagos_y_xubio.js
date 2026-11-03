@@ -653,6 +653,32 @@ function SelectorServicioXubio({ value, enXubio, usados, style, onChange }) {
     React.createElement("option", { value: "__nuevo__" }, "+ Agregar nuevo…"),
   );
 }
+// Sección 160: factura dividida en varias líneas (varias obras). En Xubio va el centro de costo de la parte con mayor
+// Importe Bruto (igual que xubio/procesar.js). Devuelve la línea principal.
+function partePrincipalFactura(lineas) {
+  return (lineas || []).slice().sort((a, b) => (Number(b.importeBruto) || 0) - (Number(a.importeBruto) || 0) || (Number(b.importe) || 0) - (Number(a.importe) || 0))[0] || null;
+}
+// Copias vacías para dividir una línea en n partes: mismo proveedor, CUIT, factura y datos de pago; sin importes ni centro.
+function copiasParaDividir(l, n) {
+  const r = [];
+  for (let k = 2; k <= n; k++)
+    r.push({
+      sePaga: l.sePaga || "SI",
+      cliente: l.cliente || "",
+      proveedor: l.proveedor || "",
+      proveedorPago: l.proveedorPago || "",
+      cuit: l.cuit || "",
+      razonSocial: l.razonSocial || "",
+      cbu: l.cbu || "",
+      mo: !!l.mo,
+      mat: !!l.mat,
+      factura: l.factura || "",
+      facturaA: !!l.facturaA,
+      parteFactura: k + "/" + n,
+      observaciones: "Factura dividida " + k + "/" + n,
+    });
+  return r;
+}
 function PagosView({
   rows: n,
   obras: d,
@@ -3489,18 +3515,62 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                       },
                     }),
                     (() => {
-                      const otras = facturasIguales(l, l.factura);
-                      return otras.length
-                        ? React.createElement(
-                            "span",
-                            {
-                              title: "Esta factura también está en otra línea de Pagos:\n" + textoFacturaRepetida(otras),
-                              style: { cursor: "help", fontSize: 12, color: otras.some((o) => o.fechaPagado) ? RED : "#9A6700" },
-                            },
-                            "⚠️",
-                          )
-                        : null;
+                      const otras = facturasIguales(l, l.factura),
+                        puede = ne && !Le(l);
+                      // Sección 160: si la misma factura está en otras líneas sin pagar, un clic en ⚠️ las marca como una
+                      // factura dividida (deja de avisar y en Xubio va el centro de costo de la parte más grande).
+                      const marcarDividida = () => {
+                        if (!puede) return;
+                        if (otras.some((o) => o.fechaPagado)) return window.alert("Una de esas líneas ya está pagada: revisala antes, puede ser la misma factura cargada dos veces.");
+                        const todas = [l, ...otras],
+                          pr = partePrincipalFactura(todas);
+                        if (!window.confirm("La factura " + l.factura + " está en " + todas.length + " líneas.\n\n¿Es una sola factura dividida en varias obras?\nEn Xubio se le pone el centro de costo de la parte con mayor Importe Bruto: " + (pr.subObra || pr.centroCosto || "(sin centro)") + ".")) return;
+                        todas.forEach((x, k) => Z(x.id, { parteFactura: k + 1 + "/" + todas.length }));
+                      };
+                      if (otras.length)
+                        return React.createElement(
+                          "span",
+                          {
+                            onClick: marcarDividida,
+                            title: "Esta factura también está en otra línea de Pagos:\n" + textoFacturaRepetida(otras) + (puede ? "\n\nClic: marcarla como factura dividida en varias obras." : ""),
+                            style: { cursor: puede ? "pointer" : "help", fontSize: 12, color: otras.some((o) => o.fechaPagado) ? RED : "#9A6700" },
+                          },
+                          "⚠️",
+                        );
+                      if (l.parteFactura) {
+                        const partes = [l, ...n.filter((x) => x.id !== l.id && x.parteFactura && fcClaveNumero(x.factura) === fcClaveNumero(l.factura) && (fcSoloDigitos(x.cuit) === fcSoloDigitos(l.cuit) || (x.proveedorPago || "").trim().toUpperCase() === (l.proveedorPago || "").trim().toUpperCase()))],
+                          pr = partePrincipalFactura(partes),
+                          suma = partes.reduce((t, x) => t + (Number(x.importe) || 0), 0);
+                        return React.createElement(
+                          "span",
+                          {
+                            title:
+                              "Factura dividida en " + partes.length + " líneas (suma Importe Final " + fmt(suma) + ").\nEn Xubio va el centro de costo de la parte con mayor Importe Bruto: " +
+                              (pr.subObra || pr.centroCosto || "(sin centro)") + (pr.id === l.id ? " (esta línea)." : "."),
+                            style: { cursor: "help", fontSize: 12.5, color: GOLD, fontWeight: 700 },
+                          },
+                          "✂",
+                        );
+                      }
+                      return null;
                     })(),
+                    // Sección 160: dividir la factura en varias líneas (una por obra).
+                    ne && !Le(l) && String(l.factura || "").trim() && !l.parteFactura && !esSinFactura(l.factura) &&
+                      React.createElement(
+                        "button",
+                        {
+                          title: "Dividir esta factura en varias obras (agrega líneas con el mismo proveedor y factura)",
+                          onClick: () => {
+                            const r = window.prompt("¿En cuántas líneas dividís la factura " + l.factura + "? (una por obra)", "2"),
+                              k = parseInt(r, 10);
+                            if (!(k >= 2 && k <= 20)) return;
+                            Z(l.id, { parteFactura: "1/" + k });
+                            ye(copiasParaDividir(l, k));
+                          },
+                          style: { border: "none", background: "none", cursor: "pointer", color: MUTED, fontSize: 12, padding: "0 2px" },
+                        },
+                        "✂",
+                      ),
                     React.createElement(FacturaPdfCelda, { linea: l, puedeEditar: ne && !Le(l), onAdjuntar: adjuntarPdfALinea }),
                   ),
                 ),

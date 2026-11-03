@@ -249,6 +249,18 @@ prueba("Cashflow simulación: venta total a mano, fila de control y costo sobre 
   assert.deepStrictEqual(Object.keys(c), ["s15", "s16", "s17", "s18"]);
   cerca(c.s15, 1000000 / 1.3 / 4, 0.01);
 });
+prueba("Pagos: factura dividida en varias obras", () => {
+  const ls = [{ id: "a", importeBruto: 280000, subObra: "WU SAN MARTIN" }, { id: "b", importeBruto: 575000, centroCosto: "NATURA SANTA FE" }, { id: "c", importeBruto: 200000 }];
+  assert.strictEqual(f.partePrincipalFactura(ls).id, "b");
+  assert.strictEqual(f.partePrincipalFactura([]), null);
+  const c = JSON.parse(JSON.stringify(f.copiasParaDividir({ id: "x", factura: "22", cuit: "20332214153", proveedorPago: "ANDRES", importe: 100, centroCosto: "X", mat: true }, 3)));
+  assert.strictEqual(c.length, 2);
+  assert.deepStrictEqual(c.map((x) => x.parteFactura), ["2/3", "3/3"]);
+  assert.strictEqual(c[0].factura, "22");
+  assert.strictEqual(c[0].importe, undefined);
+  assert.strictEqual(c[0].centroCosto, undefined);
+  assert.strictEqual(c[0].id, undefined);
+});
 prueba("Proveedores: desplegable de servicio Xubio", () => {
   const o = JSON.parse(JSON.stringify(f.opcionesServicioXubio(["MATERIALES", "mano de obra"], ["MANO DE OBRA", "PINTURA", "", null])));
   assert.deepStrictEqual(o, [{ nombre: "mano de obra", enXubio: true }, { nombre: "MATERIALES", enXubio: true }, { nombre: "PINTURA", enXubio: false }]);
