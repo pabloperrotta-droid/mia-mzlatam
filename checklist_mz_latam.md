@@ -1764,14 +1764,14 @@ Pedido del usuario: en la simulación de cash, ver a la izquierda el total de ca
 - [x] Debajo de cada línea, "↳ Costo · MUP [ ] %": con el markup cargado, MIA calcula el costo de cada semana = venta ÷ (1 + MUP%) y el total del costo. Sin markup, no hay costo.
 - [x] El costo resta como egreso: filas "TOTAL COSTOS SIMULADOS" y "NETO SIMULADO (venta − costo)", y el "Saldo acumulado (con simulación)" usa el neto. El costo cae en la misma semana que la venta.
 - [x] El PDF de la simulación incluye el total de cada línea, su costo y los totales de costo y neto.
-- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA.
+- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA y, con el OK del usuario ("pasá a producción", 03/11/2026), en `MIA.prd.html`.
 
 ## 154. Simulación: costo repartido en N semanas desde la primera venta (03/11/2026)
 
 Pedido del usuario: el costo automático con el markup sobre la venta total de la línea, repartido en la cantidad de semanas que se indique, a partir de la primera semana con venta ("si me paga el 15 de diciembre, el primer costo va el 15 de diciembre").
 - [x] Sublínea "↳ Costo · MUP [ ]% en [ ] sem.": costo total = venta total de la línea ÷ (1 + MUP%), en partes iguales durante N semanas desde la primera semana con venta. Sin N, cada semana el costo de su venta (como la Sección 153). Debajo, "Total costo".
 - [x] Si las N semanas pasan del horizonte del cashflow, se reparte solo en las que hay.
-- [x] Pruebas unitarias nuevas. Publicado en QA.
+- [x] Pruebas unitarias nuevas. Publicado en QA y, con el OK del usuario ("pasá a producción", 03/11/2026), en `MIA.prd.html`.
 
 ## 155. Simulación: venta total a mano y fila de control (03/11/2026)
 
@@ -1779,7 +1779,7 @@ Pedido del usuario: cargar a mano la venta de la línea (ej. Shangai $1.000.000)
 - [x] Campo "Venta" en cada línea simulada (debajo del nombre). El costo se calcula sobre esa venta (si no está, sobre la suma de las semanas), repartido en las N semanas desde la primera semana con cobro.
 - [x] Fila de control debajo de cada línea: "Control: cargado $X de $Y" y "falta $Z" / "sobra $Z" / "✓ completo".
 - [x] El PDF de la simulación muestra venta, cargado y lo que falta de cada línea.
-- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA.
+- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA y, con el OK del usuario ("pasá a producción", 03/11/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
