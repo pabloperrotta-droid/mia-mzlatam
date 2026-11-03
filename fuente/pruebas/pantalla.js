@@ -246,7 +246,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.waitForTimeout(300);
     await pagina.evaluate(() => [...document.querySelectorAll("button")].find((x) => /Agregar línea de ingreso/.test(x.textContent)).click());
     await pagina.waitForTimeout(300);
-    const r = await pagina.evaluate(() => /Costo · MUP/.test(document.body.innerText) && !!document.querySelector('input[title^="Markup de la obra"]'));
+    const r = await pagina.evaluate(() => /Costo · MUP/.test(document.body.innerText) && /Control: cargado/.test(document.body.innerText) && !!document.querySelector('input[title^="Venta total de la línea"]') && !!document.querySelector('input[title^="Markup de la obra"]'));
     if (!r) throw new Error("No apareció la sublínea de costo con el campo de markup");
   });
   await control("Gráficos por mes en Facturación y en Pagos", async () => {

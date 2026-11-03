@@ -1773,6 +1773,14 @@ Pedido del usuario: el costo automático con el markup sobre la venta total de l
 - [x] Si las N semanas pasan del horizonte del cashflow, se reparte solo en las que hay.
 - [x] Pruebas unitarias nuevas. Publicado en QA.
 
+## 155. Simulación: venta total a mano y fila de control (03/11/2026)
+
+Pedido del usuario: cargar a mano la venta de la línea (ej. Shangai $1.000.000), el markup y las semanas; después cargar los cobros por semana, y tener una fila de control que muestre si lo cargado llega a la venta.
+- [x] Campo "Venta" en cada línea simulada (debajo del nombre). El costo se calcula sobre esa venta (si no está, sobre la suma de las semanas), repartido en las N semanas desde la primera semana con cobro.
+- [x] Fila de control debajo de cada línea: "Control: cargado $X de $Y" y "falta $Z" / "sobra $Z" / "✓ completo".
+- [x] El PDF de la simulación muestra venta, cargado y lo que falta de cada línea.
+- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

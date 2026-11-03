@@ -219,6 +219,17 @@ function costoSimulado(venta, markup) {
 function totalLineaSimulada(linea) {
   return Object.values((linea && linea.valores) || {}).reduce((t, x) => t + (Number(x) || 0), 0);
 }
+// Sección 155: venta total que se carga a mano en la línea (ej. 1.000.000). El costo se calcula sobre esa venta;
+// si no se cargó, sobre la suma de las semanas.
+function ventaBaseLineaSimulada(linea) {
+  const v = Number(linea && linea.ventaTotal) || 0;
+  return v || totalLineaSimulada(linea);
+}
+// Lo que falta cargar en semanas para llegar a la venta total (negativo: se cargó de más). null si no hay venta total.
+function faltaCargarLineaSimulada(linea) {
+  const v = Number(linea && linea.ventaTotal) || 0;
+  return v ? v - totalLineaSimulada(linea) : null;
+}
 // Sección 154: costo de la línea repartido por semana. Con "en N semanas": costo total (venta total ÷ (1 + MUP))
 // en partes iguales durante N semanas a partir de la primera semana con venta de la línea (pedido del usuario,
 // 03/11/2026: "si me paga el 15 de diciembre, el primer costo va el 15 de diciembre"). Sin N: cada semana el costo
@@ -235,7 +246,7 @@ function costosSemanalesLinea(linea, semanas) {
     });
     return r;
   }
-  const total = costoSimulado(totalLineaSimulada(linea), linea.markup),
+  const total = costoSimulado(ventaBaseLineaSimulada(linea), linea.markup),
     i0 = sem.findIndex((w) => (Number(vals[w]) || 0) !== 0);
   if (!total || i0 < 0) return r;
   for (let k = 0; k < n && i0 + k < sem.length; k++) r[sem[i0 + k]] = total / n;
@@ -762,6 +773,9 @@ function CashflowView({
   function setMupSim(s, b) {
     po((R) => R.map((j) => (j.id === s ? { ...j, markup: b } : j)));
   }
+  function setVentaSim(s, b) {
+    po((R) => R.map((j) => (j.id === s ? { ...j, ventaTotal: b } : j)));
+  }
   function setSemCostoSim(s, b) {
     po((R) => R.map((j) => (j.id === s ? { ...j, semanasCosto: b } : j)));
   }
@@ -821,7 +835,7 @@ function CashflowView({
         s
       );
     }, [ae, qt, costosLinea]),
-    hayCostoSim = qt.some((j) => costoSimulado(totalLineaSimulada(j), j.markup) > 0),
+    hayCostoSim = qt.some((j) => costoSimulado(ventaBaseLineaSimulada(j), j.markup) > 0),
     // Sección 145: el saldo con simulación arranca igual que el real (incluye lo arrastrado de semanas anteriores).
     Yo = useMemo(() => {
       let s = (Number(nt) || 0) + previas.neto;
@@ -870,9 +884,9 @@ function CashflowView({
       filas: [
         // Pedido del usuario: las líneas de clientes simulados solo en el primer bloque de semanas.
         ...qt.flatMap((l, i) => [
-          { etiqueta: (l.nombre || "(sin nombre)") + " · total " + fmt(totalLineaSimulada(l)), valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true },
-          ...(costoSimulado(totalLineaSimulada(l), l.markup) > 0
-            ? [{ etiqueta: "   Costo (MUP " + l.markup + "%" + (parseInt(l.semanasCosto, 10) > 0 ? ", en " + parseInt(l.semanasCosto, 10) + " semanas" : "") + ") · total -" + fmt(costoSimulado(totalLineaSimulada(l), l.markup)), valores: ae.map((s) => ((costosSemanalesLinea(l, ae)[s] || 0) ? -costosSemanalesLinea(l, ae)[s] : null)), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true }]
+          { etiqueta: (l.nombre || "(sin nombre)") + (Number(l.ventaTotal) ? " · venta " + fmt(Number(l.ventaTotal)) : "") + " · cargado " + fmt(totalLineaSimulada(l)) + (faltaCargarLineaSimulada(l) ? " · falta " + fmt(faltaCargarLineaSimulada(l)) : ""), valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true },
+          ...(costoSimulado(ventaBaseLineaSimulada(l), l.markup) > 0
+            ? [{ etiqueta: "   Costo (MUP " + l.markup + "%" + (parseInt(l.semanasCosto, 10) > 0 ? ", en " + parseInt(l.semanasCosto, 10) + " semanas" : "") + ") · total -" + fmt(costoSimulado(ventaBaseLineaSimulada(l), l.markup)), valores: ae.map((s) => ((costosSemanalesLinea(l, ae)[s] || 0) ? -costosSemanalesLinea(l, ae)[s] : null)), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true }]
             : []),
         ]),
         { etiqueta: "TOTAL INGRESOS SIMULADOS", valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
@@ -3750,12 +3764,20 @@ function CashflowView({
                           value: s.nombre,
                           onChange: (j) => yn(s.id, j.target.value),
                         }),
-                        // Sección 153: total de la línea (suma de todas las semanas).
-                        React.createElement(
-                          "span",
-                          { title: "Total de la línea (todas las semanas)", style: { fontSize: 11.5, fontWeight: 700, color: GREEN, whiteSpace: "nowrap" } },
-                          fmt(totalLineaSimulada(s)),
-                        ),
+                      ),
+                      // Sección 155: venta total a mano y lo que falta cargar en semanas para llegar a ella.
+                      React.createElement(
+                        "div",
+                        { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: MUTED, marginTop: 2 } },
+                        "Venta",
+                        React.createElement(MilesInput, {
+                          className: "cf-cell-input",
+                          placeholder: "total",
+                          title: "Venta total de la línea (ej. 1.000.000). El costo se calcula sobre esta venta.",
+                          style: { ...go, width: 96, fontSize: 11.5, textAlign: "right" },
+                          value: s.ventaTotal ?? "",
+                          onChange: (j) => setVentaSim(s.id, j),
+                        }),
                       ),
                     ),
                     ae.map((j, Q) =>
@@ -3821,7 +3843,7 @@ function CashflowView({
                           className: "cf-cell-input",
                           inputMode: "decimal",
                           placeholder: "%",
-                          title: "Markup de la obra: costo total = venta total de la línea ÷ (1 + MUP%)",
+                          title: "Markup de la obra: costo total = venta de la línea ÷ (1 + MUP%)",
                           style: { ...go, width: 40, fontSize: 11.5, textAlign: "right" },
                           value: s.markup ?? "",
                           onChange: (j) => setMupSim(s.id, j.target.value.replace(/[^0-9.,\-]/g, "")),
@@ -3838,11 +3860,11 @@ function CashflowView({
                         }),
                         "sem.",
                       ),
-                      costoSimulado(totalLineaSimulada(s), s.markup) > 0 &&
+                      costoSimulado(ventaBaseLineaSimulada(s), s.markup) > 0 &&
                         React.createElement(
                           "div",
                           { title: "Costo total de la línea", style: { fontWeight: 700, color: RED, textAlign: "right" } },
-                          "Total costo -" + fmt(costoSimulado(totalLineaSimulada(s), s.markup)),
+                          "Total costo -" + fmt(costoSimulado(ventaBaseLineaSimulada(s), s.markup)),
                         ),
                     ),
                     ae.map((j) =>
@@ -3864,6 +3886,35 @@ function CashflowView({
                       ),
                     ),
                     React.createElement("div", { style: { borderBottom: "1px solid " + BORDER, background: R } }),
+                    // Sección 155: fila de control. Cargado en semanas contra la venta total de la línea.
+                    (() => {
+                      const cargado = totalLineaSimulada(s),
+                        f = faltaCargarLineaSimulada(s),
+                        ok = f != null && Math.abs(f) < 1,
+                        color = f == null ? MUTED : ok ? GREEN : f > 0 ? GOLD : RED;
+                      return React.createElement(
+                        "div",
+                        {
+                          style: {
+                            gridColumn: "1 / -1",
+                            padding: "3px 18px 5px",
+                            borderBottom: "2px solid " + BORDER,
+                            background: R,
+                            fontSize: 11.5,
+                            color: MUTED,
+                            display: "flex",
+                            gap: 14,
+                          },
+                        },
+                        React.createElement("span", null, "Control: cargado ", React.createElement("b", { style: { color: NAVY } }, fmt(cargado))),
+                        f != null && React.createElement("span", null, "de ", React.createElement("b", { style: { color: NAVY } }, fmt(Number(s.ventaTotal) || 0))),
+                        React.createElement(
+                          "b",
+                          { style: { color } },
+                          f == null ? "cargá la venta total para controlar" : ok ? "✓ completo" : f > 0 ? "falta " + fmt(f) : "sobra " + fmt(-f),
+                        ),
+                      );
+                    })(),
                   );
                 }),
             qt.length > 0 &&
