@@ -215,6 +215,16 @@ prueba("Gráficos por mes (Facturación y Pagos): suma por mes y año", () => {
   assert.strictEqual(f.fechaEnMes("05/10/2025", { anio: 2026, mesIdx: 9 }), false);
   assert.strictEqual(f.fechaEnMes("cualquiera", null), true);
 });
+prueba("Cashflow simulación: costo con markup y total de la línea", () => {
+  cerca(f.costoSimulado(100000000, 30), 76923076.92, 0.01);
+  cerca(f.costoSimulado(100000000, "25,5"), 79681274.9, 0.01);
+  assert.strictEqual(f.costoSimulado(100000000, ""), 0);
+  assert.strictEqual(f.costoSimulado(100000000, undefined), 0);
+  assert.strictEqual(f.costoSimulado("", 30), 0);
+  assert.strictEqual(f.costoSimulado(100, 0), 100);
+  assert.strictEqual(f.totalLineaSimulada({ valores: { a: "100", b: 50, c: "" } }), 150);
+  assert.strictEqual(f.totalLineaSimulada({}), 0);
+});
 prueba("Proveedores: desplegable de servicio Xubio", () => {
   const o = JSON.parse(JSON.stringify(f.opcionesServicioXubio(["MATERIALES", "mano de obra"], ["MANO DE OBRA", "PINTURA", "", null])));
   assert.deepStrictEqual(o, [{ nombre: "mano de obra", enXubio: true }, { nombre: "MATERIALES", enXubio: true }, { nombre: "PINTURA", enXubio: false }]);

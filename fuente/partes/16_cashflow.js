@@ -208,6 +208,17 @@ function EgresoNombreEditable({ nombre, editable, onRename, onDelete }) {
           ),
       );
 }
+// Sección 153: costo de una línea de venta simulada a partir del markup (pedido del usuario, 03/11/2026).
+// Costo = venta ÷ (1 + MUP%). Sin markup cargado no hay costo. Ej.: venta 100.000.000 con MUP 30% → costo 76.923.077.
+function costoSimulado(venta, markup) {
+  const v = Number(venta) || 0,
+    m = String(markup ?? "").trim() === "" ? null : Number(String(markup).replace(",", "."));
+  if (!v || m == null || isNaN(m) || m <= -100) return 0;
+  return v / (1 + m / 100);
+}
+function totalLineaSimulada(linea) {
+  return Object.values((linea && linea.valores) || {}).reduce((t, x) => t + (Number(x) || 0), 0);
+}
 // Sección 145/146: imprimir una tabla de Cash (real o simulado) en PDF A3 apaisado, en bloques de 18 semanas.
 // filas: [{ etiqueta, valores: [número|null por semana], negrita, fondo, notas: [texto chico por semana] }]
 function imprimirTablaCashPdf({ titulo, info, semanas, filas, archivo, tablaFinal }) {
@@ -726,6 +737,9 @@ function CashflowView({
   function _e(s, b, R) {
     po((j) => j.map((Q) => (Q.id === s ? { ...Q, valores: { ...Q.valores, [b]: R } } : Q)));
   }
+  function setMupSim(s, b) {
+    po((R) => R.map((j) => (j.id === s ? { ...j, markup: b } : j)));
+  }
   function xt(s) {
     po((b) => b.filter((R) => R.id !== s));
   }
@@ -771,11 +785,22 @@ function CashflowView({
         s
       );
     }, [ae, qt]),
+    // Sección 153: costo de cada línea simulada (venta ÷ (1 + MUP)), en la misma semana que la venta. Resta como egreso.
+    CoSim = useMemo(() => {
+      const s = {};
+      return (
+        ae.forEach((b) => {
+          s[b] = qt.reduce((R, j) => R + costoSimulado(j.valores[b], j.markup), 0);
+        }),
+        s
+      );
+    }, [ae, qt]),
+    hayCostoSim = qt.some((j) => costoSimulado(totalLineaSimulada(j), j.markup) > 0),
     // Sección 145: el saldo con simulación arranca igual que el real (incluye lo arrastrado de semanas anteriores).
     Yo = useMemo(() => {
       let s = (Number(nt) || 0) + previas.neto;
-      return eo.map((b) => ((s += b.neto + (Mo[b.semana] || 0)), s));
-    }, [eo, nt, Mo, previas]);
+      return eo.map((b) => ((s += b.neto + (Mo[b.semana] || 0) - (CoSim[b.semana] || 0)), s));
+    }, [eo, nt, Mo, CoSim, previas]);
   // Sección 145: imprimir el Cash real y la simulación (pedido del usuario, 28/10/2026).
   const ZEBRA_PDF = [246, 243, 236],
     acuerdoFaltan = (saldos) => saldos.map((x) => { const u = Math.max(-x, 0); return u > Fo ? "falta " + fmt(u - Fo) : ""; }),
@@ -818,8 +843,19 @@ function CashflowView({
       archivo: "Cashflow simulado",
       filas: [
         // Pedido del usuario: las líneas de clientes simulados solo en el primer bloque de semanas.
-        ...qt.map((l, i) => ({ etiqueta: l.nombre || "(sin nombre)", valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true })),
+        ...qt.flatMap((l, i) => [
+          { etiqueta: (l.nombre || "(sin nombre)") + " · total " + fmt(totalLineaSimulada(l)), valores: ae.map((s) => Number(l.valores[s]) || null), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true },
+          ...(costoSimulado(totalLineaSimulada(l), l.markup) > 0
+            ? [{ etiqueta: "   Costo (MUP " + l.markup + "%) · total -" + fmt(costoSimulado(totalLineaSimulada(l), l.markup)), valores: ae.map((s) => (costoSimulado(l.valores[s], l.markup) ? -costoSimulado(l.valores[s], l.markup) : null)), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true }]
+            : []),
+        ]),
         { etiqueta: "TOTAL INGRESOS SIMULADOS", valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
+        ...(hayCostoSim
+          ? [
+              { etiqueta: "TOTAL COSTOS SIMULADOS", valores: ae.map((s) => -(CoSim[s] || 0)), negrita: true },
+              { etiqueta: "NETO SIMULADO", valores: ae.map((s) => (Mo[s] || 0) - (CoSim[s] || 0)), negrita: true, fondo: [241, 233, 210] },
+            ]
+          : []),
         { etiqueta: "Saldo acumulado (real)", valores: vo },
         { etiqueta: "Saldo acumulado (con simulación)", valores: Yo, negrita: true, fondo: ZEBRA_PDF },
         { etiqueta: "Utilizar acuerdo (con simulación)", valores: Yo.map((x) => Math.max(-x, 0)), notas: acuerdoFaltan(Yo) },
@@ -3602,7 +3638,7 @@ function CashflowView({
         React.createElement(
           "div",
           { style: { padding: "12px 18px", fontSize: 11.5, color: MUTED, borderBottom: "1px solid " + BORDER } },
-          "Agregá líneas de ingresos hipotéticos en las semanas que quieras, para ver cómo quedaría el Saldo Acumulado y el uso del Acuerdo Bancario si se concretan. No modifica los Ingresos ni Egresos reales de arriba.",
+          "Agregá líneas de venta hipotéticas en las semanas que quieras, para ver cómo quedaría el Saldo Acumulado y el uso del Acuerdo Bancario si se concretan. Al lado del nombre se ve el total de la línea. En la sublínea de costo poné el markup (MUP %): MIA calcula el costo (venta ÷ (1 + MUP)) en las mismas semanas y lo resta como egreso. No modifica los Ingresos ni Egresos reales de arriba.",
         ),
         React.createElement(
           "div",
@@ -3678,13 +3714,23 @@ function CashflowView({
                           background: R,
                         },
                       },
-                      React.createElement("input", {
-                        placeholder: "Ej: Nuevo cliente / adelanto",
-                        className: "cf-cell-input",
-                        style: { ...go, fontSize: 12 },
-                        value: s.nombre,
-                        onChange: (j) => yn(s.id, j.target.value),
-                      }),
+                      React.createElement(
+                        "div",
+                        { style: { display: "flex", alignItems: "center", gap: 6 } },
+                        React.createElement("input", {
+                          placeholder: "Ej: Nuevo cliente / adelanto",
+                          className: "cf-cell-input",
+                          style: { ...go, fontSize: 12, flex: 1, minWidth: 0 },
+                          value: s.nombre,
+                          onChange: (j) => yn(s.id, j.target.value),
+                        }),
+                        // Sección 153: total de la línea (suma de todas las semanas).
+                        React.createElement(
+                          "span",
+                          { title: "Total de la línea (todas las semanas)", style: { fontSize: 11.5, fontWeight: 700, color: GREEN, whiteSpace: "nowrap" } },
+                          fmt(totalLineaSimulada(s)),
+                        ),
+                      ),
                     ),
                     ae.map((j, Q) =>
                       React.createElement(
@@ -3728,6 +3774,59 @@ function CashflowView({
                         React.createElement(Trash2, { size: 13 }),
                       ),
                     ),
+                    // Sección 153: sublínea de costo, calculada con el markup (resta como egreso en la simulación).
+                    React.createElement(
+                      "div",
+                      {
+                        style: {
+                          padding: "3px 18px 3px 30px",
+                          borderBottom: "1px solid " + BORDER,
+                          borderRight: "1px solid " + BORDER,
+                          background: R,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 11.5,
+                          color: MUTED,
+                        },
+                      },
+                      "↳ Costo · MUP",
+                      React.createElement("input", {
+                        className: "cf-cell-input",
+                        inputMode: "decimal",
+                        placeholder: "%",
+                        title: "Markup de la obra: costo = venta ÷ (1 + MUP%)",
+                        style: { ...go, width: 46, fontSize: 11.5, textAlign: "right" },
+                        value: s.markup ?? "",
+                        onChange: (j) => setMupSim(s.id, j.target.value.replace(/[^0-9.,\-]/g, "")),
+                      }),
+                      "%",
+                      React.createElement("span", { style: { flex: 1 } }),
+                      React.createElement(
+                        "span",
+                        { title: "Costo total de la línea", style: { fontWeight: 700, color: RED, whiteSpace: "nowrap" } },
+                        costoSimulado(totalLineaSimulada(s), s.markup) ? "-" + fmt(costoSimulado(totalLineaSimulada(s), s.markup)) : "—",
+                      ),
+                    ),
+                    ae.map((j) =>
+                      React.createElement(
+                        "div",
+                        {
+                          key: j,
+                          style: {
+                            padding: "5px 6px",
+                            fontSize: 11.5,
+                            textAlign: "right",
+                            color: RED,
+                            borderBottom: "1px solid " + BORDER,
+                            borderRight: "1px solid " + BORDER,
+                            background: R,
+                          },
+                        },
+                        costoSimulado(s.valores[j], s.markup) ? "-" + fmt(costoSimulado(s.valores[j], s.markup)) : "",
+                      ),
+                    ),
+                    React.createElement("div", { style: { borderBottom: "1px solid " + BORDER, background: R } }),
                   );
                 }),
             qt.length > 0 &&
@@ -3767,6 +3866,30 @@ function CashflowView({
                   ),
                 ),
                 React.createElement("div", { style: { background: "#F1E9D2" } }),
+              ),
+            // Sección 153: total de costos simulados y neto (venta − costo), que es lo que suma al saldo.
+            hayCostoSim &&
+              [
+                ["TOTAL COSTOS SIMULADOS", (w) => -(CoSim[w] || 0), "#fff"],
+                ["NETO SIMULADO (venta − costo)", (w) => (Mo[w] || 0) - (CoSim[w] || 0), "#F1E9D2"],
+              ].map(([et, fn, bg]) =>
+                React.createElement(
+                  React.Fragment,
+                  { key: et },
+                  React.createElement(
+                    "div",
+                    { style: { padding: "7px 18px", fontSize: 12.5, fontWeight: 700, color: NAVY, background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER } },
+                    et,
+                  ),
+                  ae.map((w) =>
+                    React.createElement(
+                      "div",
+                      { key: w, style: { padding: "7px 6px", fontSize: 12, fontWeight: 700, textAlign: "right", background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER, color: fn(w) < 0 ? RED : GREEN } },
+                      fmt(fn(w)),
+                    ),
+                  ),
+                  React.createElement("div", { style: { background: bg, borderTop: "1px solid " + BORDER } }),
+                ),
               ),
           ),
         ),

@@ -1757,6 +1757,15 @@ Pedido del usuario: en Pagos → Proveedores (MAT/MO/Fact. A), un "tipo de servi
 - [x] Las líneas que ya están en ✅ no se vuelven a mandar (regla de siempre); las pendientes se mandan de nuevo si cambia el servicio del proveedor. Para una ✅ puntual, "Reintentar ahora".
 - [x] Pruebas unitarias y de pantalla nuevas; prueba del proceso con un Xubio simulado (servicio puesto, rechazado, total cambiado, sin servicio, servicio inexistente). Publicado en QA (QA no cambia Xubio: muestra 🧪 lo que haría) y, con el OK del usuario ("solo el 1", 30/10/2026), en `MIA.prd.html`.
 
+## 153. Cashflow → Simulación: total por línea y sublínea de costo con markup (03/11/2026)
+
+Pedido del usuario: en la simulación de cash, ver a la izquierda el total de cada línea de venta, y abajo de cada línea una sublínea de costo calculada con un markup, que reste como egreso.
+- [x] Al lado del nombre de cada línea simulada se ve el total de la línea (suma de todas las semanas).
+- [x] Debajo de cada línea, "↳ Costo · MUP [ ] %": con el markup cargado, MIA calcula el costo de cada semana = venta ÷ (1 + MUP%) y el total del costo. Sin markup, no hay costo.
+- [x] El costo resta como egreso: filas "TOTAL COSTOS SIMULADOS" y "NETO SIMULADO (venta − costo)", y el "Saldo acumulado (con simulación)" usa el neto. El costo cae en la misma semana que la venta.
+- [x] El PDF de la simulación incluye el total de cada línea, su costo y los totales de costo y neto.
+- [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

@@ -238,6 +238,17 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
       if (!pdf.includes(titulo) || !/Saldo acumulado/.test(pdf)) throw new Error("El PDF de " + titulo + " no tiene lo esperado");
     }
   });
+  await control("Cashflow → Simulación: total de la línea y costo con markup", async () => {
+    await clic("Cashflow");
+    await clic("Ingresos");
+    const abierta = await pagina.evaluate(() => /SIMULACIÓN DE CASH/i.test(document.body.innerText));
+    if (!abierta) await pagina.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "Simular"); b && b.click(); });
+    await pagina.waitForTimeout(300);
+    await pagina.evaluate(() => [...document.querySelectorAll("button")].find((x) => /Agregar línea de ingreso/.test(x.textContent)).click());
+    await pagina.waitForTimeout(300);
+    const r = await pagina.evaluate(() => /Costo · MUP/.test(document.body.innerText) && !!document.querySelector('input[title^="Markup de la obra"]'));
+    if (!r) throw new Error("No apareció la sublínea de costo con el campo de markup");
+  });
   await control("Gráficos por mes en Facturación y en Pagos", async () => {
     await clic("Facturación");
     await pagina.waitForFunction(() => document.body.innerText.includes("FACTURACIÓN POR MES"), null, { timeout: 5000 });
