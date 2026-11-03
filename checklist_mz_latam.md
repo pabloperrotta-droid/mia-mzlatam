@@ -1793,7 +1793,7 @@ Pedido del usuario ("dale un mejor diseño, que se note el campo a completar, no
 
 Pedido del usuario: "agregame el eliminar cada línea de simulación". El tacho estaba al final de todas las semanas (había que ir hasta la derecha).
 - [x] Tacho al lado del nombre de cada línea (y se mantiene el del final). Pide confirmación con el nombre de la línea. Respeta el permiso de eliminar del rol.
-- [x] Prueba de pantalla nueva. Publicado en QA.
+- [x] Prueba de pantalla nueva. Publicado en QA y, con el OK del usuario ("pasalo", 03/11/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
