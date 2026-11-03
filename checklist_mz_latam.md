@@ -1814,7 +1814,16 @@ Pedido del usuario: "dejame dividir una FC y que en Xubio cargue el CC del más 
 - [x] Si la factura ya está cargada en varias líneas (como la 22), un clic en ⚠️ pregunta si es una factura dividida y las marca como partes. Si alguna ya está pagada, no deja (avisa que puede ser la misma factura cargada dos veces).
 - [x] Las partes muestran ✂ (en lugar de ⚠️), con el detalle: suma de las partes y qué centro de costo va a Xubio.
 - [x] Xubio: sin cambios en el proceso, que ya lo hacía (Sección de factura repartida): en Xubio va el centro de costo de la parte con mayor Importe Bruto, las demás quedan "en otra línea" (✅), y el importe se compara con la suma de las partes.
-- [x] Pruebas unitarias nuevas. Publicado en QA.
+- [x] Pruebas unitarias nuevas. Publicado en QA y, para la prueba de la Sección 161 que pidió el usuario ("probá", 03/11/2026), en `MIA.prd.html`.
+
+## 161. Xubio: dividir la factura en renglones, uno por obra (03/11/2026)
+
+Pedido del usuario: "¿en Xubio podés dividirla tal cual está en MIA?… Probá". Hasta ahora una factura dividida en MIA iba a Xubio con un solo centro de costo (el de la parte con mayor Importe Bruto).
+- [x] `xubio/xubio.js` → `dividirFacturaEnCentros`: si la factura en Xubio tiene un solo renglón, lo parte en un renglón por parte, con el neto de cada parte (Importe Bruto de MIA) y su centro de costo; IVA, total y exento se reparten en la misma proporción (el último renglón absorbe el redondeo, así el total no cambia). Mismo producto/servicio (o el del proveedor, Sección 152).
+- [x] Controles: la suma de los Importes Finales = total de la factura (±$1); la suma de los Importes Brutos = neto del renglón (±$1); sin pagos ni OP aplicados. Después de modificarla se vuelve a leer: si el total o los renglones no coinciden, la factura vuelve a como estaba. Si Xubio rechaza, se reintenta con id -1 en los renglones nuevos; si sigue rechazando, avisa que hay que dividirla a mano. Nunca crea centros de costo.
+- [x] `xubio/procesar.js`: las partes marcadas en MIA (✂) se dividen desde la línea principal (un intento, aunque ya estuviera ✅ con un solo centro); al quedar bien, todas las partes pasan a ✅ "Factura dividida en Xubio".
+- [x] PRUEBA: en Producción habilitado solo para la factura 22 de ORTIZ VARGAS ANDRES (CUIT 20332214153), autorizada por el usuario. En QA, solo simulación (🧪). Probado antes con un Xubio simulado (dividida, rechazada, total distinto con vuelta atrás, simulación, ya dividida).
+- [ ] Si la prueba sale bien: con el OK del usuario, habilitarlo para todas las facturas divididas (`DIVIDIR_EN_XUBIO.prd = "*"`).
 
 ## 41. Pendientes / recomendaciones
 

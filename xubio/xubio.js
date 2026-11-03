@@ -308,24 +308,8 @@ function buscarCentro(centros, nombres) {
 
 const plata = (v) => "$" + (Number(v) || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-async function asignarCentroCosto(p) {
-  const r = await buscarFactura(p);
-  if (r.estado !== "encontrada") return r;
-  // Chequeo previo 1 (pedido del usuario): el importe final de la factura en Xubio tiene que coincidir
-  // con el Importe Final de Pagos (si la factura está en varias líneas, con la suma).
-  if (p.importeMia != null && p.importeMia !== "") {
-    const enXubio = Number(r.comprobante.importetotal) || 0;
-    const enMia = Number(p.importeMia) || 0;
-    if (Math.abs(enXubio - enMia) > 1)
-      return {
-        estado: "importe_no_coincide",
-        mensaje:
-          "Importe no coincide: la factura " + r.comprobante.numeroDocumento + " en Xubio es de " + plata(enXubio) +
-          " y en Pagos de " + plata(enMia) + ". No se le puso el centro de costo.",
-        factura: resumenComprobante(r.comprobante),
-      };
-  }
-  const centros = await centrosDeCosto();
+// Centro de costo de Xubio que corresponde a una línea de Pagos (no crea ninguno). { cc } o { error }.
+function centroDeLinea(p, centros) {
   // Cómo se llama el centro de costo en Xubio según los datos de la línea de Pagos
   // (lo elegido a mano en la lista siempre manda):
   //   · WU: el centro de costo de Xubio es la Sub Obra (WU PALERMO 2, WU MORON...).
@@ -345,20 +329,44 @@ async function asignarCentroCosto(p) {
       : [p.centroCostoXubio, cc0, cli && cc0 ? cli + " " + cc0 : "", cli && cc0 ? cli.split(/\s+/)[0] + " " + cc0 : ""]
   ).filter((x) => x && String(x).trim());
   if (esWU && nombres.length === 0)
-    return {
+    return { error: {
       estado: "centro_no_encontrado",
       mensaje: "Es de WU y la línea no tiene Sub Obra: cargá la Sub Obra o elegí el centro de costo de la lista.",
-    };
+    } };
   const cc = buscarCentro(centros, nombres);
   if (!cc)
-    return {
+    return { error: {
       estado: "centro_no_encontrado",
       mensaje:
         "No hay en Xubio un centro de costo que coincida con " +
         [...new Set(nombres.map((n) => '"' + String(n).trim() + '"'))].join(" / ") +
         ". Elegilo de la lista en Pagos. No se creó ninguno.",
-    };
+    } };
+  return { cc };
 
+}
+
+async function asignarCentroCosto(p) {
+  const r = await buscarFactura(p);
+  if (r.estado !== "encontrada") return r;
+  // Chequeo previo 1 (pedido del usuario): el importe final de la factura en Xubio tiene que coincidir
+  // con el Importe Final de Pagos (si la factura está en varias líneas, con la suma).
+  if (p.importeMia != null && p.importeMia !== "") {
+    const enXubio = Number(r.comprobante.importetotal) || 0;
+    const enMia = Number(p.importeMia) || 0;
+    if (Math.abs(enXubio - enMia) > 1)
+      return {
+        estado: "importe_no_coincide",
+        mensaje:
+          "Importe no coincide: la factura " + r.comprobante.numeroDocumento + " en Xubio es de " + plata(enXubio) +
+          " y en Pagos de " + plata(enMia) + ". No se le puso el centro de costo.",
+        factura: resumenComprobante(r.comprobante),
+      };
+  }
+  const centros = await centrosDeCosto();
+  const rc = centroDeLinea(p, centros);
+  if (rc.error) return rc.error;
+  const cc = rc.cc;
   // Sección 152: tipo de servicio de Xubio según la tabla de proveedores de MIA (si el proveedor lo tiene).
   const prodNombre = String(p.productoXubio || "").trim();
   let prod = null;
@@ -476,6 +484,130 @@ async function asignarCentroCosto(p) {
 }
 
 
+
+// Sección 161: factura dividida en varias obras en MIA → en Xubio el renglón único se parte en un renglón por parte,
+// cada uno con el neto (Importe Bruto de MIA) de su parte y su centro de costo (pedido del usuario, 03/11/2026).
+// Controles: la factura tiene un solo renglón; la suma de los netos de MIA = neto en Xubio (±$1); el total no cambia
+// (si cambia, se vuelve la factura a como estaba). Nunca toca facturas con pago u OP aplicados.
+const r2 = (x) => Math.round(x * 100) / 100;
+function renglonesDivididos(item, partes) {
+  const neto = Number(item.importe) || 0,
+    iva = Number(item.iva) || 0,
+    total = Number(item.total) || neto + iva,
+    exento = Number(item.montoExento) || 0,
+    sumaBruto = partes.reduce((t, x) => t + (Number(x.bruto) || 0), 0);
+  let acN = 0, acI = 0, acT = 0, acE = 0;
+  return partes.map((x, k) => {
+    const ult = k === partes.length - 1,
+      f = sumaBruto ? (Number(x.bruto) || 0) / sumaBruto : 1 / partes.length,
+      n = ult ? r2(neto - acN) : r2(neto * f),
+      i = ult ? r2(iva - acI) : r2(iva * f),
+      tt = ult ? r2(total - acT) : r2(total * f),
+      e = ult ? r2(exento - acE) : r2(exento * f);
+    acN += n; acI += i; acT += tt; acE += e;
+    const r = { ...item, cantidad: 1, precio: n, importe: n, iva: i, total: tt, montoExento: e, centroDeCosto: { ID: x.cc.id } };
+    if (item.precioconivaincluido != null) r.precioconivaincluido = r2(n + i);
+    if (k > 0) delete r.transaccionCVItemId;
+    if (x.producto) r.producto = { ID: x.producto.id };
+    return r;
+  });
+}
+async function dividirFacturaEnCentros(p) {
+  const r = await buscarFactura(p);
+  if (r.estado !== "encontrada") return r;
+  const enXubio = Number(r.comprobante.importetotal) || 0;
+  if (p.importeMia != null && Math.abs(enXubio - (Number(p.importeMia) || 0)) > 1)
+    return {
+      estado: "importe_no_coincide",
+      mensaje: "Importe no coincide: la factura " + r.comprobante.numeroDocumento + " en Xubio es de " + plata(enXubio) + " y la suma de las partes en Pagos es " + plata(p.importeMia) + ". No se dividió.",
+      factura: resumenComprobante(r.comprobante),
+    };
+  const centros = await centrosDeCosto();
+  const partes = [];
+  for (const x of p.partes) {
+    const rc = centroDeLinea(x, centros);
+    if (rc.error) return { ...rc.error, mensaje: "Parte " + (x.parteFactura || "") + ": " + rc.error.mensaje };
+    partes.push({ ...x, cc: rc.cc });
+  }
+  const prodNombre = String(p.productoXubio || "").trim();
+  let prod = null;
+  if (prodNombre) {
+    prod = buscarProducto(await productosCompra(), prodNombre);
+    if (!prod) return { estado: "producto_no_encontrado", mensaje: 'No hay en Xubio un producto/servicio "' + prodNombre + '". No se tocó la factura.' };
+  }
+  const id = r.comprobante.transaccionid;
+  const completo = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const items = comoLista(completo.transaccionProductoItems);
+  const antes = resumenComprobante(completo);
+  const nombresCc = partes.map((x) => x.cc.nombre + " " + plata(x.bruto)).join(" · ");
+  // Ya dividida así: nada que hacer.
+  if (
+    items.length === partes.length &&
+    partes.every((x) => items.some((it) => idDe(it.centroDeCosto) === x.cc.id && Math.abs((Number(it.importe) || 0) - (Number(x.bruto) || 0)) <= 1))
+  )
+    return { estado: "ya_estaba", mensaje: "La factura ya estaba dividida en Xubio: " + nombresCc + ".", factura: antes, centroDeCosto: partes[0].cc };
+  if (items.length !== 1)
+    return { estado: "no_dividible", mensaje: "La factura en Xubio tiene " + items.length + " renglones: MIA solo divide facturas de un renglón. Dividila a mano en Xubio (" + nombresCc + ").", factura: antes };
+  const netoX = Number(items[0].importe) || 0,
+    sumaBruto = partes.reduce((t, x) => t + (Number(x.bruto) || 0), 0);
+  if (Math.abs(netoX - sumaBruto) > 1)
+    return {
+      estado: "no_dividible",
+      mensaje: "La suma de los Importes Brutos de las partes (" + plata(sumaBruto) + ") no es igual al neto de la factura en Xubio (" + plata(netoX) + "). Corregí los importes en Pagos.",
+      factura: antes,
+    };
+  if (comoLista(completo.transaccionOrdenPagoItems).length)
+    return { estado: "bloqueada", mensaje: "Orden de pago aplicada: la factura " + completo.numeroDocumento + " ya tiene una orden de pago aplicada en Xubio; dividila a mano (" + nombresCc + ").", factura: antes };
+  const nuevos = renglonesDivididos(items[0], partes.map((x) => ({ ...x, producto: prod })));
+  if (p.simular)
+    return { estado: "simulacion", mensaje: "Se dividiría en " + partes.length + " renglones: " + nombresCc + ". No se modificó nada.", factura: antes, centroDeCosto: partes[0].cc };
+  const base = { ...completo, descripcion: completo.descripcion == null ? "" : completo.descripcion };
+  const conRenglones = (its) => ({ ...base, transaccionProductoItems: its });
+  let errorXubio = "";
+  try {
+    try {
+      await xubio("PUT", "/comprobanteCompraBean/" + id, conRenglones(nuevos));
+    } catch (e1) {
+      if (/se encuentra aplicada/i.test(String(e1.message || "") + String(e1.cuerpo || ""))) throw e1;
+      // Segundo intento: los renglones nuevos con id -1 (como pide Xubio para ítems nuevos en otras operaciones).
+      await xubio("PUT", "/comprobanteCompraBean/" + id, conRenglones(nuevos.map((it, k) => (k > 0 ? { ...it, transaccionCVItemId: -1 } : it))));
+    }
+  } catch (err) {
+    errorXubio = String(err.cuerpo || err.message || "").slice(0, 6000);
+    const aplicada = /se encuentra aplicada/i.test(String(err.message || "") + String(err.cuerpo || ""));
+    return {
+      estado: aplicada ? "bloqueada" : "rechazada",
+      mensaje: (aplicada ? "Factura aplicada en Xubio: no deja modificarla por la API." : "Xubio no aceptó dividir la factura en renglones (" + String(err.message || "").slice(0, 160) + ").") + " Dividila a mano en Xubio (" + nombresCc + ").",
+      factura: antes,
+      errorXubio,
+      transaccionid: id,
+    };
+  }
+  const despues = await xubio("GET", "/comprobanteCompraBean/" + id);
+  const its = comoLista(despues.transaccionProductoItems);
+  const ok =
+    Math.abs((Number(despues.importetotal) || 0) - (Number(completo.importetotal) || 0)) < 0.01 &&
+    its.length === partes.length &&
+    partes.every((x) => its.some((it) => idDe(it.centroDeCosto) === x.cc.id));
+  if (!ok) {
+    // Algo no quedó igual: se vuelve la factura a como estaba.
+    let revertida = true;
+    try {
+      await xubio("PUT", "/comprobanteCompraBean/" + id, conRenglones(items));
+    } catch {
+      revertida = false;
+    }
+    return {
+      estado: "no_verificado",
+      mensaje:
+        "Xubio aceptó la división pero al volver a leer la factura no coincidía (total o renglones). " +
+        (revertida ? "Se dejó la factura como estaba." : "NO se pudo volver atrás: revisar la factura en Xubio."),
+      factura: resumenComprobante(despues),
+      transaccionid: id,
+    };
+  }
+  return { estado: "dividida", mensaje: "Factura dividida en Xubio en " + partes.length + " renglones: " + nombresCc + ".", factura: resumenComprobante(despues), centroDeCosto: partes[0].cc, producto: prod };
+}
 
 // Solo lectura: cómo vienen las órdenes de pago, cuentas, bancos y retenciones en Xubio,
 // y una factura completa (para entender por qué Xubio rechaza modificarla).
@@ -644,4 +776,4 @@ function limpiarCaches() {
   proveedoresCache = null;
 }
 
-module.exports = { listarPorFechas, limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, centrosDeCosto, productosCompra, buscarProducto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };
+module.exports = { listarPorFechas, limpiarCaches, facturaYaAplicada, resumenFacturas, xubio, buscarFactura, buscarProveedor, fechaXubio, comoLista, idDe, modelosOP, diagnosticoPruebaOP, diagnosticoPagos, diagnostico, asignarCentroCosto, dividirFacturaEnCentros, renglonesDivididos, centrosDeCosto, productosCompra, buscarProducto, CENTRO_GASTOS_GENERALES, partesNumero, normalizar };

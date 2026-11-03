@@ -16,7 +16,7 @@
  */
 const admin = require("firebase-admin");
 const { armarOP, crearOP, claveGrupo, fechaISO } = require("./ordenesPago");
-const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, centrosDeCosto, productosCompra, CENTRO_GASTOS_GENERALES, partesNumero, normalizar } = require("./xubio");
+const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnosticoPruebaOP, modelosOP, resumenFacturas, asignarCentroCosto, dividirFacturaEnCentros, centrosDeCosto, productosCompra, CENTRO_GASTOS_GENERALES, partesNumero, normalizar } = require("./xubio");
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
@@ -50,9 +50,13 @@ const ARREGLO_TOPE_Y_NC = Date.UTC(2026, 9, 27, 22, 45);
 // Sección 144: "s/f" (sin factura) en el número de factura → no va a Xubio (pedido del usuario, 27/10/2026).
 const sinFactura = (f) => /^(sf|sinfactura|sinfac|sinfact)$/.test(String(f || "").toLowerCase().replace(/[\s.\/\\_-]/g, ""));
 const TRABADO_MS = 15 * 60 * 1000;
-const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea", "servicio_no_aceptado"]);
+const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea", "servicio_no_aceptado", "dividida"]);
+// Sección 161: dividir en Xubio las facturas marcadas como divididas en MIA (✂), un renglón por parte.
+// En Producción, de prueba solo para la factura que autorizó el usuario (03/11/2026: factura 22 de ORTIZ VARGAS).
+// "*" = todas. En QA es solo simulación.
+const DIVIDIR_EN_XUBIO = { qa: "*", prd: new Set(["20332214153|22"]) };
 // Estados que no se arreglan solos: se reintentan una vez por día.
-const LENTOS = new Set(["rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
+const LENTOS = new Set(["no_dividible", "rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 
 const texto = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
 const limpio = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));
@@ -158,6 +162,7 @@ async function procesarLineas(amb) {
   const importePorFactura = {};
   for (const l of validas) importePorFactura[claveFactura(l)] = (importePorFactura[claveFactura(l)] || 0) + (Number(l.importe) || 0);
   const repartida = {};
+  const dividir = {};
   const nombreCentro = (l) =>
     t(l.centroCostoXubio) ||
     (normalizar(l.cliente) === "INTERNO" ? CENTRO_GASTOS_GENERALES : normalizar(l.cliente) === "WU" ? t(l.subObra) : t(l.centroCosto));
@@ -167,6 +172,13 @@ async function procesarLineas(amb) {
       const principal = g
         .slice()
         .sort((a, b) => (Number(b.importeBruto) || 0) - (Number(a.importeBruto) || 0) || (Number(b.importe) || 0) - (Number(a.importe) || 0))[0];
+      const habil = DIVIDIR_EN_XUBIO[amb.nombre],
+        clave = soloDigitos(principal.cuit) + "|" + partesNumero(principal.factura).numero;
+      if (habil && (habil === "*" || habil.has(clave)) && g.every((l) => t(l.parteFactura))) {
+        dividir[principal.id] = g;
+        for (const l of g) l.id !== principal.id && (repartida[l.id] = "Factura dividida en " + g.length + " líneas: se divide en Xubio desde la línea de " + nombreCentro(principal) + ".");
+        continue;
+      }
       for (const l of g)
         l.id !== principal.id &&
           (repartida[l.id] =
@@ -184,7 +196,9 @@ async function procesarLineas(amb) {
     if (e && e.forzar) prioridad = -1;
     // Factura repartida: si cambió cuál es la parte más grande, se vuelve a procesar.
     else if (e && e.estado === "en_otra_linea" && !repartida[l.id]) prioridad = 0;
-    else if (repartida[l.id] && (!e || e.estado !== "en_otra_linea")) prioridad = 0;
+    else if (repartida[l.id] && (!e || !["en_otra_linea", "dividida"].includes(e.estado))) prioridad = 0;
+    // Sección 161: factura a dividir en Xubio: un intento aunque ya estuviera en verde con un solo centro.
+    else if (dividir[l.id] && !(e && (e.estado === "dividida" || e.divIntento))) prioridad = 0;
     else if (e && BIEN.has(e.estado)) prioridad = null;
     else if (!e || e.firma !== f) prioridad = 0;
     // Sección 152: cambió el tipo de servicio del proveedor (y la línea todavía no quedó bien): se vuelve a mandar.
@@ -208,6 +222,13 @@ async function procesarLineas(amb) {
     try {
       r = repartida[l.id]
         ? { estado: "en_otra_linea", mensaje: repartida[l.id] }
+        : dividir[l.id]
+        ? await dividirFacturaEnCentros({
+            ...camposLinea(l, importePorFactura[claveFactura(l)]),
+            productoXubio: servicioDe(l),
+            partes: dividir[l.id].map((x) => ({ ...camposLinea(x), bruto: Number(x.importeBruto) || 0, parteFactura: texto(x.parteFactura, 10) })),
+            simular: !!amb.simular,
+          })
         : await asignarCentroCosto({
             ...camposLinea(l, importePorFactura[claveFactura(l)]),
             productoXubio: servicioDe(l),
@@ -236,8 +257,14 @@ async function procesarLineas(amb) {
       intentos: (mismo ? e.intentos || 0 : 0) + 1,
       primerIntento: (mismo && e.primerIntento) || Date.now(),
       forzar: false,
+      ...(dividir[l.id] ? { divIntento: true } : {}),
     };
     await col.doc(l.id).set(limpio(doc));
+    // Sección 161: factura dividida en Xubio: las demás partes también quedan en verde.
+    if (dividir[l.id] && ["dividida", "ya_estaba"].includes(doc.estado))
+      for (const x of dividir[l.id])
+        x.id !== l.id &&
+          (await col.doc(String(x.id)).set(limpio({ estado: "dividida", mensaje: doc.mensaje, centro: doc.centro, centroMia: doc.centroMia, facturaXubio: doc.facturaXubio, factura: texto(x.factura, 40), firma: firma(x), intento: Date.now(), intentos: 1, forzar: false })));
     await registrar(amb, {
       accion: "linea",
       lineaPagosId: l.id,

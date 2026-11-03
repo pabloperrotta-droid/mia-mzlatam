@@ -111,12 +111,14 @@ const XUBIO_TEXTOS = {
   simulacion: "Prueba QA: en Producción se pondría este centro (QA no cambia Xubio)",
   importe_no_coincide: "Importe no coincide",
   producto_no_encontrado: "El tipo de servicio del proveedor no existe en Xubio",
+  dividida: "Factura dividida en Xubio: un renglón por parte, cada uno con su centro de costo",
+  no_dividible: "No se pudo dividir la factura en Xubio (ver motivo)",
   servicio_no_aceptado: "Centro puesto; Xubio no aceptó cambiar el tipo de servicio",
   rechazada: "Xubio rechazó el cambio: poner el centro a mano en Xubio",
   repartida: "Factura repartida en varias líneas con distintos centros",
   en_otra_linea: "Factura repartida: en Xubio va el centro de costo de la parte más grande",
 };
-const XUBIO_LENTOS = ["producto_no_encontrado", "rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"];
+const XUBIO_LENTOS = ["no_dividible", "producto_no_encontrado", "rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"];
 function xubioCuando(t) {
   return t
     ? new Date(t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -135,11 +137,11 @@ function xubioClase(l, e) {
       : !String(l.factura || "").trim()
         ? "Falta el número de factura"
         : "",
-    yaBien = !!e && (e.estado === "ok" || e.estado === "ya_estaba" || e.estado === "en_otra_linea"),
+    yaBien = !!e && (e.estado === "ok" || e.estado === "ya_estaba" || e.estado === "en_otra_linea" || e.estado === "dividida"),
     vigente = !!e && (yaBien || e.firma === xubioFirma(l)),
     bien = vigente && yaBien && !e.forzar,
     espera = !falta && (!vigente || e.forzar),
-    aviso = vigente && !espera && ["otro_centro", "bloqueada", "rechazada", "importe_no_coincide", "servicio_no_aceptado"].includes(e.estado),
+    aviso = vigente && !espera && ["otro_centro", "bloqueada", "rechazada", "importe_no_coincide", "servicio_no_aceptado", "no_dividible"].includes(e.estado),
     icono = falta ? "–" : espera ? "⏳" : bien ? "✅" : aviso ? "⚠️" : e.estado === "simulacion" ? "🧪" : "❌",
     titulo = falta
       ? falta + ": no se manda a Xubio"
