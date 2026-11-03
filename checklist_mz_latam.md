@@ -1795,6 +1795,12 @@ Pedido del usuario: "agregame el eliminar cada línea de simulación". El tacho 
 - [x] Tacho al lado del nombre de cada línea (y se mantiene el del final). Pide confirmación con el nombre de la línea. Respeta el permiso de eliminar del rol.
 - [x] Prueba de pantalla nueva. Publicado en QA y, con el OK del usuario ("pasalo", 03/11/2026), en `MIA.prd.html`.
 
+## 158. Simulación: totales generales de ingresos, costos y neto (03/11/2026)
+
+Pedido del usuario: el total de "TOTAL INGRESOS SIMULADOS" y "TOTAL COSTOS SIMULADOS" al lado del título.
+- [x] Al lado de cada título se ve el total de todas las semanas: ingresos (verde), costos (rojo) y neto. "NETO SIMULADO (venta − costo)" pasa a "NETO (venta − costo)" para que entre el número. También en el PDF.
+- [x] Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

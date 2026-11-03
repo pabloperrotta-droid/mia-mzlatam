@@ -889,11 +889,11 @@ function CashflowView({
             ? [{ etiqueta: "   Costo (MUP " + l.markup + "%" + (parseInt(l.semanasCosto, 10) > 0 ? ", en " + parseInt(l.semanasCosto, 10) + " semanas" : "") + ") · total -" + fmt(costoSimulado(ventaBaseLineaSimulada(l), l.markup)), valores: ae.map((s) => ((costosSemanalesLinea(l, ae)[s] || 0) ? -costosSemanalesLinea(l, ae)[s] : null)), fondo: i % 2 ? ZEBRA_PDF : null, soloPrimerBloque: true }]
             : []),
         ]),
-        { etiqueta: "TOTAL INGRESOS SIMULADOS", valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
+        { etiqueta: "TOTAL INGRESOS SIMULADOS · " + fmt(ae.reduce((t, w) => t + (Mo[w] || 0), 0)), valores: ae.map((s) => Mo[s] || 0), negrita: true, fondo: [241, 233, 210] },
         ...(hayCostoSim
           ? [
-              { etiqueta: "TOTAL COSTOS SIMULADOS", valores: ae.map((s) => -(CoSim[s] || 0)), negrita: true },
-              { etiqueta: "NETO SIMULADO", valores: ae.map((s) => (Mo[s] || 0) - (CoSim[s] || 0)), negrita: true, fondo: [241, 233, 210] },
+              { etiqueta: "TOTAL COSTOS SIMULADOS · -" + fmt(ae.reduce((t, w) => t + (CoSim[w] || 0), 0)), valores: ae.map((s) => -(CoSim[s] || 0)), negrita: true },
+              { etiqueta: "NETO SIMULADO · " + fmt(ae.reduce((t, w) => t + (Mo[w] || 0) - (CoSim[w] || 0), 0)), valores: ae.map((s) => (Mo[s] || 0) - (CoSim[s] || 0)), negrita: true, fondo: [241, 233, 210] },
             ]
           : []),
         { etiqueta: "Saldo acumulado (real)", valores: vo },
@@ -3900,9 +3900,14 @@ function CashflowView({
                       color: NAVY,
                       background: "#F1E9D2",
                       borderRight: "1px solid " + BORDER,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
                     },
                   },
                   "TOTAL INGRESOS SIMULADOS",
+                  // Sección 158: total de todas las semanas.
+                  React.createElement("span", { style: { color: GREEN } }, fmt(ae.reduce((t, w) => t + (Mo[w] || 0), 0))),
                 ),
                 ae.map((s) =>
                   React.createElement(
@@ -3928,15 +3933,20 @@ function CashflowView({
             hayCostoSim &&
               [
                 ["TOTAL COSTOS SIMULADOS", (w) => -(CoSim[w] || 0), "#fff"],
-                ["NETO SIMULADO (venta − costo)", (w) => (Mo[w] || 0) - (CoSim[w] || 0), "#F1E9D2"],
+                ["NETO (venta − costo)", (w) => (Mo[w] || 0) - (CoSim[w] || 0), "#F1E9D2"],
               ].map(([et, fn, bg]) =>
                 React.createElement(
                   React.Fragment,
                   { key: et },
                   React.createElement(
                     "div",
-                    { style: { padding: "7px 18px", fontSize: 12.5, fontWeight: 700, color: NAVY, background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER } },
+                    { style: { padding: "7px 18px", fontSize: 12.5, fontWeight: 700, color: NAVY, background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", gap: 8 } },
                     et,
+                    React.createElement(
+                      "span",
+                      { style: { color: ae.reduce((t, w) => t + fn(w), 0) < 0 ? RED : GREEN } },
+                      fmt(ae.reduce((t, w) => t + fn(w), 0)),
+                    ),
                   ),
                   ae.map((w) =>
                     React.createElement(
