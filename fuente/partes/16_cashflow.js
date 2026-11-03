@@ -3901,13 +3901,13 @@ function CashflowView({
                       background: "#F1E9D2",
                       borderRight: "1px solid " + BORDER,
                       display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
+                      flexDirection: "column",
+                      gap: 1,
                     },
                   },
-                  "TOTAL INGRESOS SIMULADOS",
-                  // Sección 158: total de todas las semanas.
-                  React.createElement("span", { style: { color: GREEN } }, fmt(ae.reduce((t, w) => t + (Mo[w] || 0), 0))),
+                  // Sección 158/159: título chico arriba y el total de todas las semanas abajo (antes no entraba).
+                  React.createElement("span", { style: { fontSize: 10.5, letterSpacing: 0.3 } }, "TOTAL INGRESOS SIMULADOS"),
+                  React.createElement("span", { style: { color: GREEN, fontSize: 13.5 } }, fmt(ae.reduce((t, w) => t + (Mo[w] || 0), 0))),
                 ),
                 ae.map((s) =>
                   React.createElement(
@@ -3933,18 +3933,18 @@ function CashflowView({
             hayCostoSim &&
               [
                 ["TOTAL COSTOS SIMULADOS", (w) => -(CoSim[w] || 0), "#fff"],
-                ["NETO (venta − costo)", (w) => (Mo[w] || 0) - (CoSim[w] || 0), "#F1E9D2"],
+                ["NETO SIMULADO (VENTA − COSTO)", (w) => (Mo[w] || 0) - (CoSim[w] || 0), "#F1E9D2"],
               ].map(([et, fn, bg]) =>
                 React.createElement(
                   React.Fragment,
                   { key: et },
                   React.createElement(
                     "div",
-                    { style: { padding: "7px 18px", fontSize: 12.5, fontWeight: 700, color: NAVY, background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", gap: 8 } },
-                    et,
+                    { style: { padding: "7px 18px", fontSize: 12.5, fontWeight: 700, color: NAVY, background: bg, borderRight: "1px solid " + BORDER, borderTop: "1px solid " + BORDER, display: "flex", flexDirection: "column", gap: 1 } },
+                    React.createElement("span", { style: { fontSize: 10.5, letterSpacing: 0.3 } }, et),
                     React.createElement(
                       "span",
-                      { style: { color: ae.reduce((t, w) => t + fn(w), 0) < 0 ? RED : GREEN } },
+                      { style: { fontSize: 13.5, color: ae.reduce((t, w) => t + fn(w), 0) < 0 ? RED : GREEN } },
                       fmt(ae.reduce((t, w) => t + fn(w), 0)),
                     ),
                   ),

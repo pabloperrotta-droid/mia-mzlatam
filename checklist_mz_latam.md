@@ -1801,6 +1801,12 @@ Pedido del usuario: el total de "TOTAL INGRESOS SIMULADOS" y "TOTAL COSTOS SIMUL
 - [x] Al lado de cada título se ve el total de todas las semanas: ingresos (verde), costos (rojo) y neto. "NETO SIMULADO (venta − costo)" pasa a "NETO (venta − costo)" para que entre el número. También en el PDF.
 - [x] Publicado en QA y, con el OK del usuario ("producción", 03/11/2026), en `MIA.prd.html`.
 
+## 159. Simulación: los totales se cortaban (03/11/2026)
+
+Pedido del usuario ("se ven mal los totales"): en la columna de la izquierda el título y el total no entraban y se cortaban con "…".
+- [x] El título va arriba, más chico, y el total abajo, completo (ingresos en verde, costos en rojo, neto según el signo).
+- [x] Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
