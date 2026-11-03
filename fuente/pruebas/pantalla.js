@@ -252,7 +252,7 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     if (borrar.length < 2) throw new Error("Falta el botón de eliminar la línea de simulación");
     pagina.once("dialog", (d) => d.accept());
     const antes = borrar.length;
-    await borrar[0].click();
+    await pagina.evaluate(() => document.querySelector('button[title="Eliminar esta línea de simulación"]').click());
     await pagina.waitForTimeout(300);
     if ((await pagina.$$('button[title="Eliminar esta línea de simulación"]')).length >= antes) throw new Error("No se eliminó la línea de simulación");
   });
