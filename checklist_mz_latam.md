@@ -1766,6 +1766,13 @@ Pedido del usuario: en la simulación de cash, ver a la izquierda el total de ca
 - [x] El PDF de la simulación incluye el total de cada línea, su costo y los totales de costo y neto.
 - [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA.
 
+## 154. Simulación: costo repartido en N semanas desde la primera venta (03/11/2026)
+
+Pedido del usuario: el costo automático con el markup sobre la venta total de la línea, repartido en la cantidad de semanas que se indique, a partir de la primera semana con venta ("si me paga el 15 de diciembre, el primer costo va el 15 de diciembre").
+- [x] Sublínea "↳ Costo · MUP [ ]% en [ ] sem.": costo total = venta total de la línea ÷ (1 + MUP%), en partes iguales durante N semanas desde la primera semana con venta. Sin N, cada semana el costo de su venta (como la Sección 153). Debajo, "Total costo".
+- [x] Si las N semanas pasan del horizonte del cashflow, se reparte solo en las que hay.
+- [x] Pruebas unitarias nuevas. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
