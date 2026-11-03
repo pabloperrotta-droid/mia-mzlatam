@@ -1781,6 +1781,14 @@ Pedido del usuario: cargar a mano la venta de la línea (ej. Shangai $1.000.000)
 - [x] El PDF de la simulación muestra venta, cargado y lo que falta de cada línea.
 - [x] Pruebas unitarias y de pantalla nuevas. Publicado en QA y, con el OK del usuario ("pasá a producción", 03/11/2026), en `MIA.prd.html`.
 
+## 156. Simulación: diseño más compacto y campos marcados (03/11/2026)
+
+Pedido del usuario ("dale un mejor diseño, que se note el campo a completar, no tan grandes los cuadros").
+- [x] Los campos a completar (cliente, venta, cada semana, MUP y semanas) son recuadros blancos con borde; el resto es texto.
+- [x] Nombre y venta en una sola fila; filas más bajas; la sublínea de costo y la fila de control con fondo suave, y una línea más marcada entre cliente y cliente.
+- [x] El costo total pasa a la fila de control (junto a cargado / falta). Encabezado: "LÍNEA DE VENTA SIMULADA".
+- [x] Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

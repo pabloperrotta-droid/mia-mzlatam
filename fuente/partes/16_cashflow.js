@@ -3711,7 +3711,7 @@ function CashflowView({
                   borderRight: "1px solid " + BORDER,
                 },
               },
-              "LÍNEA DE INGRESO SIMULADO",
+              "LÍNEA DE VENTA SIMULADA",
             ),
             ae.map((s) =>
               React.createElement(
@@ -3740,61 +3740,56 @@ function CashflowView({
                   "Todavía no agregaste ninguna línea de ingreso a simular.",
                 )
               : qt.map((s, b) => {
-                  const R = b % 2 === 1 ? ZEBRA : "#fff";
+                  // Sección 156: diseño compacto, con los campos a completar marcados (recuadro blanco).
+                  const campo = {
+                      border: "1px solid #D3CBB8",
+                      background: "#fff",
+                      borderRadius: 4,
+                      padding: "2px 6px",
+                      height: 24,
+                      boxSizing: "border-box",
+                      fontSize: 11.5,
+                      fontFamily: "inherit",
+                      color: TEXT,
+                      outline: "none",
+                    },
+                    celda = (extra) => ({ padding: "3px 4px", borderBottom: "1px solid " + BORDER, borderRight: "1px solid " + BORDER, ...extra }),
+                    FONDO_COSTO = "#FAF7F0",
+                    costoTotal = costoSimulado(ventaBaseLineaSimulada(s), s.markup),
+                    cargado = totalLineaSimulada(s),
+                    f = faltaCargarLineaSimulada(s),
+                    ok = f != null && Math.abs(f) < 1,
+                    colorCtrl = f == null ? MUTED : ok ? GREEN : f > 0 ? GOLD : RED;
                   return React.createElement(
                     React.Fragment,
                     { key: s.id },
+                    // Línea de venta: nombre y venta total en una sola fila.
                     React.createElement(
                       "div",
-                      {
-                        style: {
-                          padding: "4px 18px",
-                          borderBottom: "1px solid " + BORDER,
-                          borderRight: "1px solid " + BORDER,
-                          background: R,
-                        },
-                      },
-                      React.createElement(
-                        "div",
-                        { style: { display: "flex", alignItems: "center", gap: 6 } },
-                        React.createElement("input", {
-                          placeholder: "Ej: Nuevo cliente / adelanto",
-                          className: "cf-cell-input",
-                          style: { ...go, fontSize: 12, flex: 1, minWidth: 0 },
-                          value: s.nombre,
-                          onChange: (j) => yn(s.id, j.target.value),
-                        }),
-                      ),
-                      // Sección 155: venta total a mano y lo que falta cargar en semanas para llegar a ella.
-                      React.createElement(
-                        "div",
-                        { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: MUTED, marginTop: 2 } },
-                        "Venta",
-                        React.createElement(MilesInput, {
-                          className: "cf-cell-input",
-                          placeholder: "total",
-                          title: "Venta total de la línea (ej. 1.000.000). El costo se calcula sobre esta venta.",
-                          style: { ...go, width: 96, fontSize: 11.5, textAlign: "right" },
-                          value: s.ventaTotal ?? "",
-                          onChange: (j) => setVentaSim(s.id, j),
-                        }),
-                      ),
+                      { style: celda({ padding: "3px 8px 3px 14px", borderTop: b > 0 ? "2px solid " + BORDER : "none", display: "flex", alignItems: "center", gap: 6 }) },
+                      React.createElement("input", {
+                        placeholder: "Cliente / obra",
+                        className: "cf-cell-input",
+                        style: { ...campo, flex: 1, minWidth: 0, fontWeight: 700, fontSize: 12 },
+                        value: s.nombre,
+                        onChange: (j) => yn(s.id, j.target.value),
+                      }),
+                      React.createElement(MilesInput, {
+                        className: "cf-cell-input",
+                        placeholder: "Venta $",
+                        title: "Venta total de la línea (ej. 1.000.000). El costo se calcula sobre esta venta.",
+                        style: { ...campo, width: 104, textAlign: "right" },
+                        value: s.ventaTotal ?? "",
+                        onChange: (j) => setVentaSim(s.id, j),
+                      }),
                     ),
                     ae.map((j, Q) =>
                       React.createElement(
                         "div",
-                        {
-                          key: j,
-                          style: {
-                            padding: "7px 6px",
-                            borderBottom: "1px solid " + BORDER,
-                            borderRight: "1px solid " + BORDER,
-                            background: R,
-                          },
-                        },
+                        { key: j, style: celda({ borderTop: b > 0 ? "2px solid " + BORDER : "none" }) },
                         React.createElement(MilesInput, {
                           className: "cf-cell-input",
-                          style: { ...go, textAlign: "right", fontSize: 11.5, color: GREEN },
+                          style: { ...campo, width: "100%", textAlign: "right", color: GREEN },
                           value: s.valores[j] ?? "",
                           onChange: (J) => _e(s.id, j, J),
                           onPaste: (J) => we(J, Q, b),
@@ -3805,116 +3800,80 @@ function CashflowView({
                       "div",
                       {
                         style: {
-                          padding: "4px 6px",
                           borderBottom: "1px solid " + BORDER,
+                          borderTop: b > 0 ? "2px solid " + BORDER : "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          background: R,
                         },
                       },
                       React.createElement(
                         "button",
                         {
                           onClick: () => sinPermisoParaEliminar() || xt(s.id),
+                          title: "Eliminar línea",
                           style: { border: "none", background: "none", cursor: "pointer", color: RED, display: "flex" },
                         },
                         React.createElement(Trash2, { size: 13 }),
                       ),
                     ),
-                    // Sección 153/154: sublínea de costo (markup y en cuántas semanas), que resta como egreso en la simulación.
+                    // Sublínea de costo (markup y en cuántas semanas): resta como egreso en la simulación.
                     React.createElement(
                       "div",
-                      {
-                        style: {
-                          padding: "3px 8px 3px 18px",
-                          borderBottom: "1px solid " + BORDER,
-                          borderRight: "1px solid " + BORDER,
-                          background: R,
-                          fontSize: 11.5,
-                          color: MUTED,
-                        },
-                      },
-                      React.createElement(
-                        "div",
-                        { style: { display: "flex", alignItems: "center", gap: 4 } },
-                        "↳ Costo · MUP",
-                        React.createElement("input", {
-                          className: "cf-cell-input",
-                          inputMode: "decimal",
-                          placeholder: "%",
-                          title: "Markup de la obra: costo total = venta de la línea ÷ (1 + MUP%)",
-                          style: { ...go, width: 40, fontSize: 11.5, textAlign: "right" },
-                          value: s.markup ?? "",
-                          onChange: (j) => setMupSim(s.id, j.target.value.replace(/[^0-9.,\-]/g, "")),
-                        }),
-                        "% en",
-                        React.createElement("input", {
-                          className: "cf-cell-input",
-                          inputMode: "numeric",
-                          placeholder: "—",
-                          title: "En cuántas semanas se paga el costo, a partir de la primera semana con venta de esta línea (vacío: cada semana el costo de su venta)",
-                          style: { ...go, width: 30, fontSize: 11.5, textAlign: "right" },
-                          value: s.semanasCosto ?? "",
-                          onChange: (j) => setSemCostoSim(s.id, j.target.value.replace(/[^0-9]/g, "")),
-                        }),
-                        "sem.",
-                      ),
-                      costoSimulado(ventaBaseLineaSimulada(s), s.markup) > 0 &&
-                        React.createElement(
-                          "div",
-                          { title: "Costo total de la línea", style: { fontWeight: 700, color: RED, textAlign: "right" } },
-                          "Total costo -" + fmt(costoSimulado(ventaBaseLineaSimulada(s), s.markup)),
-                        ),
+                      { style: celda({ padding: "3px 8px 3px 14px", background: FONDO_COSTO, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: MUTED }) },
+                      "↳ Costo · MUP",
+                      React.createElement("input", {
+                        className: "cf-cell-input",
+                        inputMode: "decimal",
+                        placeholder: "%",
+                        title: "Markup de la obra: costo total = venta de la línea ÷ (1 + MUP%)",
+                        style: { ...campo, width: 44, textAlign: "right" },
+                        value: s.markup ?? "",
+                        onChange: (j) => setMupSim(s.id, j.target.value.replace(/[^0-9.,\-]/g, "")),
+                      }),
+                      "% en",
+                      React.createElement("input", {
+                        className: "cf-cell-input",
+                        inputMode: "numeric",
+                        placeholder: "—",
+                        title: "En cuántas semanas se paga el costo, a partir de la primera semana con cobro de esta línea (vacío: cada semana el costo de su venta)",
+                        style: { ...campo, width: 34, textAlign: "right" },
+                        value: s.semanasCosto ?? "",
+                        onChange: (j) => setSemCostoSim(s.id, j.target.value.replace(/[^0-9]/g, "")),
+                      }),
+                      "sem.",
                     ),
                     ae.map((j) =>
                       React.createElement(
                         "div",
-                        {
-                          key: j,
-                          style: {
-                            padding: "5px 6px",
-                            fontSize: 11.5,
-                            textAlign: "right",
-                            color: RED,
-                            borderBottom: "1px solid " + BORDER,
-                            borderRight: "1px solid " + BORDER,
-                            background: R,
-                          },
-                        },
+                        { key: j, style: celda({ padding: "6px 8px", fontSize: 11.5, textAlign: "right", color: RED, background: FONDO_COSTO }) },
                         (costosLinea[s.id] || {})[j] ? "-" + fmt(costosLinea[s.id][j]) : "",
                       ),
                     ),
-                    React.createElement("div", { style: { borderBottom: "1px solid " + BORDER, background: R } }),
-                    // Sección 155: fila de control. Cargado en semanas contra la venta total de la línea.
-                    (() => {
-                      const cargado = totalLineaSimulada(s),
-                        f = faltaCargarLineaSimulada(s),
-                        ok = f != null && Math.abs(f) < 1,
-                        color = f == null ? MUTED : ok ? GREEN : f > 0 ? GOLD : RED;
-                      return React.createElement(
-                        "div",
-                        {
-                          style: {
-                            gridColumn: "1 / -1",
-                            padding: "3px 18px 5px",
-                            borderBottom: "2px solid " + BORDER,
-                            background: R,
-                            fontSize: 11.5,
-                            color: MUTED,
-                            display: "flex",
-                            gap: 14,
-                          },
+                    React.createElement("div", { style: { borderBottom: "1px solid " + BORDER, background: FONDO_COSTO } }),
+                    // Sección 155: fila de control (cargado en semanas contra la venta) y costo total.
+                    React.createElement(
+                      "div",
+                      {
+                        style: {
+                          gridColumn: "1 / -1",
+                          padding: "3px 14px 4px",
+                          borderBottom: "1px solid " + BORDER,
+                          background: FONDO_COSTO,
+                          fontSize: 11,
+                          color: MUTED,
+                          display: "flex",
+                          gap: 12,
                         },
-                        React.createElement("span", null, "Control: cargado ", React.createElement("b", { style: { color: NAVY } }, fmt(cargado))),
-                        f != null && React.createElement("span", null, "de ", React.createElement("b", { style: { color: NAVY } }, fmt(Number(s.ventaTotal) || 0))),
-                        React.createElement(
-                          "b",
-                          { style: { color } },
-                          f == null ? "cargá la venta total para controlar" : ok ? "✓ completo" : f > 0 ? "falta " + fmt(f) : "sobra " + fmt(-f),
-                        ),
-                      );
-                    })(),
+                      },
+                      React.createElement("span", null, "Control: cargado ", React.createElement("b", { style: { color: NAVY } }, fmt(cargado)), f != null ? " de " : "", f != null && React.createElement("b", { style: { color: NAVY } }, fmt(Number(s.ventaTotal) || 0))),
+                      React.createElement(
+                        "b",
+                        { style: { color: colorCtrl } },
+                        f == null ? "cargá la venta para controlar" : ok ? "✓ completo" : f > 0 ? "falta " + fmt(f) : "sobra " + fmt(-f),
+                      ),
+                      costoTotal > 0 && React.createElement("span", null, "· Costo total ", React.createElement("b", { style: { color: RED } }, "-" + fmt(costoTotal))),
+                    ),
                   );
                 }),
             qt.length > 0 &&
