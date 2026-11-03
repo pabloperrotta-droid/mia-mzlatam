@@ -1787,7 +1787,7 @@ Pedido del usuario ("dale un mejor diseño, que se note el campo a completar, no
 - [x] Los campos a completar (cliente, venta, cada semana, MUP y semanas) son recuadros blancos con borde; el resto es texto.
 - [x] Nombre y venta en una sola fila; filas más bajas; la sublínea de costo y la fila de control con fondo suave, y una línea más marcada entre cliente y cliente.
 - [x] El costo total pasa a la fila de control (junto a cargado / falta). Encabezado: "LÍNEA DE VENTA SIMULADA".
-- [x] Publicado en QA.
+- [x] Publicado en QA y, con el OK del usuario ("subilo", 03/11/2026), en `MIA.prd.html`.
 
 ## 41. Pendientes / recomendaciones
 
