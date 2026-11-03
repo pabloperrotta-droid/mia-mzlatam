@@ -52,9 +52,9 @@ const sinFactura = (f) => /^(sf|sinfactura|sinfac|sinfact)$/.test(String(f || ""
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea", "servicio_no_aceptado", "dividida"]);
 // Sección 161: dividir en Xubio las facturas marcadas como divididas en MIA (✂), un renglón por parte.
-// En Producción, de prueba solo para la factura que autorizó el usuario (03/11/2026: factura 22 de ORTIZ VARGAS).
-// "*" = todas. En QA es solo simulación.
-const DIVIDIR_EN_XUBIO = { qa: "*", prd: new Set(["20332214153|22"]) };
+// Probado el 03/11/2026 con la factura 22 de ORTIZ VARGAS ("está perfecto") y habilitado para todas con el OK del
+// usuario. "*" = todas. En QA es solo simulación.
+const DIVIDIR_EN_XUBIO = { qa: "*", prd: "*" };
 // Estados que no se arreglan solos: se reintentan una vez por día.
 const LENTOS = new Set(["no_dividible", "rechazada", "bloqueada", "repartida", "centro_no_encontrado", "varias_facturas", "importe_no_coincide"]);
 

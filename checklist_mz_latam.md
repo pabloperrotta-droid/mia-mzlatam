@@ -1823,7 +1823,7 @@ Pedido del usuario: "¿en Xubio podés dividirla tal cual está en MIA?… Prob�
 - [x] Controles: la suma de los Importes Finales = total de la factura (±$1); la suma de los Importes Brutos = neto del renglón (±$1); sin pagos ni OP aplicados. Después de modificarla se vuelve a leer: si el total o los renglones no coinciden, la factura vuelve a como estaba. Si Xubio rechaza, se reintenta con id -1 en los renglones nuevos; si sigue rechazando, avisa que hay que dividirla a mano. Nunca crea centros de costo.
 - [x] `xubio/procesar.js`: las partes marcadas en MIA (✂) se dividen desde la línea principal (un intento, aunque ya estuviera ✅ con un solo centro); al quedar bien, todas las partes pasan a ✅ "Factura dividida en Xubio".
 - [x] PRUEBA (publicada con el OK del usuario, "SI", 03/11/2026): en Producción habilitado solo para la factura 22 de ORTIZ VARGAS ANDRES (CUIT 20332214153), autorizada por el usuario. En QA, solo simulación (🧪). Probado antes con un Xubio simulado (dividida, rechazada, total distinto con vuelta atrás, simulación, ya dividida).
-- [ ] Si la prueba sale bien: con el OK del usuario, habilitarlo para todas las facturas divididas (`DIVIDIR_EN_XUBIO.prd = "*"`).
+- [x] Prueba OK (03/11/2026): Xubio rechazaba las credenciales; el usuario las actualizó en GitHub, se reintentó y la factura 22 quedó en 3 renglones ("está perfecto"). Habilitado para todas las facturas divididas en Producción (`DIVIDIR_EN_XUBIO.prd = "*"`), con el OK previo del usuario ("pasalo a producción").
 
 ## 41. Pendientes / recomendaciones
 
