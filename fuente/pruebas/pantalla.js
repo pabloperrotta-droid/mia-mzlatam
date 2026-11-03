@@ -248,6 +248,13 @@ const SUB_CASHFLOW = ["Ingresos", "Egresos", "Salidas Semanales"];
     await pagina.waitForTimeout(300);
     const r = await pagina.evaluate(() => /Costo · MUP/.test(document.body.innerText) && /Control: cargado/.test(document.body.innerText) && !!document.querySelector('input[title^="Venta total de la línea"]') && !!document.querySelector('input[title^="Markup de la obra"]'));
     if (!r) throw new Error("No apareció la sublínea de costo con el campo de markup");
+    const borrar = await pagina.$$('button[title="Eliminar esta línea de simulación"]');
+    if (borrar.length < 2) throw new Error("Falta el botón de eliminar la línea de simulación");
+    pagina.once("dialog", (d) => d.accept());
+    const antes = borrar.length;
+    await borrar[0].click();
+    await pagina.waitForTimeout(300);
+    if ((await pagina.$$('button[title="Eliminar esta línea de simulación"]')).length >= antes) throw new Error("No se eliminó la línea de simulación");
   });
   await control("Gráficos por mes en Facturación y en Pagos", async () => {
     await clic("Facturación");

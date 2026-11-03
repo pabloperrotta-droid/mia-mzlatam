@@ -3767,6 +3767,16 @@ function CashflowView({
                     React.createElement(
                       "div",
                       { style: celda({ padding: "3px 8px 3px 14px", borderTop: b > 0 ? "2px solid " + BORDER : "none", display: "flex", alignItems: "center", gap: 6 }) },
+                      // Sección 157: eliminar la línea, a la izquierda (antes estaba al final de todas las semanas).
+                      React.createElement(
+                        "button",
+                        {
+                          onClick: () => sinPermisoParaEliminar() || (window.confirm("¿Eliminar la línea de simulación" + (s.nombre ? " \"" + s.nombre + "\"" : "") + "?") && xt(s.id)),
+                          title: "Eliminar esta línea de simulación",
+                          style: { border: "none", background: "none", cursor: "pointer", color: RED, display: "flex", padding: 0, flexShrink: 0 },
+                        },
+                        React.createElement(Trash2, { size: 14 }),
+                      ),
                       React.createElement("input", {
                         placeholder: "Cliente / obra",
                         className: "cf-cell-input",
@@ -3810,8 +3820,8 @@ function CashflowView({
                       React.createElement(
                         "button",
                         {
-                          onClick: () => sinPermisoParaEliminar() || xt(s.id),
-                          title: "Eliminar línea",
+                          onClick: () => sinPermisoParaEliminar() || (window.confirm("¿Eliminar la línea de simulación" + (s.nombre ? " \"" + s.nombre + "\"" : "") + "?") && xt(s.id)),
+                          title: "Eliminar esta línea de simulación",
                           style: { border: "none", background: "none", cursor: "pointer", color: RED, display: "flex" },
                         },
                         React.createElement(Trash2, { size: 13 }),

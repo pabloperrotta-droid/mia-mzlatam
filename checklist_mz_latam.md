@@ -1789,6 +1789,12 @@ Pedido del usuario ("dale un mejor diseño, que se note el campo a completar, no
 - [x] El costo total pasa a la fila de control (junto a cargado / falta). Encabezado: "LÍNEA DE VENTA SIMULADA".
 - [x] Publicado en QA y, con el OK del usuario ("subilo", 03/11/2026), en `MIA.prd.html`.
 
+## 157. Simulación: eliminar cada línea desde la izquierda (03/11/2026)
+
+Pedido del usuario: "agregame el eliminar cada línea de simulación". El tacho estaba al final de todas las semanas (había que ir hasta la derecha).
+- [x] Tacho al lado del nombre de cada línea (y se mantiene el del final). Pide confirmación con el nombre de la línea. Respeta el permiso de eliminar del rol.
+- [x] Prueba de pantalla nueva. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.
