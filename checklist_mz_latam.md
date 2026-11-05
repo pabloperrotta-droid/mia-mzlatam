@@ -1869,4 +1869,4 @@ Pedido del usuario: "Estoy importando una factura a pagos, que ya está cargada 
 - [x] `fcMismoNumero`: si uno de los dos números no tiene punto de venta, alcanza con que coincida el número del comprobante (22 = 00002-00000022; 3-22 ≠ 2-22).
 - [x] Al importar: la reconoce como "ya está cargada en Pagos" (mismo CUIT) y le adjunta el PDF; si está repartida, avisa en qué parte queda y no marca diferencia de importe.
 - [x] El aviso de factura repetida al tipear el número también usa la misma regla.
-- [x] Prueba automática. [ ] Producción (con el OK del usuario).
+- [x] Prueba automática. [x] Producción (OK del usuario: "pasalo a produccion").
