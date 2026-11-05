@@ -535,6 +535,21 @@ function XubioBotonesOP({ esAdmin, puedeEditar, lineas }) {
       }
       setReintentando(false);
     },
+    // Sección 168: Xubio se actualiza solo una vez por día (18 hs); este botón lo manda en el momento.
+    [mandando, setMandando] = React.useState(""),
+    mandarAhora = async () => {
+      const db = xubioDb();
+      if (!db) return window.alert("Sin conexión con la base de datos");
+      setMandando("Pidiendo…");
+      try {
+        await db.collection("xubioPedidos").add({ accion: "pasada", estado: "pendiente", creado: Date.now(), usuario: (firebase.auth().currentUser || {}).email || "" });
+        setMandando("Pedido ✓ (en 1–2 min)");
+        setTimeout(() => setMandando(""), 90 * 1000);
+      } catch (e) {
+        setMandando("");
+        window.alert("No se pudo pedir: " + ((e && e.message) || e));
+      }
+    },
     ref = React.useRef(null),
     [subiendo, setSubiendo] = React.useState(false),
     subir = async (ev) => {
@@ -598,6 +613,18 @@ function XubioBotonesOP({ esAdmin, puedeEditar, lineas }) {
         },
         reintentando ? "Pidiendo…" : "↻ Reintentar todas en Xubio",
       ),
+    puedeEditar &&
+      React.createElement(
+        "button",
+        {
+          onClick: mandarAhora,
+          disabled: !!mandando,
+          style: smallBtnGhost,
+          title: "Xubio se actualiza solo una vez por día, a las 18 hs. Con este botón se mandan ahora las líneas pendientes (centro de costo y servicio).",
+        },
+        mandando || "⇪ Mandar a Xubio ahora",
+      ),
+    React.createElement("span", { style: { fontSize: 11.5, color: MUTED } }, "Xubio se actualiza solo a las 18 hs"),
     APP_ENV === "qa" &&
       React.createElement(
         "span",

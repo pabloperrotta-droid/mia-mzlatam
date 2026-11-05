@@ -1870,3 +1870,11 @@ Pedido del usuario: "Estoy importando una factura a pagos, que ya está cargada 
 - [x] Al importar: la reconoce como "ya está cargada en Pagos" (mismo CUIT) y le adjunta el PDF; si está repartida, avisa en qué parte queda y no marca diferencia de importe.
 - [x] El aviso de factura repetida al tipear el número también usa la misma regla.
 - [x] Prueba automática. [x] Producción (OK del usuario: "pasalo a produccion").
+
+## 168. Menos lecturas: Xubio una vez por día (18 hs) y respaldo por hora solo con lo que cambió (05/11/2026)
+Motivo: el 05/11 a la tarde se agotó la cuota diaria de lecturas de Firestore (plan gratuito) y MIA no podía guardar; el usuario pasó el proyecto a Blaze. Pedido del usuario: "xubio que lee a las 18hs nada más, cualquier cosa lo fuerzo yo con el botón y ok solo los cambios".
+- [x] Proceso de Xubio: la pasada automática (centros de costo, servicios, OP) es una por día desde las 18:00 (marca en `procesoXubio/pasadaDiaria`). Antes: una pasada completa por cada guardado de Pagos y cada 30 minutos.
+- [x] Pedidos y botones se atienden enseguida, pero escuchando (onSnapshot) en vez de buscar cada minuto.
+- [x] Pagos: botón "⇪ Mandar a Xubio ahora" (pedido `pasada`) y leyenda "Xubio se actualiza solo a las 18 hs". "Reintentar…" sigue igual.
+- [x] Respaldo por hora: el proceso mantiene una copia en memoria escuchando la base (solo se leen los documentos que cambian) y arma el respaldo con esa copia; las colecciones con subcolecciones se siguen leyendo enteras. Mismo formato (Comparar con respaldo no cambia). El diario de las 18 hs sigue completo.
+- [ ] Producción (con el OK del usuario).

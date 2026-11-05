@@ -18,7 +18,7 @@ const COLECCION_HORA = "respaldosHorarios";
 // Los PDF de facturas de proveedores no entran en el respaldo diario (se guardan solo 15 días y el usuario
 // tiene los originales). Los PDF de las órdenes de compra SÍ se respaldan (pedido del usuario: "que
 // queden en el respaldo, por las dudas").
-const NO_COPIAR = new Set([COLECCION, COLECCION_HORA, "respaldosManuales", "presencia", "xubioLog", "xubioPedidos", "respaldos", "pdfsFacturasPago"]);
+const NO_COPIAR = new Set([COLECCION, COLECCION_HORA, "respaldosManuales", "procesoXubio", "presencia", "xubioLog", "xubioPedidos", "respaldos", "pdfsFacturasPago"]);
 const NO_COPIAR_HORA = new Set([...NO_COPIAR, "pdfsOC", "historial", "facturasEdiciones", "facturasPapelera", "erroresGuardado"]);
 const PARTE = 700000;
 const DIAS = 20;
@@ -54,7 +54,10 @@ async function copiarColeccion(admin, col, liviano) {
 }
 
 // Hace un respaldo de Producción. tipo "diario" (completo, doc = fecha) u "hora" (liviano, doc = fecha_hora).
-async function hacerRespaldo(admin, db, tipo = "diario") {
+// Sección 168: `espejo` (opcional, solo para el de hora) = copia en memoria que mantiene el proceso de Xubio
+// escuchando la base: { colecciones: { id: { docId: datosPlanos } } }. Las colecciones que están en el espejo no
+// se vuelven a leer (solo se leyeron los documentos que cambiaron); las demás se leen como siempre.
+async function hacerRespaldo(admin, db, tipo = "diario", espejo = null) {
   const hora = tipo === "hora";
   const ar = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
   const id = hora ? ar.slice(0, 13).replace("T", "_") : ar.slice(0, 10);
@@ -63,7 +66,10 @@ async function hacerRespaldo(admin, db, tipo = "diario") {
   const resumen = {};
   for (const col of await db.listCollections()) {
     if (col.id.startsWith("qa_") || (hora ? NO_COPIAR_HORA : NO_COPIAR).has(col.id)) continue;
-    todo[col.id] = await copiarColeccion(admin, col, hora);
+    const e = hora && espejo && espejo.colecciones && espejo.colecciones[col.id];
+    todo[col.id] = e
+      ? Object.fromEntries(Object.entries(e).map(([id, datos]) => [id, { datos: sinPdf(datos) }]))
+      : await copiarColeccion(admin, col, hora);
     resumen[col.id] = Object.keys(todo[col.id]).length;
   }
   const json = JSON.stringify({ fecha: id, creado: Date.now(), colecciones: todo });
@@ -83,7 +89,7 @@ async function hacerRespaldo(admin, db, tipo = "diario") {
   return id;
 }
 
-module.exports = { hacerRespaldo };
+module.exports = { hacerRespaldo, plano, NO_COPIAR_HORA };
 
 if (require.main === module) {
   const admin = require("firebase-admin");

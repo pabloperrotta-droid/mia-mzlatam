@@ -20,7 +20,7 @@ const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnos
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
-const { hacerRespaldo } = require("../respaldo/respaldar");
+const { hacerRespaldo, plano, NO_COPIAR_HORA } = require("../respaldo/respaldar");
 
 // `automatico`: si se procesan solas las líneas de Pagos de ese ambiente.
 // Producción queda apagada hasta que el usuario dé el OK para subir la integración.
@@ -422,6 +422,11 @@ async function procesarPedidos(amb) {
       else if (p.accion === "resumenFacturas") r = await resumenFacturas(p);
       // Sección 166: solo desde QA (copia Producción → QA; nunca al revés).
       else if (p.accion === "copiarProduccion" && amb.nombre === "qa") r = { estado: "ok", mensaje: "Copiados " + (await copiarProduccionAQa()) + " documentos de Producción a QA." };
+      // Sección 168: botón "Mandar a Xubio ahora" de Pagos (fuera de la pasada diaria de las 18 hs).
+      else if (p.accion === "pasada") {
+        pasadaPedida[amb.nombre] = true;
+        r = { estado: "ok", mensaje: "Se mandan a Xubio las líneas pendientes." };
+      }
       else if (p.accion === "asignarCentroCosto")
         r = await asignarCentroCosto({
           ...camposLinea({ ...p, fechaPagado: p.fecha }),
@@ -461,7 +466,46 @@ async function actualizarCentros() {
 //   · diario completo a partir de las 18:00 (hora Argentina), si todavía no hay uno de hoy hecho después de las 18;
 //   · uno por hora (sin PDF), si cambió algo en la base desde el último.
 const horaAR = () => new Date(Date.now() - 3 * 3600 * 1000);
-let ultimoCambioRespaldado = 0;
+// Sección 168: para no leer toda la base cada hora, el proceso ESCUCHA las colecciones de Producción y guarda una
+// copia en memoria (Firestore cobra solo los documentos que cambian). El respaldo por hora se arma con esa copia;
+// las colecciones con subcolecciones (o que no se pudieron escuchar) se siguen leyendo enteras.
+const espejo = { colecciones: {}, cambio: 0 };
+async function iniciarEspejo() {
+  // Qué colecciones tienen subcolecciones: se mira en el último respaldo por hora (unas pocas lecturas).
+  const conSub = new Set();
+  try {
+    const u = (await db.collection("respaldosHorarios").orderBy("fecha", "desc").limit(1).get()).docs[0];
+    if (!u) return console.log("Espejo: sin respaldo por hora previo, se lee todo como antes.");
+    const partes = (await u.ref.collection("partes").get()).docs.sort((x, y) => +x.id - +y.id);
+    const j = JSON.parse(require("zlib").gunzipSync(Buffer.from(partes.map((x) => x.get("datos")).join(""), "base64")).toString("utf8"));
+    for (const [c, docs] of Object.entries(j.colecciones || {})) Object.values(docs).some((x) => x && x.sub) && conSub.add(c);
+  } catch (e) {
+    return console.error("Espejo:", (e && e.message) || e);
+  }
+  for (const col of await db.listCollections()) {
+    if (col.id.startsWith("qa_") || NO_COPIAR_HORA.has(col.id) || conSub.has(col.id)) continue;
+    let primera = true;
+    col.onSnapshot(
+      (snap) => {
+        const m = espejo.colecciones[col.id] || {};
+        snap.docChanges().forEach((ch) => {
+          if (ch.type === "removed") delete m[ch.doc.id];
+          else m[ch.doc.id] = plano(admin, ch.doc.data());
+        });
+        espejo.colecciones[col.id] = m;
+        !primera && snap.docChanges().length && (espejo.cambio = Date.now());
+        primera = false;
+      },
+      (e) => {
+        delete espejo.colecciones[col.id];
+        console.error("Espejo " + col.id + ":", (e && e.message) || e);
+      },
+    );
+  }
+  console.log("Espejo: escuchando; se leen enteras: " + ([...conSub].join(", ") || "ninguna"));
+}
+let ultimoRespaldoHora = Date.now(),
+  ultimaHoraRespaldada = "";
 async function respaldosAutomaticos() {
   const ar = horaAR(),
     hoy = ar.toISOString().slice(0, 10);
@@ -470,16 +514,12 @@ async function respaldosAutomaticos() {
     const creado = (d.exists && d.get("creado")) || 0;
     if (!creado || new Date(creado - 3 * 3600 * 1000).getUTCHours() < 18) await hacerRespaldo(admin, db, "diario");
   }
-  // Por hora: solo si cambió algo (última modificación de los documentos de app/ o de las facturas).
-  const app = await db.collection("app").get();
-  const ultimo = Math.max(0, ...app.docs.map((x) => (x.updateTime ? x.updateTime.toMillis() : 0)));
-  const idHora = ar.toISOString().slice(0, 13).replace("T", "_");
-  if (ultimo > ultimoCambioRespaldado) {
-    const h = await db.collection("respaldosHorarios").doc(idHora).get();
-    if (!h.exists || (h.get("creado") || 0) < ultimo) {
-      await hacerRespaldo(admin, db, "hora");
-    }
-    ultimoCambioRespaldado = ultimo;
+  // Por hora: solo si cambió algo desde el último (lo avisa el espejo, sin leer nada) y como mucho uno por hora.
+  const idHora = ar.toISOString().slice(0, 13);
+  if (espejo.cambio > ultimoRespaldoHora && idHora !== ultimaHoraRespaldada) {
+    ultimoRespaldoHora = Date.now();
+    ultimaHoraRespaldada = idHora;
+    await hacerRespaldo(admin, db, "hora", espejo);
   }
 }
 
@@ -521,61 +561,73 @@ async function pasada(amb, conOP) {
     await procesarOPs(amb).catch((e) => console.error(`[${amb.nombre}] OP:`, (e && e.message) || e));
 }
 const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
-const ultimoCambio = async (amb) => {
-  const d = await db.doc(amb.prefijo + "app/st_pagosSemanales").get();
-  return d.exists && d.updateTime ? d.updateTime.toMillis() : 0;
-};
-const hayPedidos = async (amb) =>
-  !(await db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").limit(1).get()).empty ||
-  // Sección 131: "Reintentar todas" / "Reintentar ahora" de Pagos (de a 40 por pasada, hasta terminar).
-  !(await db.collection(amb.prefijo + "xubioEstado").where("forzar", "==", true).limit(1).get()).empty;
 
-// Sección 122: GitHub no respeta el "cada 5 minutos" (corría cada 4-7 horas). Ahora cada corrida queda
-// VIGILANDO unas 5 horas y 45 minutos: cada 60 segundos mira si cambiaron los Pagos de Producción (1 lectura)
-// o si hay pedidos, y si cambió algo procesa enseguida. Cada 30 minutos hace una pasada completa en los dos
-// ambientes (reintentos). Al terminar, el workflow se vuelve a lanzar solo.
+// Sección 168 (05/11/2026, pedido del usuario: "xubio que lee a las 18hs nada más, cualquier cosa lo fuerzo yo con
+// el botón"). Antes cada guardado de Pagos disparaba una pasada que leía todo, y además había una cada 30 minutos:
+// el 05/11 se agotó la cuota diaria de lecturas. Ahora:
+//   · la pasada automática a Xubio (centros de costo, servicios y OP) es UNA por día, a partir de las 18:00;
+//   · los botones de Pagos ("Mandar a Xubio ahora", "Reintentar…") y los demás pedidos se atienden enseguida:
+//     el proceso ESCUCHA esos pedidos (no los busca cada minuto), así que esperar no cuesta lecturas.
+const pasadaPedida = {};
+const hay = {};
+function escucharPedidos() {
+  for (const amb of AMBIENTES) {
+    const k = amb.nombre;
+    hay[k] = { pedidos: false, forzar: false };
+    db.collection(amb.prefijo + "xubioPedidos").where("estado", "==", "pendiente").onSnapshot(
+      (s) => (hay[k].pedidos = !s.empty),
+      (e) => console.error(`[${k}] escuchar pedidos:`, (e && e.message) || e),
+    );
+    // Sección 131: "Reintentar todas" / "Reintentar ahora" de Pagos.
+    db.collection(amb.prefijo + "xubioEstado").where("forzar", "==", true).onSnapshot(
+      (s) => (hay[k].forzar = !s.empty),
+      (e) => console.error(`[${k}] escuchar reintentos:`, (e && e.message) || e),
+    );
+  }
+}
+async function pasadaDiaria() {
+  const ar = horaAR();
+  if (ar.getUTCHours() < 18) return;
+  const hoy = ar.toISOString().slice(0, 10),
+    ref = db.doc("procesoXubio/pasadaDiaria");
+  if ((await ref.get()).get("fecha") === hoy) return;
+  await ref.set({ fecha: hoy, inicio: Date.now() });
+  await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e));
+  for (const amb of [...AMBIENTES].sort((a, b) => (a.nombre === "prd" ? -1 : 1))) await pasada(amb, true);
+  await ref.set({ fecha: hoy, fin: Date.now() }, { merge: true });
+  console.log("Pasada diaria de las 18 hs hecha.");
+}
+
+// Sección 122: GitHub atrasa los programados; cada corrida queda VIGILANDO unas 5 h 45 min y al terminar el
+// workflow se vuelve a lanzar solo.
 async function vigilar(minutos) {
   const fin = Date.now() + minutos * 60 * 1000;
-  const marca = {};
-  let completa = 0,
-    opQA = 0,
-    ultimaMiradaRespaldo = 0;
+  escucharPedidos();
+  await iniciarEspejo().catch((e) => console.error("Espejo:", (e && e.message) || e));
+  let ultimaMirada = 0;
   while (Date.now() < fin) {
-    const ahora = Date.now(),
-      toca = ahora - completa >= 30 * 60 * 1000;
+    const ahora = Date.now();
     try {
-      toca && (await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e)));
-      // Sección 165: respaldos (se mira cada 10 minutos).
-      if (ahora - ultimaMiradaRespaldo >= 10 * 60 * 1000) {
-        ultimaMiradaRespaldo = ahora;
+      // Cada 10 minutos: pasada diaria (desde las 18), respaldos y réplica de QA.
+      if (ahora - ultimaMirada >= 10 * 60 * 1000) {
+        ultimaMirada = ahora;
+        await pasadaDiaria().catch((e) => console.error("Pasada diaria:", (e && e.message) || e));
         await respaldosAutomaticos().catch((e) => console.error("Respaldo:", (e && e.message) || e));
         await replicaDiariaQa().catch((e) => console.error("Réplica QA:", (e && e.message) || e));
       }
-      // Producción primero (QA es de prueba y su vista previa de OP puede tardar).
-      for (const amb of [...AMBIENTES].sort((a, b) => (a.nombre === "prd" ? -1 : b.nombre === "prd" ? 1 : 0))) {
-        if (toca) {
-          marca[amb.nombre] = await ultimoCambio(amb);
-          // La vista previa de OP de QA, solo cada 3 horas.
-          await pasada(amb, amb.nombre === "prd" || ahora - opQA >= 3 * 3600 * 1000);
-          amb.nombre !== "prd" && ahora - opQA >= 3 * 3600 * 1000 && (opQA = ahora);
-          continue;
-        }
-        // QA (pruebas) solo en las pasadas completas, salvo los pedidos (ej. "Traer datos de Producción").
-        if (amb.nombre !== "prd") {
-          if (await hayPedidos(amb)) await procesarPedidos(amb);
-          continue;
-        }
-        const m = await ultimoCambio(amb);
-        if (m !== marca[amb.nombre] || (await hayPedidos(amb))) {
-          marca[amb.nombre] = m;
-          await pasada(amb, true);
+      // Pedidos y botones: Producción primero.
+      for (const amb of [...AMBIENTES].sort((a, b) => (a.nombre === "prd" ? -1 : 1))) {
+        const k = amb.nombre;
+        if (hay[k].pedidos) await procesarPedidos(amb);
+        if (pasadaPedida[k] || hay[k].forzar) {
+          pasadaPedida[k] = false;
+          await pasada(amb, k === "prd");
         }
       }
-      toca && (completa = ahora);
     } catch (e) {
       console.error("Pasada:", (e && e.message) || e);
     }
-    await dormir(60 * 1000);
+    await dormir(15 * 1000);
   }
 }
 
