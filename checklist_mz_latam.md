@@ -1830,7 +1830,7 @@ Pedido del usuario: "¿en Xubio podés dividirla tal cual está en MIA?… Prob�
 Pedido del usuario: "en Pagos no me coincide hoy tal cual lo dejé ayer… ¿cómo hacemos para restaurar? ¿y cómo me aseguro de que no hay ningún otro cambio?".
 - [x] Herramientas → "Comparar con respaldo" (permiso de restaurar backup): elegir el respaldo diario (03:13 hs, Producción) o la foto del Historial; MIA muestra las líneas de Pagos cambiadas (campo: antes → ahora), borradas y nuevas desde ese momento, con "↶ Volver a como estaba" por línea, "↶ Volver a agregarla", "Borrar" (nuevas) y "Volver TODO Pagos a ese respaldo" (con confirmación).
 - [x] Con un respaldo diario, además lista qué otras partes de la base cambiaron desde entonces (Obras, Cashflow, Proveedores, Facturación, etc., con cantidad de agregados/borrados/cambiados).
-- [x] Los datos se leen en la pantalla del usuario (no pasan por GitHub). Pruebas unitarias nuevas. Publicado en QA (en QA no hay respaldos diarios: solo la foto del Historial).
+- [x] Los datos se leen en la pantalla del usuario (no pasan por GitHub). Pruebas unitarias nuevas. Publicado en QA y, con el OK del usuario (05/11/2026), en `MIA.prd.html`.
 
 ## 163. Respaldo diario a las 18 hs (05/11/2026)
 
@@ -1843,7 +1843,7 @@ Incidente: el 05/11/2026 entre las 11:20 y 11:29 se usó "Restaurar backup" en P
 - [x] 164: "Restaurar backup" guarda antes una copia completa de cómo estaba todo (`respaldosManuales`), deja registro de quién y cuándo, y pide confirmación. La copia se ve y se descarga en "Comparar con respaldo".
 - [x] 165: en Producción ya no existe "Restaurar backup" (solo QA). Respaldos desde el proceso que corre todo el día (xubio/procesar.js → respaldo/respaldar.js): uno por hora sin PDF si algo cambió (`respaldosHorarios`, últimos 48) y el diario completo a partir de las 18 hs (`respaldosDiarios`, últimos 20). "Comparar con respaldo" lista todos (diarios, por hora, copias antes de restaurar).
 - [x] 166: QA réplica de Producción: copia Producción → QA todos los días a las 6 hs y con el botón de QA "Traer datos de Producción" (nunca al revés; no copia usuarios ni roles).
-- [x] Pruebas unitarias y de controles OK. Publicado en QA.
+- [x] Pruebas unitarias y de controles OK. Publicado en QA y, con el OK del usuario ("ok pasalo", 05/11/2026), en `MIA.prd.html` y en el proceso de Xubio. También la Sección 162 (Comparar con respaldo).
 
 ## 41. Pendientes / recomendaciones
 
