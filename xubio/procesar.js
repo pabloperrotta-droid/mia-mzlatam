@@ -20,6 +20,7 @@ const { limpiarCaches, facturaYaAplicada, diagnostico, diagnosticoPagos, diagnos
 
 admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: "mzlatam-app" });
 const db = admin.firestore();
+const { hacerRespaldo } = require("../respaldo/respaldar");
 
 // `automatico`: si se procesan solas las líneas de Pagos de ese ambiente.
 // Producción queda apagada hasta que el usuario dé el OK para subir la integración.
@@ -419,6 +420,8 @@ async function procesarPedidos(amb) {
       else if (p.accion === "diagnosticoPruebaOP") r = await diagnosticoPruebaOP(p);
       else if (p.accion === "modelosOP") r = await modelosOP(p);
       else if (p.accion === "resumenFacturas") r = await resumenFacturas(p);
+      // Sección 166: solo desde QA (copia Producción → QA; nunca al revés).
+      else if (p.accion === "copiarProduccion" && amb.nombre === "qa") r = { estado: "ok", mensaje: "Copiados " + (await copiarProduccionAQa()) + " documentos de Producción a QA." };
       else if (p.accion === "asignarCentroCosto")
         r = await asignarCentroCosto({
           ...camposLinea({ ...p, fechaPagado: p.fecha }),
@@ -453,6 +456,62 @@ async function actualizarCentros() {
   console.log("Centros de costo de Xubio actualizados: " + nombres.length + (servicios ? " · servicios: " + servicios.length : ""));
 }
 
+// ---------- Respaldos (Sección 165) ----------
+// El proceso está prendido todo el día, así que los respaldos salen de acá (GitHub atrasa horas los programados):
+//   · diario completo a partir de las 18:00 (hora Argentina), si todavía no hay uno de hoy hecho después de las 18;
+//   · uno por hora (sin PDF), si cambió algo en la base desde el último.
+const horaAR = () => new Date(Date.now() - 3 * 3600 * 1000);
+let ultimoCambioRespaldado = 0;
+async function respaldosAutomaticos() {
+  const ar = horaAR(),
+    hoy = ar.toISOString().slice(0, 10);
+  if (ar.getUTCHours() >= 18) {
+    const d = await db.collection("respaldosDiarios").doc(hoy).get();
+    const creado = (d.exists && d.get("creado")) || 0;
+    if (!creado || new Date(creado - 3 * 3600 * 1000).getUTCHours() < 18) await hacerRespaldo(admin, db, "diario");
+  }
+  // Por hora: solo si cambió algo (última modificación de los documentos de app/ o de las facturas).
+  const app = await db.collection("app").get();
+  const ultimo = Math.max(0, ...app.docs.map((x) => (x.updateTime ? x.updateTime.toMillis() : 0)));
+  const idHora = ar.toISOString().slice(0, 13).replace("T", "_");
+  if (ultimo > ultimoCambioRespaldado) {
+    const h = await db.collection("respaldosHorarios").doc(idHora).get();
+    if (!h.exists || (h.get("creado") || 0) < ultimo) {
+      await hacerRespaldo(admin, db, "hora");
+    }
+    ultimoCambioRespaldado = ultimo;
+  }
+}
+
+// ---------- QA = réplica de Producción (Sección 166) ----------
+// Copia los datos de Producción a QA (qa_*): todos los días a las 06 hs y cuando se pide desde QA ("Traer datos de
+// Producción"). Solo escribe en QA; Producción no se toca. No copia usuarios ni roles (cada ambiente tiene los suyos).
+const COPIAR_A_QA = ["app", "facturas", "facturasPapelera", "partes", "pdfsOC", "echeqs"];
+async function copiarProduccionAQa() {
+  let n = 0;
+  for (const c of COPIAR_A_QA) {
+    const prd = await db.collection(c).get();
+    const qa = await db.collection("qa_" + c).get();
+    const ids = new Set(prd.docs.map((d) => d.id));
+    // De a uno (hay documentos de casi 1 MB, como los PDF): sin lotes, que tienen tope de tamaño.
+    for (const d of qa.docs) if (!ids.has(d.id)) await d.ref.delete();
+    for (const d of prd.docs) {
+      await db.collection("qa_" + c).doc(d.id).set(d.data());
+      n++;
+    }
+  }
+  await db.doc("qa_app/copiaDeProduccion").set({ copiado: Date.now(), documentos: n });
+  console.log("Producción copiada a QA: " + n + " documentos");
+  return n;
+}
+async function replicaDiariaQa() {
+  const ar = horaAR();
+  if (ar.getUTCHours() < 6) return;
+  const d = await db.doc("qa_app/copiaDeProduccion").get();
+  const ult = (d.exists && d.get("copiado")) || 0;
+  if (new Date(ult - 3 * 3600 * 1000).toISOString().slice(0, 10) !== ar.toISOString().slice(0, 10)) await copiarProduccionAQa();
+}
+
 // Una pasada completa por ambiente (pedidos sueltos, líneas de Pagos y OP).
 async function pasada(amb, conOP) {
   limpiarCaches();
@@ -479,12 +538,19 @@ async function vigilar(minutos) {
   const fin = Date.now() + minutos * 60 * 1000;
   const marca = {};
   let completa = 0,
-    opQA = 0;
+    opQA = 0,
+    ultimaMiradaRespaldo = 0;
   while (Date.now() < fin) {
     const ahora = Date.now(),
       toca = ahora - completa >= 30 * 60 * 1000;
     try {
       toca && (await actualizarCentros().catch((e) => console.error("Centros:", (e && e.message) || e)));
+      // Sección 165: respaldos (se mira cada 10 minutos).
+      if (ahora - ultimaMiradaRespaldo >= 10 * 60 * 1000) {
+        ultimaMiradaRespaldo = ahora;
+        await respaldosAutomaticos().catch((e) => console.error("Respaldo:", (e && e.message) || e));
+        await replicaDiariaQa().catch((e) => console.error("Réplica QA:", (e && e.message) || e));
+      }
       // Producción primero (QA es de prueba y su vista previa de OP puede tardar).
       for (const amb of [...AMBIENTES].sort((a, b) => (a.nombre === "prd" ? -1 : b.nombre === "prd" ? 1 : 0))) {
         if (toca) {
@@ -494,7 +560,11 @@ async function vigilar(minutos) {
           amb.nombre !== "prd" && ahora - opQA >= 3 * 3600 * 1000 && (opQA = ahora);
           continue;
         }
-        if (amb.nombre !== "prd") continue; // QA (pruebas) solo en las pasadas completas
+        // QA (pruebas) solo en las pasadas completas, salvo los pedidos (ej. "Traer datos de Producción").
+        if (amb.nombre !== "prd") {
+          if (await hayPedidos(amb)) await procesarPedidos(amb);
+          continue;
+        }
         const m = await ultimoCambio(amb);
         if (m !== marca[amb.nombre] || (await hayPedidos(amb))) {
           marca[amb.nombre] = m;

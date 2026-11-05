@@ -113,6 +113,35 @@ function estadoDeRespaldo(j) {
   return { estado: st, facturas };
 }
 
+// Sección 164: copia de seguridad que MIA guarda sola antes de "Restaurar backup" (respaldosManuales/{momento}),
+// comprimida y partida igual que el respaldo diario. Así una restauración siempre se puede deshacer.
+async function guardarCopiaAntesDeRestaurar(db, json, motivo, usuario) {
+  const gz = new Uint8Array(await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < gz.length; i += 32768) bin += String.fromCharCode.apply(null, gz.subarray(i, i + 32768));
+  const b64 = btoa(bin),
+    PARTE = 700000,
+    partes = Math.max(1, Math.ceil(b64.length / PARTE)),
+    ahora = Date.now(),
+    id = new Date(ahora - 3 * 3600e3).toISOString().slice(0, 19).replace("T", "_").replace(/:/g, "-"),
+    ref = db.collection("respaldosManuales").doc(id);
+  for (let i = 0; i < partes; i++) await ref.collection("partes").doc(String(i)).set({ datos: b64.slice(i * PARTE, (i + 1) * PARTE) });
+  await ref.set({ fecha: id, creado: ahora, partes, motivo: motivo || "", usuario: usuario || "", formato: "exportacion" });
+  return id;
+}
+async function leerRespaldoManual(db, id) {
+  const ref = db.collection("respaldosManuales").doc(id),
+    meta = await ref.get();
+  if (!meta.exists) throw new Error("No está la copia " + id);
+  let b64 = "";
+  for (let i = 0; i < (Number(meta.data().partes) || 1); i++) {
+    const p = await ref.collection("partes").doc(String(i)).get();
+    b64 += (p.exists && p.data().datos) || "";
+  }
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+}
+
 function CompararRespaldoPanel({ onClose, db, pagos, setPagos }) {
   const [fuentes, setFuentes] = useState(null),
     [elegida, setElegida] = useState(""),
@@ -128,10 +157,17 @@ function CompararRespaldoPanel({ onClose, db, pagos, setPagos }) {
         r.docs.forEach((d) => l.push({ id: "r:" + d.id, tipo: "respaldo", fecha: d.id, creado: d.data().creado, texto: "Respaldo diario del " + d.id.split("-").reverse().join("/") + " (" + (d.data().creado ? new Date(d.data().creado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }) : "") + " hs)" }));
       } catch {}
       try {
+        const m = await db.collection("respaldosManuales").get();
+        m.docs.forEach((d) => {
+          const x = d.data() || {};
+          l.push({ id: "m:" + d.id, tipo: "manual", fecha: d.id.slice(0, 10), creado: x.creado, texto: "Copia antes de restaurar · " + new Date(x.creado || 0).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }) + (x.usuario ? " · " + x.usuario : "") });
+        });
+      } catch {}
+      try {
         const h = await db.collection("historial").get();
         h.docs.forEach((d) => l.push({ id: "h:" + d.id, tipo: "historial", fecha: d.id, creado: Date.parse((d.data() || {}).exportadoEl || "") || 0, texto: "Foto del Historial del " + d.id.split("-").reverse().join("/") + " (primera apertura del día)" }));
       } catch {}
-      l.sort((a, b) => (b.fecha + b.tipo).localeCompare(a.fecha + a.tipo));
+      l.sort((a, b) => (b.creado || 0) - (a.creado || 0));
       fin || setFuentes(l);
     })();
     return () => {
@@ -156,6 +192,10 @@ function CompararRespaldoPanel({ onClose, db, pagos, setPagos }) {
         (await db.collection("facturas").get()).docs.forEach((d) => (factAhora[d.id] = { datos: d.data() }));
         const ahora = estadoDeRespaldo({ colecciones: { app: appAhora, facturas: factAhora } });
         setBase({ fuente: f, pagos: estado.pagosSemanales || [], estado, facturas, estadoAhora: ahora.estado, facturasAhora: ahora.facturas });
+      } else if (f.tipo === "manual") {
+        const txt = await leerRespaldoManual(db, f.id.slice(2)),
+          d = JSON.parse(txt);
+        setBase({ fuente: f, pagos: d.pagosSemanales || [], estado: null, facturas: d.facturas || null, texto: txt });
       } else {
         const d = (await db.collection("historial").doc(f.fecha).get()).data() || {};
         setBase({ fuente: f, pagos: d.pagosSemanales || [], estado: null, facturas: d.facturas || null });
@@ -242,6 +282,13 @@ function CompararRespaldoPanel({ onClose, db, pagos, setPagos }) {
                     dif.cambiadas.length + " líneas cambiadas · " + dif.borradas.length + " borradas · " + dif.agregadas.length + " agregadas",
                   ),
               nTotal > 0 && React.createElement("button", { onClick: restaurarTodo, style: { ...smallBtnGhost, color: RED, borderColor: RED } }, "Volver TODO Pagos a ese respaldo"),
+              base &&
+                base.texto &&
+                React.createElement(
+                  "button",
+                  { onClick: () => ofrecerDescarga("copia_antes_de_restaurar_" + base.fuente.id.slice(2) + ".json", base.texto), style: smallBtnGhost, title: "Archivo completo de cómo estaba todo: con \"Restaurar backup\" se deshace la restauración" },
+                  "Descargar esta copia (.json)",
+                ),
             ),
             dif.cambiadas.length > 0 &&
               React.createElement(

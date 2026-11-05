@@ -1837,6 +1837,14 @@ Pedido del usuario: "en Pagos no me coincide hoy tal cual lo dejé ayer… ¿có
 Pedido del usuario: "que los respaldos sean a las 18 horas".
 - [x] `.github/workflows/respaldo.yml`: el respaldo diario corre a las 18:05 (hora Argentina) en lugar de las 03:13. Se siguen guardando los últimos 15 días (uno por día). "Comparar con respaldo" muestra la hora real de cada respaldo.
 
+## 164–166. Que nunca se borren los datos (05/11/2026)
+
+Incidente: el 05/11/2026 entre las 11:20 y 11:29 se usó "Restaurar backup" en Producción con un archivo anterior al trabajo del 04/11 a la tarde (las 89 facturas se borraron y se volvieron a crear a las 11:2x; app/* reescrito a las 11:28). Se perdió lo cargado después de ese archivo (ej. SABORES VILLA CRESPO, proveedores de NATURA SANTA FE, cambios de Pagos). El último respaldo automático era del 04/11 a las 11:25 (GitHub corría el "03:13" con horas de atraso). Pedido del usuario: "necesito que nunca nunca nunca se borren los datos"; "que QA sea réplica de Producción".
+- [x] 164: "Restaurar backup" guarda antes una copia completa de cómo estaba todo (`respaldosManuales`), deja registro de quién y cuándo, y pide confirmación. La copia se ve y se descarga en "Comparar con respaldo".
+- [x] 165: en Producción ya no existe "Restaurar backup" (solo QA). Respaldos desde el proceso que corre todo el día (xubio/procesar.js → respaldo/respaldar.js): uno por hora sin PDF si algo cambió (`respaldosHorarios`, últimos 48) y el diario completo a partir de las 18 hs (`respaldosDiarios`, últimos 20). "Comparar con respaldo" lista todos (diarios, por hora, copias antes de restaurar).
+- [x] 166: QA réplica de Producción: copia Producción → QA todos los días a las 6 hs y con el botón de QA "Traer datos de Producción" (nunca al revés; no copia usuarios ni roles).
+- [x] Pruebas unitarias y de controles OK. Publicado en QA.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

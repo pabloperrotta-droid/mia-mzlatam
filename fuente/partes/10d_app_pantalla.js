@@ -939,7 +939,37 @@
                   },
                   "Comparar con respaldo",
                 ),
-              In("restaurarBackup") &&
+              // Sección 166: en QA, traer los datos reales de Producción (Producción no se toca).
+              APP_ENV === "qa" &&
+                In("restaurarBackup") &&
+                React.createElement(
+                  "button",
+                  {
+                    onClick: async () => {
+                      if (!window.confirm("¿Reemplazar los datos de QA por una copia de los de Producción?\n\nProducción no se toca. Tarda unos minutos; después recargá QA.")) return;
+                      try {
+                        await dbRef.current.collection("xubioPedidos").add({ accion: "copiarProduccion", estado: "pendiente", creado: Date.now(), usuario: (sesion && sesion.email) || "" });
+                        ho("Pedido enviado: en unos minutos QA tiene los datos de Producción. Recargá la página después.");
+                      } catch (err) {
+                        ho("No se pudo pedir la copia: " + ((err && err.message) || err));
+                      }
+                    },
+                    title: "Copia los datos reales de Producción a QA (QA queda igual que Producción). Producción no se toca. Además se hace sola todos los días a las 6.",
+                    style: {
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.8)",
+                      padding: "5px 9px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    },
+                  },
+                  "Traer datos de Producción",
+                ),
+              // Sección 165: en Producción no se puede restaurar un backup (pisa todo): solo en QA.
+              APP_ENV === "qa" &&
+                In("restaurarBackup") &&
                 React.createElement(
                   "label",
                   {
@@ -962,8 +992,29 @@
                     onChange: async (e) => {
                       const t = e.target.files[0];
                       if (t) {
+                        // Sección 164/165: "Restaurar backup" pisa TODA la base del ambiente (incluidas las facturas).
+                        // Solo existe en QA; igual se pide confirmación y antes se guarda una copia de cómo estaba.
+                        if (APP_ENV !== "qa") {
+                          e.target.value = "";
+                          ho("En Producción no se puede restaurar un backup. Usá Herramientas → Comparar con respaldo.");
+                          return;
+                        }
+                        if (!window.confirm("Restaurar \"" + t.name + "\" reemplaza TODOS los datos de QA por los del archivo. ¿Seguir?")) {
+                          e.target.value = "";
+                          return;
+                        }
                         try {
-                          (await gr(t), ho("Backup restaurado correctamente."));
+                          const quien = (sesion && (sesion.nombre || sesion.email)) || "";
+                          await guardarCopiaAntesDeRestaurar(dbRef.current, na(), "Antes de restaurar " + t.name, quien);
+                          _t("Restauró el backup \"" + t.name + "\" (copia previa guardada)" + (quien ? " · " + quien : ""));
+                        } catch (err) {
+                          if (!window.confirm("No se pudo guardar la copia previa (" + ((err && err.message) || err) + ").\n\n¿Restaurar igual?")) {
+                            e.target.value = "";
+                            return;
+                          }
+                        }
+                        try {
+                          (await gr(t), ho("Backup restaurado. La copia de cómo estaba quedó en Herramientas → Comparar con respaldo."));
                         } catch {
                           ho("No se pudo leer el archivo de backup.");
                         }
