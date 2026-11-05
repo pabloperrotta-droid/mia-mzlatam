@@ -17,15 +17,14 @@ async function abrir(d) {
 (async () => {
   try { await db.doc("qa_app/pruebaCuota").get(); n("LECTURA: OK"); } catch (e) { n("LECTURA: " + (e.details || e.message)); return; }
   try { await db.doc("qa_app/pruebaCuota").set({ t: Date.now() }); n("ESCRITURA: OK"); } catch (e) { n("ESCRITURA: " + (e.details || e.message)); }
-  const dia = (await db.collection("respaldosDiarios").orderBy("fecha", "desc").limit(2).get()).docs;
-  n("DIARIOS: " + (await Promise.all(dia.map(abrir))).join(" | "));
-  const hs = (await db.collection("respaldosHorarios").orderBy("fecha", "desc").get()).docs;
-  n(`HORARIOS (${hs.length}): ` + (await Promise.all(hs.slice(0, 8).map(abrir))).join(" | "));
-  const app = (await db.collection("app").get()).docs.map((d) => [d.id, d.updateTime.toMillis()]).sort((a, b) => b[1] - a[1]);
-  n("ULTIMOS CAMBIOS app: " + app.slice(0, 6).map(([i, t]) => i + " " + ar(t)).join(" · "));
-  const desde = Date.now() - 6 * 3600 * 1000;
+  const desde = Date.now() - 8 * 3600 * 1000;
   const err = (await db.collection("erroresGuardado").where("fecha", ">=", desde).get()).docs.map((d) => d.data()).sort((a, b) => a.fecha - b.fecha);
-  n(`ERRORES GUARDADO ult 6h (${err.length}): ` + err.slice(-12).map((e) => ar(e.fecha) + " " + (e.rol || "") + " " + (e.ambiente || "") + " " + String(e.motivo || "").slice(0, 40)).join(" | "));
+  const g = {};
+  err.forEach((e) => { const k = ar(e.fecha).slice(6, 8) + "h " + (e.rol || "?") + " " + (e.ambiente || ""); g[k] = (g[k] || 0) + 1; });
+  n("ERRORES por hora: " + Object.entries(g).map(([k, v]) => k + ": " + v).join(" | "));
+  n("PRIMEROS ERRORES: " + err.slice(0, 4).map((e) => ar(e.fecha) + " " + (e.rol || "") + " " + String(e.motivo || "").slice(0, 70)).join(" | "));
+  await db.collection("qa_xubioPedidos").add({ accion: "copiarProduccion", estado: "pendiente", creado: Date.now(), usuario: "verificación" });
+  n("QA: pedido de copia de Producción agregado");
   const c = await db.doc("qa_app/copiaDeProduccion").get();
   const out = [`QA copiada ${c.exists ? ar(c.get("copiado")) : "nunca"}`];
   for (const col of ["app", "facturas", "facturasPapelera", "pdfsOC", "echeqs"]) {
