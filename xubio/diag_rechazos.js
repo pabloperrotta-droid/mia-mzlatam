@@ -29,18 +29,13 @@ async function revisar(col, cuantos) {
 }
 
 (async () => {
-  await revisar("respaldosDiarios", 3);
-  await revisar("respaldosHorarios", 4);
-  const man = await db.collection("respaldosManuales").get();
-  n(`respaldosManuales: ${man.size}`);
-  const c = await db.doc("qa_app/copiaDeProduccion").get();
-  n(`QA copia de Producción: ${c.exists ? ar(c.get("copiado")) + " · " + c.get("documentos") + " documentos" : "nunca"}`);
-  for (const col of ["app", "facturas", "partes", "pdfsOC", "echeqs"]) {
+  const out = [];
+  for (const col of ["app", "facturas", "facturasPapelera", "partes", "pdfsOC", "echeqs"]) {
     const p = (await db.collection(col).count().get()).data().count;
     const q = (await db.collection("qa_" + col).count().get()).data().count;
-    n(`  ${col}: Producción ${p} · QA ${q}`);
+    out.push(`${col} PRD ${p}/QA ${q}`);
   }
   const s = await db.doc("app/st_pagosSemanales").get();
   const sq = await db.doc("qa_app/st_pagosSemanales").get();
-  n(`Último cambio Pagos: Producción ${ar(s.updateTime && s.updateTime.toMillis())} · QA ${ar(sq.updateTime && sq.updateTime.toMillis())}`);
+  n(out.join(" · ") + ` · Pagos cambiado PRD ${ar(s.updateTime && s.updateTime.toMillis())} / QA ${ar(sq.updateTime && sq.updateTime.toMillis())}`);
 })().catch((e) => { console.error(e); process.exit(1); });
