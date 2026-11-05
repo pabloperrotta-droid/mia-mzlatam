@@ -22,6 +22,7 @@ async function abrir(d) {
   const g = {};
   err.forEach((e) => { const k = ar(e.fecha).slice(6, 8) + "h " + (e.rol || "?") + " " + (e.ambiente || ""); g[k] = (g[k] || 0) + 1; });
   n("ERRORES por hora: " + Object.entries(g).map(([k, v]) => k + ": " + v).join(" | "));
+  n("RESUMEN: ultimo error " + (err.length ? ar(err[err.length - 1].fecha) : "-") + " · Pagos guardado " + ar((await db.doc("app/st_pagosSemanales").get()).updateTime.toMillis()) + " · ahora " + ar(Date.now()));
   n("PRIMEROS ERRORES: " + err.slice(0, 4).map((e) => ar(e.fecha) + " " + (e.rol || "") + " " + String(e.motivo || "").slice(0, 70)).join(" | "));
 
 
