@@ -37,6 +37,7 @@ function App({ sesion = null } = {}) {
     [cfSaldoInicial, setCfSaldoInicial] = useState(0),
     [cfBancos, setCfBancos] = useState([]),
     [cfSimulacionLineas, setCfSimulacionLineas] = useState([]),
+    [verComparar, setVerComparar] = useState(false),
     ht = useRef(null),
     [St, zt] = useState(107);
   (useEffect(() => {

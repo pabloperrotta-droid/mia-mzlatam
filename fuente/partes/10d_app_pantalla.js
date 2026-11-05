@@ -923,6 +923,24 @@
                 ),
               In("restaurarBackup") &&
                 React.createElement(
+                  "button",
+                  {
+                    onClick: () => setVerComparar(true),
+                    title: "Compara Pagos con el respaldo de la madrugada o con la foto del Historial: qué se agregó, borró o cambió, y deja volver atrás",
+                    style: {
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.8)",
+                      padding: "5px 9px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    },
+                  },
+                  "Comparar con respaldo",
+                ),
+              In("restaurarBackup") &&
+                React.createElement(
                   "label",
                   {
                     title: "Restaura todos los datos desde un archivo de backup descargado antes",
@@ -1083,6 +1101,8 @@
           sesion &&
           React.createElement(UsuariosAdminPanel, { onClose: () => setVerUsuarios(false), roles: roles, miEmail: sesion.email, presencia: er }),
         $a && React.createElement(HistorialPanel, { onClose: () => ma(false), db: dbRef.current }),
+        // Sección 162: comparar Pagos con un respaldo y restaurar.
+        verComparar && React.createElement(CompararRespaldoPanel, { onClose: () => setVerComparar(false), db: dbRef.current, pagos: pagosSemanales, setPagos: setPagosSemanales }),
         Go &&
           React.createElement(
             "div",

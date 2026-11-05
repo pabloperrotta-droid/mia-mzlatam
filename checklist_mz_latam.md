@@ -1825,6 +1825,13 @@ Pedido del usuario: "¿en Xubio podés dividirla tal cual está en MIA?… Prob�
 - [x] PRUEBA (publicada con el OK del usuario, "SI", 03/11/2026): en Producción habilitado solo para la factura 22 de ORTIZ VARGAS ANDRES (CUIT 20332214153), autorizada por el usuario. En QA, solo simulación (🧪). Probado antes con un Xubio simulado (dividida, rechazada, total distinto con vuelta atrás, simulación, ya dividida).
 - [x] Prueba OK (03/11/2026): Xubio rechazaba las credenciales; el usuario las actualizó en GitHub, se reintentó y la factura 22 quedó en 3 renglones ("está perfecto"). Habilitado para todas las facturas divididas en Producción (`DIVIDIR_EN_XUBIO.prd = "*"`), con el OK previo del usuario ("pasalo a producción").
 
+## 162. Comparar Pagos con un respaldo y restaurar (05/11/2026)
+
+Pedido del usuario: "en Pagos no me coincide hoy tal cual lo dejé ayer… ¿cómo hacemos para restaurar? ¿y cómo me aseguro de que no hay ningún otro cambio?".
+- [x] Herramientas → "Comparar con respaldo" (permiso de restaurar backup): elegir el respaldo diario (03:13 hs, Producción) o la foto del Historial; MIA muestra las líneas de Pagos cambiadas (campo: antes → ahora), borradas y nuevas desde ese momento, con "↶ Volver a como estaba" por línea, "↶ Volver a agregarla", "Borrar" (nuevas) y "Volver TODO Pagos a ese respaldo" (con confirmación).
+- [x] Con un respaldo diario, además lista qué otras partes de la base cambiaron desde entonces (Obras, Cashflow, Proveedores, Facturación, etc., con cantidad de agregados/borrados/cambiados).
+- [x] Los datos se leen en la pantalla del usuario (no pasan por GitHub). Pruebas unitarias nuevas. Publicado en QA (en QA no hay respaldos diarios: solo la foto del Historial).
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

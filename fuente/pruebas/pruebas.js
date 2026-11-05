@@ -261,6 +261,20 @@ prueba("Pagos: factura dividida en varias obras", () => {
   assert.strictEqual(c[0].centroCosto, undefined);
   assert.strictEqual(c[0].id, undefined);
 });
+prueba("Comparar Pagos con respaldo", () => {
+  const antes = [{ id: "1", proveedorPago: "A", importe: 100, transferencia: 100, tc: 1 }, { id: "2", proveedorPago: "B", importe: 50 }, { id: "3", proveedorPago: "C", importe: "10" }];
+  const ahora = [{ id: "1", proveedorPago: "A", importe: 100, transferencia: 0, tc: 2 }, { id: "3", proveedorPago: "C", importe: 10 }, { id: "4", proveedorPago: "D" }];
+  const d = JSON.parse(JSON.stringify(f.compararLineasPagos(antes, ahora)));
+  assert.deepStrictEqual(d.borradas.map((x) => x.id), ["2"]);
+  assert.deepStrictEqual(d.agregadas.map((x) => x.id), ["4"]);
+  assert.strictEqual(d.cambiadas.length, 1);
+  assert.deepStrictEqual(d.cambiadas[0].campos.map((x) => x.campo), ["transferencia"]);
+  const r = JSON.parse(JSON.stringify(f.resumenCambiosEstado({ obras: [{ id: 1, a: 1 }, { id: 2 }], x: { a: 1 }, igual: 5 }, { obras: [{ id: 1, a: 2 }, { id: 3 }], x: { a: 1 }, igual: 5 })));
+  assert.deepStrictEqual(r, [{ clave: "obras", detalle: "1 agregados, 1 borrados, 1 cambiados" }]);
+  const e = JSON.parse(JSON.stringify(f.estadoDeRespaldo({ colecciones: { app: { state: { datos: { obras: [1] } }, st_pagosSemanales: { datos: { v: [{ id: "z" }] } } }, facturas: { f1: { datos: { nro: 5 } } } } })));
+  assert.deepStrictEqual(e.estado, { obras: [1], pagosSemanales: [{ id: "z" }] });
+  assert.deepStrictEqual(e.facturas, [{ id: "f1", nro: 5 }]);
+});
 prueba("Proveedores: desplegable de servicio Xubio", () => {
   const o = JSON.parse(JSON.stringify(f.opcionesServicioXubio(["MATERIALES", "mano de obra"], ["MANO DE OBRA", "PINTURA", "", null])));
   assert.deepStrictEqual(o, [{ nombre: "mano de obra", enXubio: true }, { nombre: "MATERIALES", enXubio: true }, { nombre: "PINTURA", enXubio: false }]);
