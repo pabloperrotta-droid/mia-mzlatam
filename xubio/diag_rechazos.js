@@ -29,7 +29,10 @@ async function revisar(col, cuantos) {
 }
 
 (async () => {
-  const out = [];
+  await revisar("respaldosDiarios", 2);
+  await revisar("respaldosHorarios", 4);
+  const c = await db.doc("qa_app/copiaDeProduccion").get();
+  const out = [`QA copiada ${c.exists ? ar(c.get("copiado")) : "nunca"}`];
   for (const col of ["app", "facturas", "facturasPapelera", "partes", "pdfsOC", "echeqs"]) {
     const p = (await db.collection(col).count().get()).data().count;
     const q = (await db.collection("qa_" + col).count().get()).data().count;
