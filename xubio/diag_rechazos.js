@@ -23,8 +23,8 @@ async function abrir(d) {
   err.forEach((e) => { const k = ar(e.fecha).slice(6, 8) + "h " + (e.rol || "?") + " " + (e.ambiente || ""); g[k] = (g[k] || 0) + 1; });
   n("ERRORES por hora: " + Object.entries(g).map(([k, v]) => k + ": " + v).join(" | "));
   n("PRIMEROS ERRORES: " + err.slice(0, 4).map((e) => ar(e.fecha) + " " + (e.rol || "") + " " + String(e.motivo || "").slice(0, 70)).join(" | "));
-  await db.collection("qa_xubioPedidos").add({ accion: "copiarProduccion", estado: "pendiente", creado: Date.now(), usuario: "verificación" });
-  n("QA: pedido de copia de Producción agregado");
+
+
   const c = await db.doc("qa_app/copiaDeProduccion").get();
   const out = [`QA copiada ${c.exists ? ar(c.get("copiado")) : "nunca"}`];
   for (const col of ["app", "facturas", "facturasPapelera", "pdfsOC", "echeqs"]) {
