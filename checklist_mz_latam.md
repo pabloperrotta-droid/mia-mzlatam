@@ -1832,6 +1832,11 @@ Pedido del usuario: "en Pagos no me coincide hoy tal cual lo dejé ayer… ¿có
 - [x] Con un respaldo diario, además lista qué otras partes de la base cambiaron desde entonces (Obras, Cashflow, Proveedores, Facturación, etc., con cantidad de agregados/borrados/cambiados).
 - [x] Los datos se leen en la pantalla del usuario (no pasan por GitHub). Pruebas unitarias nuevas. Publicado en QA (en QA no hay respaldos diarios: solo la foto del Historial).
 
+## 163. Respaldo diario a las 18 hs (05/11/2026)
+
+Pedido del usuario: "que los respaldos sean a las 18 horas".
+- [x] `.github/workflows/respaldo.yml`: el respaldo diario corre a las 18:05 (hora Argentina) en lugar de las 03:13. Se siguen guardando los últimos 15 días (uno por día). "Comparar con respaldo" muestra la hora real de cada respaldo.
+
 ## 41. Pendientes / recomendaciones
 
 - [x] 13/10/2026: con el OK del usuario ("lo de Xubio también") se publicó `MIA.prd.html` (Sección 121, con el texto de OP de la 118) y se **reactivó en Producción el centro de costo automático** (`automatico: true`, solo líneas sin Fecha Pagado). Las **órdenes de pago siguen apagadas** (`ops: false`) hasta que el usuario confirme.

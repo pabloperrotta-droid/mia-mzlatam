@@ -926,7 +926,7 @@
                   "button",
                   {
                     onClick: () => setVerComparar(true),
-                    title: "Compara Pagos con el respaldo de la madrugada o con la foto del Historial: qué se agregó, borró o cambió, y deja volver atrás",
+                    title: "Compara Pagos con el respaldo diario (18 hs) o con la foto del Historial: qué se agregó, borró o cambió, y deja volver atrás",
                     style: {
                       border: "1px solid rgba(255,255,255,0.25)",
                       background: "transparent",

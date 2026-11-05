@@ -1,9 +1,10 @@
 # Respaldo diario de la base de MIA (Producción) dentro de la misma base (ver respaldo/respaldar.js).
-# Corre todos los días a las 03:13 (hora Argentina) y se puede correr a mano desde "Actions".
+# Corre todos los días a las 18:05 (hora Argentina; pedido del usuario 05/11/2026, antes 03:13) y se puede correr a
+# mano desde "Actions". GitHub puede demorar unos minutos el horario programado.
 name: Respaldo diario
 on:
   schedule:
-    - cron: "13 6 * * *"
+    - cron: "5 21 * * *"
   push:
     branches: [main]
     paths: ["respaldo/**", ".github/workflows/respaldo.yml"]

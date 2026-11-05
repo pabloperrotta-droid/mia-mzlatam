@@ -1,6 +1,6 @@
 // Sección 162: comparar Pagos con un respaldo y restaurar (pedido del usuario, 05/11/2026: "en Pagos no me coincide
 // hoy tal cual lo dejé ayer… ¿cómo hacemos para restaurar? ¿y cómo me aseguro de que no hay ningún otro cambio?").
-// Fuentes: el respaldo diario de la base (respaldosDiarios, 03:13 hs, solo Producción) y la foto diaria del Historial.
+// Fuentes: el respaldo diario de la base (respaldosDiarios, 18:05 hs desde el 05/11/2026, antes 03:13; solo Producción) y la foto diaria del Historial.
 // Muestra línea por línea qué se agregó, qué se borró y qué cambió (campo: antes → ahora), con botones para volver
 // atrás cada línea o todo. Además, un resumen de qué otras partes de la base cambiaron desde ese respaldo.
 
@@ -125,7 +125,7 @@ function CompararRespaldoPanel({ onClose, db, pagos, setPagos }) {
       const l = [];
       try {
         const r = await db.collection("respaldosDiarios").get();
-        r.docs.forEach((d) => l.push({ id: "r:" + d.id, tipo: "respaldo", fecha: d.id, creado: d.data().creado, texto: "Respaldo diario del " + d.id.split("-").reverse().join("/") + " (03:13 hs)" }));
+        r.docs.forEach((d) => l.push({ id: "r:" + d.id, tipo: "respaldo", fecha: d.id, creado: d.data().creado, texto: "Respaldo diario del " + d.id.split("-").reverse().join("/") + " (" + (d.data().creado ? new Date(d.data().creado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }) : "") + " hs)" }));
       } catch {}
       try {
         const h = await db.collection("historial").get();
