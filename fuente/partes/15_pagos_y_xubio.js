@@ -822,7 +822,9 @@ function PagosView({
   const fcIndice = useMemo(() => {
     const m = {};
     n.forEach((l) => {
-      const num = fcClaveNumero(l.factura);
+      // Por el número del comprobante solo (sin punto de venta): "22" y "00002-00000022" caen juntos; después se
+      // filtra con fcMismoNumero.
+      const num = fcClaveNumero(l.factura).split("-").pop();
       if (!num) return;
       const c = fcSoloDigitos(l.cuit),
         pr = (l.proveedorPago || "").trim().toUpperCase();
@@ -832,12 +834,12 @@ function PagosView({
     return m;
   }, [n]);
   function facturasIguales(l, factura) {
-    const num = fcClaveNumero(factura);
+    const num = fcClaveNumero(factura).split("-").pop();
     if (!num) return [];
     const c = fcSoloDigitos(l.cuit),
       pr = (l.proveedorPago || "").trim().toUpperCase(),
       todas = [...((c && fcIndice["C" + c + "|" + num]) || []), ...((pr && fcIndice["P" + pr + "|" + num]) || [])];
-    return todas.filter((x, i) => x.id !== l.id && todas.indexOf(x) === i && !(l.parteFactura && x.parteFactura));
+    return todas.filter((x, i) => x.id !== l.id && todas.indexOf(x) === i && fcMismoNumero(x.factura, factura) && !(l.parteFactura && x.parteFactura));
   }
   function textoFacturaRepetida(otras) {
     return otras

@@ -431,6 +431,18 @@ function fcClaveNumero(s) {
   const g = String(s || "").match(/\d+/g) || [];
   return g.length ? g.slice(-2).map((x) => String(Number(x))).join("-") : "";
 }
+// Mismo número de factura. Si uno de los dos se cargó sin punto de venta (ej. "22") alcanza con que coincida el
+// número del comprobante ("00002-00000022" → 22). Pedido del usuario (05/11/2026): la factura ya estaba en Pagos
+// como "22" y al importar el PDF la cargaba como nueva.
+function fcMismoNumero(a, b) {
+  const x = fcClaveNumero(a),
+    y = fcClaveNumero(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const ux = x.split("-"),
+    uy = y.split("-");
+  return (ux.length === 1 || uy.length === 1) && ux[ux.length - 1] === uy[uy.length - 1];
+}
 // ¿A qué línea ya cargada corresponde esta factura? 1) misma factura (CUIT + número); 2) una línea sin
 // número de factura, sin pagar y sin PDF, del mismo proveedor, con el mismo importe (o sin importe).
 function lineaParaFactura(fc, lineas, proveedor, conPdf) {
@@ -438,7 +450,7 @@ function lineaParaFactura(fc, lineas, proveedor, conPdf) {
     num = fcClaveNumero(fc.factura),
     tiene = conPdf || (() => false);
   if (c && num) {
-    const igual = (lineas || []).find((l) => fcSoloDigitos(l.cuit) === c && fcClaveNumero(l.factura) === num);
+    const igual = (lineas || []).find((l) => fcSoloDigitos(l.cuit) === c && fcMismoNumero(l.factura, fc.factura));
     if (igual) return { linea: igual, como: "misma" };
   }
   const prov = (proveedor || "").trim().toUpperCase(),
@@ -469,10 +481,11 @@ function completarLineaConFactura(l, fc, razonSocialProveedor) {
   neto && !(Number(l.importeBruto) || 0) && (p.importeBruto = neto);
   fc.letra === "A" && !l.facturaA && (p.facturaA = true);
   const avisos = [];
-  fc.total && (Number(l.importe) || 0) && Math.abs(Math.abs(Number(l.importe)) - Math.abs(fc.total)) >= 1 &&
+  l.parteFactura && avisos.push("la factura está repartida en Pagos (parte " + l.parteFactura + "): el PDF queda en esta línea");
+  !l.parteFactura && fc.total && (Number(l.importe) || 0) && Math.abs(Math.abs(Number(l.importe)) - Math.abs(fc.total)) >= 1 &&
     avisos.push("el importe de la línea (" + fmt(l.importe) + ") no coincide con el de la factura (" + fmt(fc.total) + ")");
   fc.cuit && fcSoloDigitos(l.cuit) && fcSoloDigitos(l.cuit) !== fc.cuit && avisos.push("el CUIT de la línea no coincide con el de la factura (" + fc.cuit + ")");
-  fc.factura && String(l.factura || "").trim() && fcClaveNumero(l.factura) !== fcClaveNumero(fc.factura) &&
+  fc.factura && String(l.factura || "").trim() && !fcMismoNumero(l.factura, fc.factura) &&
     avisos.push("el número de factura de la línea no coincide con el del PDF (" + fc.factura + ")");
   return { cambios: p, avisos };
 }

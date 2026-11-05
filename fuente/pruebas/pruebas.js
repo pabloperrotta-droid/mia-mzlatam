@@ -586,6 +586,23 @@ prueba("Factura PDF: completa la línea tipeada a mano sin factura, sin pisar na
   assert.strictEqual(r.avisos.length, 1);
 });
 
+prueba("Factura PDF: reconoce la factura cargada sin punto de venta (22 = 00002-00000022)", () => {
+  assert.strictEqual(f.fcMismoNumero("22", "00002-00000022"), true);
+  assert.strictEqual(f.fcMismoNumero("2-22", "00002-00000022"), true);
+  assert.strictEqual(f.fcMismoNumero("3-22", "00002-00000022"), false);
+  assert.strictEqual(f.fcMismoNumero("23", "00002-00000022"), false);
+  const fc = { cuit: "20332214153", factura: "00002-00000022", total: 1276550, neto: 1055000, letra: "A" };
+  const lineas = [
+    { id: "x", cuit: "20332214153", factura: "22", importe: 338800, parteFactura: "1/3" },
+    { id: "y", cuit: "20332214153", factura: "22", importe: 695750, parteFactura: "2/3" },
+  ];
+  const m = f.lineaParaFactura(fc, lineas, "ANDRES");
+  assert.strictEqual(m.como, "misma");
+  assert.strictEqual(m.linea.id, "x");
+  const r = f.completarLineaConFactura(lineas[0], fc, "");
+  assert.ok(r.avisos.every((t) => !/no coincide/.test(t)));
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);

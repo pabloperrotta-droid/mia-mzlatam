@@ -1863,3 +1863,10 @@ Incidente: el 05/11/2026 entre las 11:20 y 11:29 se usó "Restaurar backup" en P
 **Links de trabajo:**
 - QA (para evaluar cambios): `https://pabloperrotta-droid.github.io/mia-mzlatam/MIAQA.html`
 - Producción (uso diario): `https://pabloperrotta-droid.github.io/mia-mzlatam/MIA.prd.html`
+
+## 167. Importar PDF: reconocer la factura ya cargada sin punto de venta (05/11/2026)
+Pedido del usuario: "Estoy importando una factura a pagos, que ya está cargada en pagos, pero no me dice que está cargada". La factura ANDRES 22 estaba en Pagos como "22" (repartida en 3 líneas) y el PDF dice "00002-00000022": no coincidían y la cargaba como línea nueva.
+- [x] `fcMismoNumero`: si uno de los dos números no tiene punto de venta, alcanza con que coincida el número del comprobante (22 = 00002-00000022; 3-22 ≠ 2-22).
+- [x] Al importar: la reconoce como "ya está cargada en Pagos" (mismo CUIT) y le adjunta el PDF; si está repartida, avisa en qué parte queda y no marca diferencia de importe.
+- [x] El aviso de factura repetida al tipear el número también usa la misma regla.
+- [x] Prueba automática. [ ] Producción (con el OK del usuario).
