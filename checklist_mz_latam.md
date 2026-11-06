@@ -1877,4 +1877,4 @@ Motivo: el 05/11 a la tarde se agotó la cuota diaria de lecturas de Firestore (
 - [x] Pedidos y botones se atienden enseguida, pero escuchando (onSnapshot) en vez de buscar cada minuto.
 - [x] Pagos: botón "⇪ Mandar a Xubio ahora" (pedido `pasada`) y leyenda "Xubio se actualiza solo a las 18 hs". "Reintentar…" sigue igual.
 - [x] Respaldo por hora: el proceso mantiene una copia en memoria escuchando la base (solo se leen los documentos que cambian) y arma el respaldo con esa copia; las colecciones con subcolecciones se siguen leyendo enteras. Mismo formato (Comparar con respaldo no cambia). El diario de las 18 hs sigue completo.
-- [ ] Producción (con el OK del usuario).
+- [x] Producción (OK del usuario: "Si", 05/11 21:22).
