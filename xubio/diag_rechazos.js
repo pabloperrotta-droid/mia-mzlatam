@@ -19,15 +19,6 @@ async function abrir(d) {
   try { await db.doc("qa_app/pruebaCuota").set({ t: Date.now() }); n("ESCRITURA: OK"); } catch (e) { n("ESCRITURA: " + (e.details || e.message)); }
   const pd = (await db.doc("procesoXubio/pasadaDiaria").get()).data() || {};
   n("PASADA DIARIA: " + (pd.fecha || "-") + " inicio " + ar(pd.inicio) + " fin " + ar(pd.fin));
-  const desde = Date.now() - 40 * 60 * 1000;
-  const err = (await db.collection("erroresGuardado").where("fecha", ">=", desde).get()).docs.map((d) => d.data()).sort((a, b) => a.fecha - b.fecha);
-  const g = {};
-  err.forEach((e) => { const k = ar(e.fecha).slice(6, 8) + "h " + (e.rol || "?") + " " + (e.ambiente || ""); g[k] = (g[k] || 0) + 1; });
-  n("ERRORES por hora: " + Object.entries(g).map(([k, v]) => k + ": " + v).join(" | "));
-  n("RESUMEN: ultimo error " + (err.length ? ar(err[err.length - 1].fecha) : "-") + " · Pagos guardado " + ar((await db.doc("app/st_pagosSemanales").get()).updateTime.toMillis()) + " · ahora " + ar(Date.now()));
-  n("PRIMEROS ERRORES: " + err.slice(0, 4).map((e) => ar(e.fecha) + " " + (e.rol || "") + " " + String(e.motivo || "").slice(0, 70)).join(" | "));
-
-
   const c = await db.doc("qa_app/copiaDeProduccion").get();
   const out = [`QA copiada ${c.exists ? ar(c.get("copiado")) : "nunca"}`];
   for (const col of ["app", "facturas", "facturasPapelera", "pdfsOC", "echeqs"]) {
