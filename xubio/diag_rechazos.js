@@ -21,6 +21,10 @@ async function abrir(d) {
   n("DIARIOS: " + (await Promise.all(dia.map(abrir))).join(" | "));
   const hs = (await db.collection("respaldosHorarios").orderBy("fecha", "desc").get()).docs;
   n(`HORARIOS (${hs.length}): ` + (await Promise.all(hs.slice(0, 4).map(abrir))).join(" | "));
+  for (const d of dia) {
+    const m = d.data(), ps = (await d.ref.collection("partes").get()).docs;
+    n(`DIARIO META ${d.id}: creado ${ar(m.creado)} partes meta ${m.partes} reales ${ps.length} ids ${ps.map((x) => x.id).sort((a, b) => a - b).join(",")} KB ${Math.round(m.bytesComprimido / 1024)} largo ${ps.reduce((t, x) => t + (x.get("datos") || "").length, 0)}/${m.bytesComprimido}`);
+  }
   const pd = (await db.doc("procesoXubio/pasadaDiaria").get()).data() || {};
   n("PASADA DIARIA: " + (pd.fecha || "-") + " inicio " + ar(pd.inicio) + " fin " + ar(pd.fin));
   const c = await db.doc("qa_app/copiaDeProduccion").get();
