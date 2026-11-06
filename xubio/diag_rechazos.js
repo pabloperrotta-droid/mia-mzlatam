@@ -17,6 +17,8 @@ async function abrir(d) {
 (async () => {
   try { await db.doc("qa_app/pruebaCuota").get(); n("LECTURA: OK"); } catch (e) { n("LECTURA: " + (e.details || e.message)); return; }
   try { await db.doc("qa_app/pruebaCuota").set({ t: Date.now() }); n("ESCRITURA: OK"); } catch (e) { n("ESCRITURA: " + (e.details || e.message)); }
+  const pd = (await db.doc("procesoXubio/pasadaDiaria").get()).data() || {};
+  n("PASADA DIARIA: " + (pd.fecha || "-") + " inicio " + ar(pd.inicio) + " fin " + ar(pd.fin));
   const desde = Date.now() - 40 * 60 * 1000;
   const err = (await db.collection("erroresGuardado").where("fecha", ">=", desde).get()).docs.map((d) => d.data()).sort((a, b) => a.fecha - b.fecha);
   const g = {};
