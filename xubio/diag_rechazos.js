@@ -17,6 +17,10 @@ async function abrir(d) {
 (async () => {
   try { await db.doc("qa_app/pruebaCuota").get(); n("LECTURA: OK"); } catch (e) { n("LECTURA: " + (e.details || e.message)); return; }
   try { await db.doc("qa_app/pruebaCuota").set({ t: Date.now() }); n("ESCRITURA: OK"); } catch (e) { n("ESCRITURA: " + (e.details || e.message)); }
+  const dia = (await db.collection("respaldosDiarios").orderBy("fecha", "desc").limit(1).get()).docs;
+  n("DIARIOS: " + (await Promise.all(dia.map(abrir))).join(" | "));
+  const hs = (await db.collection("respaldosHorarios").orderBy("fecha", "desc").get()).docs;
+  n(`HORARIOS (${hs.length}): ` + (await Promise.all(hs.slice(0, 4).map(abrir))).join(" | "));
   const pd = (await db.doc("procesoXubio/pasadaDiaria").get()).data() || {};
   n("PASADA DIARIA: " + (pd.fecha || "-") + " inicio " + ar(pd.inicio) + " fin " + ar(pd.fin));
   const c = await db.doc("qa_app/copiaDeProduccion").get();
