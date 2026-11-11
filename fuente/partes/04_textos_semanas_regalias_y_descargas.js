@@ -81,6 +81,12 @@ function regaliasPorSemana(facturas, semanas) {
     r
   );
 }
+// Sección 169: fila "Ajustes de la semana" de Egresos (se carga a mano; positivo suma egresos, negativo resta).
+// Se guarda junto a las categorías de Egresos con esta clave (las categorías van en mayúsculas, no se pisan).
+const CF_AJUSTE = "Ajustes de la semana";
+function ajusteSemana(valores, s) {
+  return Number((valores || {})[CF_AJUSTE + "|" + s]) || 0;
+}
 function regaliaPendiente(mapa, pagadas, s) {
   const x = mapa[s];
   return x && !(pagadas || {})[x.clave] ? x.monto : 0;

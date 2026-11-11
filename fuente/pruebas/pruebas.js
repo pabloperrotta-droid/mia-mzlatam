@@ -603,6 +603,14 @@ prueba("Factura PDF: reconoce la factura cargada sin punto de venta (22 = 00002-
   assert.ok(r.avisos.every((t) => !/no coincide/.test(t)));
 });
 
+prueba("Cashflow: ajustes de la semana (a mano, suman o restan egresos)", () => {
+  const v = { "Ajustes de la semana|2026-11-13": -50000, "Ajustes de la semana|2026-11-20": 120000.5, "SUELDOS|2026-11-13": 9 };
+  assert.strictEqual(f.ajusteSemana(v, "2026-11-13"), -50000);
+  assert.strictEqual(f.ajusteSemana(v, "2026-11-20"), 120000.5);
+  assert.strictEqual(f.ajusteSemana(v, "2026-11-27"), 0);
+  assert.strictEqual(f.ajusteSemana(null, "2026-11-27"), 0);
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);

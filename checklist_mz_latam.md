@@ -1878,3 +1878,11 @@ Motivo: el 05/11 a la tarde se agotó la cuota diaria de lecturas de Firestore (
 - [x] Pagos: botón "⇪ Mandar a Xubio ahora" (pedido `pasada`) y leyenda "Xubio se actualiza solo a las 18 hs". "Reintentar…" sigue igual.
 - [x] Respaldo por hora: el proceso mantiene una copia en memoria escuchando la base (solo se leen los documentos que cambian) y arma el respaldo con esa copia; las colecciones con subcolecciones se siguen leyendo enteras. Mismo formato (Comparar con respaldo no cambia). El diario de las 18 hs sigue completo.
 - [x] Producción (OK del usuario: "Si", 05/11 21:22).
+
+## 169. Cashflow · Egresos: fila "Ajustes de la semana" (11/11/2026)
+Pedido del usuario: "abajo de regalías, agregamos una fila para que pueda sumar o restar cosas que surgen en la semana... se va a completar sí o sí a mano".
+- [x] Fila "AJUSTES DE LA SEMANA (+/−)" debajo de Regalías, con una celda por semana que se carga a mano (acepta negativos y cuentas, ej. =30.000-12.500). No trae nada de ningún lado.
+- [x] Positivo suma a los egresos; negativo resta (se ve en verde). Entra en TOTAL EGRESOS, el importe total, el CASH (saldo por semana) y el informe.
+- [x] Globito de comentario por celda para anotar qué es. Total de la fila a la derecha.
+- [x] Se guarda junto a los valores de Egresos (clave "Ajustes de la semana|semana"), así que entra en los respaldos.
+- [x] Prueba automática. [ ] Producción (con el OK del usuario).

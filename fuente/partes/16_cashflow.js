@@ -715,7 +715,7 @@ function CashflowView({
             j = b + R,
             Q = Z.reduce((ke, We) => ke + (Number(ee[We + "|" + s]) || 0), 0),
             J = re.reduce((ke, We) => ke + Do(We, s), 0),
-            fe = Q + J + regaliaPendiente(regMap, regPag, s);
+            fe = Q + J + regaliaPendiente(regMap, regPag, s) + ajusteSemana(ee, s);
           return { semana: s, ingresos: j, egresos: fe, neto: j - fe };
         }),
       [ae, Wt, F, oe, P, Z, ee, re, Le, regMap, regPag],
@@ -728,7 +728,7 @@ function CashflowView({
         egresos = 0;
       for (const s of ss) {
         ingresos += Wt.reduce((ke, We) => ke + (Number(F[We.id + "|" + s]) || 0), 0) + oe.reduce((ke, We) => ke + (Number(P[We + "|" + s]) || 0), 0);
-        egresos += Z.reduce((ke, We) => ke + (Number(ee[We + "|" + s]) || 0), 0) + re.reduce((ke, We) => ke + Do(We, s), 0);
+        egresos += Z.reduce((ke, We) => ke + (Number(ee[We + "|" + s]) || 0), 0) + re.reduce((ke, We) => ke + Do(We, s), 0) + ajusteSemana(ee, s);
       }
       return { semanas: ss, ingresos, egresos, neto: ingresos - egresos };
     }, [ae, Wt, F, oe, P, Z, ee, re, Le]),
@@ -2019,7 +2019,7 @@ function CashflowView({
             React.createElement(
               "b",
               { style: { color: RED, fontWeight: 700 } },
-              fmt(Z.reduce((s, b) => s + yo(ee, b), 0) + re.reduce((s, b) => s + dn(b), 0) + ae.reduce((s, b) => s + regaliaPendiente(regMap, regPag, b), 0)),
+              fmt(Z.reduce((s, b) => s + yo(ee, b), 0) + re.reduce((s, b) => s + dn(b), 0) + ae.reduce((s, b) => s + regaliaPendiente(regMap, regPag, b) + ajusteSemana(ee, b), 0)),
             ),
           ),
         ),
@@ -2140,7 +2140,7 @@ function CashflowView({
                       },
                     },
                     fmt(
-                      Z.reduce((b, R) => b + (Number(ee[R + "|" + s]) || 0), 0) + re.reduce((b, R) => b + Do(R, s), 0) + regaliaPendiente(regMap, regPag, s),
+                      Z.reduce((b, R) => b + (Number(ee[R + "|" + s]) || 0), 0) + re.reduce((b, R) => b + Do(R, s), 0) + regaliaPendiente(regMap, regPag, s) + ajusteSemana(ee, s),
                     ),
                   ),
                 ),
@@ -2157,7 +2157,7 @@ function CashflowView({
                       borderRight: "1px solid " + BORDER,
                     },
                   },
-                  fmt(Z.reduce((s, b) => s + yo(ee, b), 0) + re.reduce((s, b) => s + dn(b), 0) + ae.reduce((s, b) => s + regaliaPendiente(regMap, regPag, b), 0)),
+                  fmt(Z.reduce((s, b) => s + yo(ee, b), 0) + re.reduce((s, b) => s + dn(b), 0) + ae.reduce((s, b) => s + regaliaPendiente(regMap, regPag, b) + ajusteSemana(ee, b), 0)),
                 ),
                 React.createElement(
                   "div",
@@ -2315,6 +2315,75 @@ function CashflowView({
                     title: "Regalías pendientes (sin las tildadas como pagadas)",
                   },
                   fmt(ae.reduce((s, b) => s + regaliaPendiente(regMap, regPag, b), 0)),
+                ),
+                // Sección 169: ajustes de la semana (a mano; positivo suma egresos, negativo resta).
+                React.createElement(
+                  "div",
+                  {
+                    style: {
+                      ...dt,
+                      padding: "6px 18px",
+                      fontSize: 12.5,
+                      fontStyle: "italic",
+                      color: NAVY,
+                      borderBottom: "2px solid " + BORDER,
+                      borderRight: "1px solid " + BORDER,
+                      background: "#FBF7EA",
+                    },
+                    title: "Se carga a mano: lo que surge en la semana. En positivo suma egresos; en negativo (ej. -50.000) los resta. Con el globito anotás qué es.",
+                  },
+                  "AJUSTES DE LA SEMANA (+/−)",
+                ),
+                ae.map((j) => {
+                  const J = CF_AJUSTE + "|" + j,
+                    fe = ne[J],
+                    v = Number(eeRaw[J]) || 0;
+                  return React.createElement(
+                    "div",
+                    {
+                      key: j,
+                      style: { padding: "7px 6px 2px", borderBottom: "2px solid " + BORDER, borderRight: "1px solid " + BORDER, background: "#FBF7EA" },
+                    },
+                    g
+                      ? React.createElement(MilesInput, {
+                          className: "cf-cell-input",
+                          style: { ...go, textAlign: "right", fontSize: 11.5, color: v < 0 ? GREEN : undefined },
+                          value: eeRaw[J] ?? "",
+                          placeholder: "+ / −",
+                          onChange: (ke) => lt((We) => ({ ...We, [J]: ke })),
+                        })
+                      : React.createElement("div", { style: { textAlign: "right", fontSize: 12, color: v < 0 ? GREEN : undefined } }, v ? fmt(v) : ""),
+                    (fe || g) &&
+                      React.createElement(
+                        "div",
+                        { style: { textAlign: "center", lineHeight: 1, marginTop: 1 } },
+                        React.createElement(
+                          "button",
+                          {
+                            onClick: () => me(CF_AJUSTE, j),
+                            title: fe ? "Comentario: " + fe : "Anotar qué es",
+                            style: { border: "none", background: "none", cursor: "pointer", padding: 1, color: fe ? GOLD : "#D8D3C4", lineHeight: 0 },
+                          },
+                          React.createElement(MessageSquare, { size: 10, fill: fe ? GOLD : "none" }),
+                        ),
+                      ),
+                  );
+                }),
+                React.createElement(
+                  "div",
+                  {
+                    style: {
+                      padding: "6px 6px",
+                      fontSize: 12,
+                      textAlign: "right",
+                      fontWeight: 600,
+                      color: MUTED,
+                      borderBottom: "2px solid " + BORDER,
+                      borderRight: "1px solid " + BORDER,
+                      background: "#FBF7EA",
+                    },
+                  },
+                  fmt(ae.reduce((s, b) => s + ajusteSemana(ee, b), 0)),
                 ),
                 Ht.map((s, b) => {
                   const R = b % 2 === 1 ? ZEBRA : "#fff";
