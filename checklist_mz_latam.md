@@ -1886,3 +1886,9 @@ Pedido del usuario: "abajo de regalías, agregamos una fila para que pueda sumar
 - [x] Globito de comentario por celda para anotar qué es. Total de la fila a la derecha.
 - [x] Se guarda junto a los valores de Egresos (clave "Ajustes de la semana|semana"), así que entra en los respaldos.
 - [x] Prueba automática. [ ] Producción (con el OK del usuario).
+
+## 170. Cashflow · Ingresos: comentario en el nombre del cliente (11/11/2026)
+Pedido del usuario: "en ingresos, en el nombre del cliente, en la primera columna, poder poner comentarios".
+- [x] Debajo de cliente · centro de costo (y N° / fecha) hay "💬 comentario": abre la misma ventana de comentarios; si tiene texto se muestra ahí mismo en dorado. No cambia el clic para ir al centro de costo.
+- [x] Se guarda con los comentarios de Ingresos (clave "id|_nota"), entra en los respaldos.
+- [ ] Producción (con el OK del usuario).

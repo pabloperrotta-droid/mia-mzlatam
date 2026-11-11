@@ -1763,6 +1763,24 @@ function CashflowView({
                             s.fecha,
                             s.diasDesdeEmision != null ? " · Días: " + s.diasDesdeEmision : "",
                           ),
+                        // Sección 170: comentario de la fila (cliente / centro de costo), aparte de los de cada semana.
+                        (() => {
+                          const nota = k[s.id + "|_nota"];
+                          return (nota || g) &&
+                            React.createElement(
+                              "div",
+                              {
+                                onClick: (ev) => {
+                                  ev.stopPropagation();
+                                  (Oe({ clave: s.id + "|_nota", titulo: s.cliente + " · " + s.obra + (s.nro ? " · N° " + s.nro : "") }), q(nota || ""));
+                                },
+                                title: nota ? "Comentario: " + nota : "Agregar comentario a este cliente",
+                                style: { display: "flex", alignItems: "flex-start", gap: 4, marginTop: 2, cursor: "pointer", fontSize: 10.5, color: nota ? "#8A6D12" : "#C9C3B3", fontStyle: nota ? "italic" : "normal" },
+                              },
+                              React.createElement(MessageSquare, { size: 10, fill: nota ? GOLD : "none", style: { flexShrink: 0, marginTop: 1, color: nota ? GOLD : "#D8D3C4" } }),
+                              nota ? React.createElement("span", { style: { whiteSpace: "pre-wrap" } }, nota) : "comentario",
+                            );
+                        })(),
                       ),
                       React.createElement(
                         "div",
