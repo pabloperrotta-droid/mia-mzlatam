@@ -25,7 +25,8 @@ jobs:
       - name: Preparar navegador para la prueba de pantalla
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw" && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.48.2
-          npx --prefix "$RUNNER_TEMP/pw" playwright install --with-deps chromium
+          # Si el apt de GitHub no responde (pasó el 11/11/2026), se instala solo el navegador (las librerías ya vienen en el runner).
+          timeout 300 npx --prefix "$RUNNER_TEMP/pw" playwright install --with-deps chromium || npx --prefix "$RUNNER_TEMP/pw" playwright install chromium
       - name: Prueba de pantalla (todas las pestañas)
         env:
           PLAYWRIGHT: ${{ runner.temp }}/pw/node_modules/playwright
