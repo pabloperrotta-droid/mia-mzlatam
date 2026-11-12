@@ -1,4 +1,14 @@
-function calcularRetencionGananciasProveedor(n) {
+// Sección 172: proveedor con exclusión de retenciones (tilde "Sin retenciones" en la tabla de Proveedores de Pagos):
+// no se le calcula retención, sea cual sea la regla de MAT / MO / Factura A. Se busca por nombre y, si no, por CUIT.
+function proveedorSinRetenciones(filas, nombre, cuits) {
+  const k = String(nombre || "").trim().toUpperCase(),
+    cs = (cuits || []).map((c) => String(c || "").replace(/\D/g, "")).filter(Boolean);
+  return (filas || []).some(
+    (f) => f && f.sinRetenciones && ((k && String(f.proveedor || "").trim().toUpperCase() === k) || (cs.length && cs.includes(String(f.cuit || "").replace(/\D/g, "")))),
+  );
+}
+function calcularRetencionGananciasProveedor(n, sinRetenciones) {
+  if (sinRetenciones) return { retGanTransf: 0, retGanChe: 0 };
   const d = n.filter((A) => A.facturaA),
     c = d.filter((A) => A.mat && !A.mo).reduce((A, k) => A + (Number(k.importeBruto) || 0), 0),
     p = d.filter((A) => A.mo && !A.mat).reduce((A, k) => A + (Number(k.importeBruto) || 0), 0),
@@ -1911,11 +1921,12 @@ function PagosView({
   }
   function St() {
     const l = XLSX.utils.aoa_to_sheet([
-        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU", "Imputación", "Servicio Xubio"],
+        ["Proveedor", "Actividad", "Factura", "Sin retenciones", "CUIT", "Razón Social", "CBU", "Imputación", "Servicio Xubio"],
         ...(A || []).map((U) => [
           U.proveedor || "",
           U.actividad || "",
           U.factura || "",
+          U.sinRetenciones ? "SI" : "",
           U.cuit || "",
           U.razonSocial || "",
           U.cbu || "",
@@ -1958,6 +1969,9 @@ function PagosView({
               imputacion: String(ge(Ue, ["imputación", "imputacion"]) || "")
                 .toUpperCase()
                 .trim(),
+              ...(Object.keys(Ue).some((pt) => /^sin retenci[oó]n(es)?$/i.test(pt.toString().trim()))
+                ? { sinRetenciones: /^(si|sí|x|1|true)$/i.test(String(ge(Ue, ["sin retenciones", "sin retencion", "sin retención"]) || "").trim()) }
+                : {}),
               // Sección 152: solo si el Excel trae la columna (si no, se conserva el que ya tenía).
               ...(Object.keys(Ue).some((pt) => /^servicio( xubio)?$/i.test(pt.toString().trim()))
                 ? { servicioXubio: String(ge(Ue, ["servicio xubio", "servicio"]) || "").trim() }
@@ -2580,7 +2594,7 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
       });
       const I = Array.from(l.entries())
           .map(([Y, se]) => {
-            const { retGanTransf: be, retGanChe: Ue } = calcularRetencionGananciasProveedor(se),
+            const { retGanTransf: be, retGanChe: Ue } = calcularRetencionGananciasProveedor(se, proveedorSinRetenciones(A, Y, se.map((x) => x.cuit))),
               it = se.reduce((Qt, lo) => Qt + (Number(lo.importe) || 0), 0),
               pt = se.reduce((Qt, lo) => Qt + (Number(lo.importeBruto) || 0), 0),
               Io = se.reduce((Qt, lo) => Qt + (Number(lo.transferencia) || 0), 0),
@@ -4095,6 +4109,11 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                   React.createElement("th", { style: q }, "Proveedor"),
                   React.createElement("th", { style: q }, "Actividad"),
                   React.createElement("th", { style: q }, "Factura"),
+                  React.createElement(
+                    "th",
+                    { style: { ...q, textAlign: "center" }, title: "Tildalo si el proveedor tiene exclusión de retenciones: no se le calcula retención de Ganancias (planilla de Retenciones y órdenes de pago), aunque sea Factura A con MAT o MO." },
+                    "Sin retenciones",
+                  ),
                   React.createElement("th", { style: q }, "CUIT"),
                   React.createElement("th", { style: q }, "Razón Social"),
                   React.createElement("th", { style: q }, "CBU"),
@@ -4163,6 +4182,16 @@ Revisá las que hayan quedado marcadas en rojo fuerte (Cliente, Centro de Costo,
                         React.createElement("option", { value: "B" }, "B"),
                         React.createElement("option", { value: "C" }, "C"),
                       ),
+                    ),
+                    React.createElement(
+                      "td",
+                      { style: { ...Ae, textAlign: "center" } },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        checked: !!l.sinRetenciones,
+                        title: "Exclusión de retenciones: no se le calcula retención",
+                        onChange: (U) => At(I, { sinRetenciones: U.target.checked }),
+                      }),
                     ),
                     React.createElement(
                       "td",

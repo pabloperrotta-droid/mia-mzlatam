@@ -618,6 +618,16 @@ prueba("Xubio: \"falta fc\" (sin dígitos) no es una factura: no va a Xubio", ()
   assert.strictEqual(f.xubioClase({ id: "b", cuit: "20123456786", factura: "22" }, null).falta, "");
 });
 
+prueba("Retenciones: proveedor con exclusión (Sin retenciones) no retiene, aunque sea Factura A MO", () => {
+  const L = [{ facturaA: true, mo: true, mat: false, importeBruto: 1000000, transferencia: 1210000 }];
+  assert.ok(f.calcularRetencionGananciasProveedor(L).retGanTransf > 0);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(f.calcularRetencionGananciasProveedor(L, true))), { retGanTransf: 0, retGanChe: 0 });
+  const filas = [{ proveedor: "CASAS", cuit: "20-12345678-6", sinRetenciones: true }, { proveedor: "ANDRES", cuit: "20332214153" }];
+  assert.strictEqual(f.proveedorSinRetenciones(filas, "casas", []), true);
+  assert.strictEqual(f.proveedorSinRetenciones(filas, "OTRO NOMBRE", ["20123456786"]), true);
+  assert.strictEqual(f.proveedorSinRetenciones(filas, "ANDRES", ["20332214153"]), false);
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);
