@@ -1897,4 +1897,4 @@ Pedido del usuario: "en ingresos, en el nombre del cliente, en la primera column
 Pregunta del usuario: "¿Por qué si dice falta factura está cargada en Xubio como factura repartida?". Tres líneas de CASAS con "falta fc" en Factura se tomaban como la misma factura (mismo CUIT + mismo texto): la más grande se buscó en Xubio (❌, no existe) y las otras dos quedaban ✅ "Factura repartida". En Xubio no se cambió nada.
 - [x] Pantalla: si el número de factura no tiene ningún dígito ("falta fc", "pendiente"…) la columna Xubio muestra "–" "Falta el número de factura" (como si estuviera vacío). "s/f" sigue igual (✅ sin factura).
 - [x] Proceso de Xubio: esas líneas no se mandan a Xubio ni entran en órdenes de pago.
-- [x] Prueba automática. [ ] Producción (con el OK del usuario).
+- [x] Prueba automática. [x] Producción (OK del usuario: "SI PRODUCCION", 11/11 22:29).
