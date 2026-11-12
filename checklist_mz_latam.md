@@ -1892,3 +1892,9 @@ Pedido del usuario: "en ingresos, en el nombre del cliente, en la primera column
 - [x] Debajo de cliente · centro de costo (y N° / fecha) hay "💬 comentario": abre la misma ventana de comentarios; si tiene texto se muestra ahí mismo en dorado. No cambia el clic para ir al centro de costo.
 - [x] Se guarda con los comentarios de Ingresos (clave "id|_nota"), entra en los respaldos.
 - [x] Producción (OK del usuario: "pasalo a produccion", 11/11 12:15).
+
+## 171. Pagos/Xubio: "falta fc" no es un número de factura (11/11/2026)
+Pregunta del usuario: "¿Por qué si dice falta factura está cargada en Xubio como factura repartida?". Tres líneas de CASAS con "falta fc" en Factura se tomaban como la misma factura (mismo CUIT + mismo texto): la más grande se buscó en Xubio (❌, no existe) y las otras dos quedaban ✅ "Factura repartida". En Xubio no se cambió nada.
+- [x] Pantalla: si el número de factura no tiene ningún dígito ("falta fc", "pendiente"…) la columna Xubio muestra "–" "Falta el número de factura" (como si estuviera vacío). "s/f" sigue igual (✅ sin factura).
+- [x] Proceso de Xubio: esas líneas no se mandan a Xubio ni entran en órdenes de pago.
+- [x] Prueba automática. [ ] Producción (con el OK del usuario).

@@ -136,7 +136,9 @@ function xubioClase(l, e) {
       ? "Falta el CUIT"
       : !String(l.factura || "").trim()
         ? "Falta el número de factura"
-        : "",
+        : !/\d/.test(String(l.factura)) // Sección 171: "falta fc", "pendiente"… todavía no es una factura
+          ? "Falta el número de factura (\"" + String(l.factura).trim() + "\")"
+          : "",
     yaBien = !!e && (e.estado === "ok" || e.estado === "ya_estaba" || e.estado === "en_otra_linea" || e.estado === "dividida"),
     vigente = !!e && (yaBien || e.firma === xubioFirma(l)),
     bien = vigente && yaBien && !e.forzar,

@@ -611,6 +611,13 @@ prueba("Cashflow: ajustes de la semana (a mano, suman o restan egresos)", () => 
   assert.strictEqual(f.ajusteSemana(null, "2026-11-27"), 0);
 });
 
+prueba("Xubio: \"falta fc\" (sin dígitos) no es una factura: no va a Xubio", () => {
+  const c = f.xubioClase({ id: "a", cuit: "20123456786", factura: "falta fc" }, { estado: "en_otra_linea", firma: "x" });
+  assert.ok(c.falta && /falta fc/.test(c.falta));
+  assert.strictEqual(c.icono, "–");
+  assert.strictEqual(f.xubioClase({ id: "b", cuit: "20123456786", factura: "22" }, null).falta, "");
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);
