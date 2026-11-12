@@ -107,6 +107,15 @@ async function serviciosDeProveedores(amb) {
   return (l) => porCuit[soloDigitos(l.cuit)] || porNombre[normalizar(l.proveedorPago || l.proveedor)] || "";
 }
 
+// Sección 172: proveedores con exclusión de retenciones (tilde "Sin retenciones" en la misma tabla).
+async function sinRetencionesDeProveedores(amb) {
+  const st = await db.doc(amb.prefijo + "app/state").get();
+  const filas = ((st.exists && st.get("reglasProveedoresPago")) || []).filter((f) => f && f.sinRetenciones);
+  const cuits = new Set(filas.map((f) => soloDigitos(f.cuit)).filter(Boolean)),
+    nombres = new Set(filas.map((f) => normalizar(f.proveedor)).filter(Boolean));
+  return (l) => cuits.has(soloDigitos(l.cuit)) || nombres.has(normalizar(l.proveedorPago || l.proveedor));
+}
+
 async function registrar(amb, datos) {
   await db
     .collection(amb.prefijo + "xubioLog")
@@ -292,6 +301,7 @@ async function procesarOPs(amb) {
   const cfgRef = db.doc(amb.prefijo + "xubioConfig/op");
   const cfgSnap = await cfgRef.get();
   let cfg = cfgSnap.exists ? cfgSnap.data() : {};
+  const sinRet = await sinRetencionesDeProveedores(amb);
   let primeraVez = false;
   if (!cfg.desde || (amb.opActivacion && (cfg.activado || 0) < amb.opActivacion)) {
     // Solo se arman OP de líneas pagadas desde que se activó esto. Las que ya estaban pagadas en ese
@@ -345,7 +355,7 @@ async function procesarOPs(amb) {
     const suyos = cheques.filter((c) => c.cuit === cuit && c.fechaEmision === fecha && (!c.asignadoA || c.asignadoA === clave));
     let r;
     try {
-      r = await armarOP(ls, suyos, estadosCentro);
+      r = await armarOP(ls, suyos, estadosCentro, sinRet(ls[0]));
     } catch (e) {
       r = { estado: "error", mensaje: texto((e && e.message) || e, 500) };
     }

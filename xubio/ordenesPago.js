@@ -54,7 +54,7 @@ function retencion(lineas) {
  * `estadosCentro`: resultado del centro de costo por línea (xubioEstado).
  * `cheques`: e-cheqs del banco disponibles para este CUIT y fecha.
  */
-async function armarOP(lineas, cheques, estadosCentro) {
+async function armarOP(lineas, cheques, estadosCentro, sinRetenciones = false) {
   const l0 = lineas[0];
   const cuit = soloDigitos(l0.cuit);
   const fecha = fechaISO(l0.fechaPagado);
@@ -91,7 +91,8 @@ async function armarOP(lineas, cheques, estadosCentro) {
   const transf = lineas.reduce((s, l) => s + num(l.transferencia), 0);
   const efectivo = lineas.reduce((s, l) => s + num(l.efectivo), 0);
   const diegoLevy = lineas.reduce((s, l) => s + num(l.diegoLevy), 0);
-  const ret = retencion(lineas);
+  // Sección 172: proveedor con exclusión de retenciones (tabla de Proveedores de Pagos).
+  const ret = sinRetenciones ? { mat: 0, mo: 0, retMat: 0, retMo: 0, total: 0 } : retencion(lineas);
   const retEnCheques = echeq > 0 ? ret.total : 0;
   const retEnTransf = echeq > 0 ? 0 : transf > 0 ? ret.total : 0;
   const retAplicada = retEnCheques + retEnTransf;
