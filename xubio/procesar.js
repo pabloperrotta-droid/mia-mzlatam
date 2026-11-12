@@ -50,6 +50,9 @@ const ARREGLO_INTERNOS = Date.UTC(2026, 9, 13, 19, 50); // 13/10/2026 16:50 (Arg
 const ARREGLO_TOPE_Y_NC = Date.UTC(2026, 9, 27, 22, 45);
 // Sección 144: "s/f" (sin factura) en el número de factura → no va a Xubio (pedido del usuario, 27/10/2026).
 const sinFactura = (f) => /^(sf|sinfactura|sinfac|sinfact)$/.test(String(f || "").toLowerCase().replace(/[\s.\/\\_-]/g, ""));
+// Sección 171: un "número" de factura sin ningún dígito ("falta fc", "pendiente") todavía no es una factura: no va
+// a Xubio (antes las 3 líneas con "falta fc" de un proveedor se tomaban como una factura repartida).
+const sinNumero = (f) => !/\d/.test(String(f || ""));
 const TRABADO_MS = 15 * 60 * 1000;
 const BIEN = new Set(["ok", "ya_estaba", "simulacion", "en_otra_linea", "servicio_no_aceptado", "dividida"]);
 // Sección 161: dividir en Xubio las facturas marcadas como divididas en MIA (✂), un renglón por parte.
@@ -137,7 +140,7 @@ async function procesarLineas(amb) {
   const cfgOP = await db.doc(amb.prefijo + "xubioConfig/op").get();
   const opDesde = (cfgOP.exists && cfgOP.get("desde")) || null;
   const validas = lineas.filter(
-    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && !sinFactura(l.factura) && (!fechaISO(l.fechaPagado) || (opDesde && fechaISO(l.fechaPagado) >= opDesde)),
+    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && !sinFactura(l.factura) && !sinNumero(l.factura) && (!fechaISO(l.fechaPagado) || (opDesde && fechaISO(l.fechaPagado) >= opDesde)),
   );
   // Sección 122: se leen solo los estados de estas líneas (no la colección entera), para gastar pocas lecturas
   // de la base ahora que el proceso corre seguido.
@@ -302,7 +305,7 @@ async function procesarOPs(amb) {
   const crear = amb.nombre === "prd";
 
   const lineas = (await leerPagos(amb)).filter(
-    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && !sinFactura(l.factura) && fechaISO(l.fechaPagado) && fechaISO(l.fechaPagado) >= cfg.desde,
+    (l) => l && l.id && soloDigitos(l.cuit) && t(l.factura) && !sinFactura(l.factura) && !sinNumero(l.factura) && fechaISO(l.fechaPagado) && fechaISO(l.fechaPagado) >= cfg.desde,
   );
   if (!lineas.length) return;
   const grupos = {};
