@@ -1904,4 +1904,4 @@ Pedido del usuario: "agregame un checkbox para que no me calcule retenciones si 
 - [x] Tabla "Proveedores — Actividad y Factura" de Pagos: columna "Sin retenciones" (tilde), después de Factura. No va en ningún Excel (pedido del usuario: "no tiene sentido crear una nueva columna en el Excel"); al subir el Excel de proveedores el tilde se conserva.
 - [x] Planilla de Retenciones (botón "Retenciones" y la del cierre de pagos): proveedor tildado → retención 0 (Total Transferencia / Total Cheques sin descontar nada), sea cual sea MAT / MO / Factura A. Se busca por nombre del proveedor y, si no, por CUIT.
 - [x] Órdenes de pago de Xubio (pausadas): mismo criterio, sin renglón de retención.
-- [x] Prueba automática. [ ] Producción (con el OK del usuario).
+- [x] Prueba automática. [x] Producción de la tabla y la planilla de Retenciones (OK del usuario: "si está todo probado, subilo a producción", 12/11 15:43). La parte de órdenes de pago queda en la rama sin-retenciones-proceso hasta que se reactiven las OP.
