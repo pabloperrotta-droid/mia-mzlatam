@@ -1921,12 +1921,11 @@ function PagosView({
   }
   function St() {
     const l = XLSX.utils.aoa_to_sheet([
-        ["Proveedor", "Actividad", "Factura", "Sin retenciones", "CUIT", "Razón Social", "CBU", "Imputación", "Servicio Xubio"],
+        ["Proveedor", "Actividad", "Factura", "CUIT", "Razón Social", "CBU", "Imputación", "Servicio Xubio"],
         ...(A || []).map((U) => [
           U.proveedor || "",
           U.actividad || "",
           U.factura || "",
-          U.sinRetenciones ? "SI" : "",
           U.cuit || "",
           U.razonSocial || "",
           U.cbu || "",
@@ -1969,9 +1968,6 @@ function PagosView({
               imputacion: String(ge(Ue, ["imputación", "imputacion"]) || "")
                 .toUpperCase()
                 .trim(),
-              ...(Object.keys(Ue).some((pt) => /^sin retenci[oó]n(es)?$/i.test(pt.toString().trim()))
-                ? { sinRetenciones: /^(si|sí|x|1|true)$/i.test(String(ge(Ue, ["sin retenciones", "sin retencion", "sin retención"]) || "").trim()) }
-                : {}),
               // Sección 152: solo si el Excel trae la columna (si no, se conserva el que ya tenía).
               ...(Object.keys(Ue).some((pt) => /^servicio( xubio)?$/i.test(pt.toString().trim()))
                 ? { servicioXubio: String(ge(Ue, ["servicio xubio", "servicio"]) || "").trim() }

@@ -1901,7 +1901,7 @@ Pregunta del usuario: "¿Por qué si dice falta factura está cargada en Xubio c
 
 ## 172. Proveedores: "Sin retenciones" (exclusión de retenciones) (12/11/2026)
 Pedido del usuario: "agregame un checkbox para que no me calcule retenciones si algún proveedor tiene exclusión de retenciones... si el checkbox está tildado, a ese proveedor no me calcula retenciones independientemente de la regla anterior".
-- [x] Tabla "Proveedores — Actividad y Factura" de Pagos: columna "Sin retenciones" (tilde), después de Factura. Va también en el Excel de proveedores (bajar y subir; si el Excel no trae la columna, se conserva lo que había).
+- [x] Tabla "Proveedores — Actividad y Factura" de Pagos: columna "Sin retenciones" (tilde), después de Factura. No va en ningún Excel (pedido del usuario: "no tiene sentido crear una nueva columna en el Excel"); al subir el Excel de proveedores el tilde se conserva.
 - [x] Planilla de Retenciones (botón "Retenciones" y la del cierre de pagos): proveedor tildado → retención 0 (Total Transferencia / Total Cheques sin descontar nada), sea cual sea MAT / MO / Factura A. Se busca por nombre del proveedor y, si no, por CUIT.
 - [x] Órdenes de pago de Xubio (pausadas): mismo criterio, sin renglón de retención.
 - [x] Prueba automática. [ ] Producción (con el OK del usuario).
