@@ -1915,4 +1915,4 @@ Pedido del usuario: "Hay varias subobras con adicionales cargados en ese número
 ## 174. Sub obras: buscar también por número de orden de compra (24/11/2026)
 Pedido del usuario: "Cuando busco por subobra, que también me deje buscar por número de orden de compra y me traiga todas las subobras con ese número".
 - [x] El buscador de sub obras ("Buscar sub obra u OC...") encuentra por nombre o por OC (también parte del número, y sub obras con varias OC). Se combina con el filtro de estado.
-- [x] Prueba automática. [ ] Producción (con el OK del usuario).
+- [x] Prueba automática. [x] Producción (OK del usuario: "si esta ok pasalo a produccion si no rompe nada", 24/11 14:56).
