@@ -389,8 +389,18 @@ function adicionalesPorOC(subObras, ocsExistentes) {
   return (
     (subObras || []).forEach((sc) =>
       (sc.adicionales || []).forEach((a) => {
-        const k = normOC(a.concepto);
-        if (!k || (!existentes.has(k) && !/^\d{6,}$/.test(k))) return;
+        let k = normOC(a.concepto);
+        // Sección 173 (pedido del usuario, 24/11/2026): un adicional cuya descripción NO es un número de orden de
+        // compra ("ADICIONAL", "Pintura extra"…) se suma a la orden de compra de su sub obra (la primera, si tiene
+        // varias). Antes solo se sumaban los que tenían el número de la OC como descripción.
+        if (!k || (!existentes.has(k) && !/^\d{6,}$/.test(k))) {
+          const propia = String(sc.ordenCompra || "")
+            .split(",")
+            .map(normOC)
+            .find((x) => existentes.has(x));
+          if (!propia) return;
+          k = propia;
+        }
         const g = r[k] || (r[k] = { oc: k, monto: 0, montoUSD: 0, subObras: [], existente: existentes.has(k) });
         ((g.monto += Number(a.monto) || 0),
           (g.montoUSD += aUsd(a.monto, a.tc)),

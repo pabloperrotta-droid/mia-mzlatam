@@ -1905,3 +1905,9 @@ Pedido del usuario: "agregame un checkbox para que no me calcule retenciones si 
 - [x] Planilla de Retenciones (botón "Retenciones" y la del cierre de pagos): proveedor tildado → retención 0 (Total Transferencia / Total Cheques sin descontar nada), sea cual sea MAT / MO / Factura A. Se busca por nombre del proveedor y, si no, por CUIT.
 - [x] Órdenes de pago de Xubio (pausadas): mismo criterio, sin renglón de retención.
 - [x] Prueba automática. [x] Producción de la tabla y la planilla de Retenciones (OK del usuario: "si está todo probado, subilo a producción", 12/11 15:43). La parte de órdenes de pago queda en la rama sin-retenciones-proceso hasta que se reactiven las OP.
+
+## 173. Obras WU: los adicionales de las sub obras se suman a su orden de compra (24/11/2026)
+Pedido del usuario: "Hay varias subobras con adicionales cargados en ese número de orden de compra, pero no me lo suma arriba". Antes un adicional de sub obra solo se sumaba a una OC si su descripción ERA el número de la OC.
+- [x] Un adicional cuya descripción no es un número de OC se suma a la orden de compra de su sub obra (la primera existente, si tiene varias): la fila de la OC muestra "incl. adicional $…", y suma en la Venta y el Saldo a Facturar de la OC, y en el mes de la OC del gráfico de venta (sale del mes de la obra: el total no cambia).
+- [x] Sin cambios: adicionales con número de OC como descripción (van a esa OC, o línea aparte si la OC es nueva); el MB de cada sub obra.
+- [x] Prueba automática. [ ] Producción (con el OK del usuario).

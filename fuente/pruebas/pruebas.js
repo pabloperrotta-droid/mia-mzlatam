@@ -628,6 +628,21 @@ prueba("Retenciones: proveedor con exclusión (Sin retenciones) no retiene, aunq
   assert.strictEqual(f.proveedorSinRetenciones(filas, "ANDRES", ["20332214153"]), false);
 });
 
+prueba("OC de WU: los adicionales de las sub obras se suman a su orden de compra", () => {
+  const subs = [
+    { nombre: "CRR BANFIELD", ordenCompra: "2640000493", adicionales: [{ concepto: "ADICIONAL", monto: 2160609 }] },
+    { nombre: "OTRA", ordenCompra: "2640000493, 2640000500", adicionales: [{ concepto: "extra", monto: 100 }, { concepto: "2640000500", monto: 7 }] },
+    { nombre: "SIN OC", ordenCompra: "", adicionales: [{ concepto: "ADICIONAL", monto: 999 }] },
+    { nombre: "NUEVA", ordenCompra: "2640000493", adicionales: [{ concepto: "2640000999", monto: 5 }] },
+  ];
+  const r = f.adicionalesPorOC(subs, ["2640000493", "2640000500"]);
+  assert.strictEqual(r["2640000493"].monto, 2160709);
+  assert.strictEqual(r["2640000493"].subObras.join("|"), "CRR BANFIELD|OTRA");
+  assert.strictEqual(r["2640000500"].monto, 7);
+  assert.strictEqual(r["2640000999"].monto, 5);
+  assert.strictEqual(r["2640000999"].existente, false);
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);
