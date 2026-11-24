@@ -6318,10 +6318,11 @@ Esta acción se puede deshacer con el botón "Deshacer" del menú (salvo las fac
                                                 React.createElement("option", { value: "FINALIZADA" }, "Finalizada"),
                                               ),
                                               React.createElement("input", {
-                                                placeholder: "Buscar sub obra...",
+                                                placeholder: "Buscar sub obra u OC...",
+                                                title: "Buscá por nombre de la sub obra o por número de orden de compra (trae todas las sub obras con esa OC)",
                                                 value: Fn[t] || "",
                                                 onChange: (Ce) => Yn((ie) => ({ ...ie, [t]: Ce.target.value })),
-                                                style: { ...inputStyle, width: 170 },
+                                                style: { ...inputStyle, width: 190 },
                                               }),
                                             ),
                                           h.length > 0 &&
@@ -6397,7 +6398,7 @@ Esta acción se puede deshacer con el botón "Deshacer" del menú (salvo las fac
                                             const Ce = normalizarTexto(Fn[t] || ""),
                                               ie = vn[t] || "TODOS",
                                               Fe = N.filter(
-                                                ({ sub: qe }) => !Ce || normalizarTexto(qe.nombre).includes(Ce),
+                                                ({ sub: qe }) => subObraCoincideBusqueda(qe, Fn[t]),
                                               ).filter(
                                                 ({ sub: qe }) => ie === "TODOS" || (qe.status || "EN PROCESO") === ie,
                                               );

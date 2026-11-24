@@ -643,6 +643,16 @@ prueba("OC de WU: los adicionales de las sub obras se suman a su orden de compra
   assert.strictEqual(r["2640000999"].existente, false);
 });
 
+prueba("Sub obras: el buscador encuentra por nombre o por número de orden de compra", () => {
+  const sc = { nombre: "CRR BANFIELD - VILLA TESEI", ordenCompra: "2640000493, 2640000546" };
+  assert.strictEqual(f.subObraCoincideBusqueda(sc, ""), true);
+  assert.strictEqual(f.subObraCoincideBusqueda(sc, "banfield"), true);
+  assert.strictEqual(f.subObraCoincideBusqueda(sc, "2640000546"), true);
+  assert.strictEqual(f.subObraCoincideBusqueda(sc, "0546"), true);
+  assert.strictEqual(f.subObraCoincideBusqueda(sc, "2640000999"), false);
+  assert.strictEqual(f.subObraCoincideBusqueda({ nombre: "X" }, "2640000546"), false);
+});
+
 prueba("Cuentas en los importes: =13.000/4, mitad y mitad, porcentajes", () => {
   assert.strictEqual(f.evaluarCuenta("=13.000/4"), 3250);
   assert.strictEqual(f.evaluarCuenta("=454.960/2"), 227480);

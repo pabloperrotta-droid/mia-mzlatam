@@ -383,6 +383,15 @@ function normOC(n) {
     .replace(/\s+/g, "")
     .toUpperCase();
 }
+// Sección 174: el buscador de sub obras también busca por número de orden de compra (pedido del usuario: "que
+// también me deje buscar por número de orden de compra y me traiga todas las subobras con ese número").
+function subObraCoincideBusqueda(sc, texto) {
+  const q = normalizarTexto(texto || "");
+  if (!q) return true;
+  if (normalizarTexto((sc && sc.nombre) || "").includes(q)) return true;
+  const oc = normOC(texto);
+  return !!oc && normOC((sc && sc.ordenCompra) || "").includes(oc);
+}
 function adicionalesPorOC(subObras, ocsExistentes) {
   const existentes = new Set((ocsExistentes || []).map(normOC).filter(Boolean)),
     r = {};

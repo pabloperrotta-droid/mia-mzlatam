@@ -1911,3 +1911,8 @@ Pedido del usuario: "Hay varias subobras con adicionales cargados en ese número
 - [x] Un adicional cuya descripción no es un número de OC se suma a la orden de compra de su sub obra (la primera existente, si tiene varias): la fila de la OC muestra "incl. adicional $…", y suma en la Venta y el Saldo a Facturar de la OC, y en el mes de la OC del gráfico de venta (sale del mes de la obra: el total no cambia).
 - [x] Sin cambios: adicionales con número de OC como descripción (van a esa OC, o línea aparte si la OC es nueva); el MB de cada sub obra.
 - [x] Prueba automática. [x] Producción (OK del usuario: "Sí, hacelo", 24/11 14:31).
+
+## 174. Sub obras: buscar también por número de orden de compra (24/11/2026)
+Pedido del usuario: "Cuando busco por subobra, que también me deje buscar por número de orden de compra y me traiga todas las subobras con ese número".
+- [x] El buscador de sub obras ("Buscar sub obra u OC...") encuentra por nombre o por OC (también parte del número, y sub obras con varias OC). Se combina con el filtro de estado.
+- [x] Prueba automática. [ ] Producción (con el OK del usuario).
