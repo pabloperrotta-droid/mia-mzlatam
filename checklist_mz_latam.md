@@ -1916,3 +1916,8 @@ Pedido del usuario: "Hay varias subobras con adicionales cargados en ese número
 Pedido del usuario: "Cuando busco por subobra, que también me deje buscar por número de orden de compra y me traiga todas las subobras con ese número".
 - [x] El buscador de sub obras ("Buscar sub obra u OC...") encuentra por nombre o por OC (también parte del número, y sub obras con varias OC). Se combina con el filtro de estado.
 - [x] Prueba automática. [x] Producción (OK del usuario: "si esta ok pasalo a produccion si no rompe nada", 24/11 14:56).
+
+## 175. Proceso de Xubio: se cerraba mal y quedaba horas sin correr (27/11/2026)
+Encontrado en el chequeo del 27/11: desde la Sección 168 cada corrida del proceso duraba 6 h y GitHub la cortaba como "cancelada" (los oídos de la base dejaban el proceso abierto), así que no se volvía a lanzar sola: quedaban huecos de 3 a 4 horas sin proceso (pedidos y botones de Xubio sin atender, sin respaldo por hora, pasada de las 18 hs atrasada: 19:56 el 26/11). El 27/11 a las 11:19 no había proceso corriendo: se relanzó a mano.
+- [x] Al terminar de vigilar (5 h 45 min) el proceso se cierra solo y el workflow se vuelve a lanzar enseguida.
+- [ ] Producción (con el OK del usuario).

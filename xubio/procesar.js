@@ -636,7 +636,14 @@ async function vigilar(minutos) {
 
 (async () => {
   const minutos = Number(process.env.VIGILAR_MINUTOS || 0);
-  if (minutos > 0) return vigilar(minutos);
+  // Sección 175: al terminar de vigilar hay que cerrar el proceso a mano: los "oídos" de la base (Sección 168)
+  // lo mantenían abierto hasta que GitHub lo cortaba a las 6 horas como "cancelado", y así no se volvía a lanzar
+  // solo (quedaba sin proceso horas, hasta que GitHub corría el programado).
+  if (minutos > 0) {
+    await vigilar(minutos);
+    console.log("Fin de la vigilancia: se cierra para volver a lanzarse.");
+    process.exit(0);
+  }
   try {
     await actualizarCentros();
   } catch (e) {
