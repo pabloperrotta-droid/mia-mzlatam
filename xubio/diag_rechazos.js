@@ -17,14 +17,14 @@ async function abrir(d) {
 (async () => {
   try { await db.doc("qa_app/pruebaCuota").get(); n("LECTURA: OK"); } catch (e) { n("LECTURA: " + (e.details || e.message)); return; }
   try { await db.doc("qa_app/pruebaCuota").set({ t: Date.now() }); n("ESCRITURA: OK"); } catch (e) { n("ESCRITURA: " + (e.details || e.message)); }
-  const dia = (await db.collection("respaldosDiarios").orderBy("fecha", "desc").limit(1).get()).docs;
+  const dia = (await db.collection("respaldosDiarios").orderBy("fecha", "desc").limit(4).get()).docs;
   n("DIARIOS: " + (await Promise.all(dia.map(abrir))).join(" | "));
   const hs = (await db.collection("respaldosHorarios").orderBy("fecha", "desc").get()).docs;
   n(`HORARIOS (${hs.length}): ` + (await Promise.all(hs.slice(0, 4).map(abrir))).join(" | "));
-  for (const d of dia) {
-    const m = d.data(), ps = (await d.ref.collection("partes").get()).docs;
-    n(`DIARIO META ${d.id}: creado ${ar(m.creado)} partes meta ${m.partes} reales ${ps.length} ids ${ps.map((x) => x.id).sort((a, b) => a - b).join(",")} KB ${Math.round(m.bytesComprimido / 1024)} largo ${ps.reduce((t, x) => t + (x.get("datos") || "").length, 0)}/${m.bytesComprimido}`);
-  }
+  const err = (await db.collection("erroresGuardado").where("fecha", ">=", Date.now() - 72 * 3600 * 1000).get()).docs.map((d) => d.data());
+  const g = {};
+  err.forEach((e) => { const k = ar(e.fecha).slice(0, 5) + " " + (e.ambiente || "") + " " + String(e.motivo || "").slice(0, 45); g[k] = (g[k] || 0) + 1; });
+  n(`ERRORES 72h (${err.length}): ` + Object.entries(g).slice(0, 12).map(([k, v]) => k + " x" + v).join(" | "));
   const pd = (await db.doc("procesoXubio/pasadaDiaria").get()).data() || {};
   n("PASADA DIARIA: " + (pd.fecha || "-") + " inicio " + ar(pd.inicio) + " fin " + ar(pd.fin));
   const c = await db.doc("qa_app/copiaDeProduccion").get();
